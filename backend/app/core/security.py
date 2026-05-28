@@ -7,16 +7,18 @@ def validate_sql_query(sql: str) -> Tuple[bool, str]:
     """
     Analyse une requête SQL et valide si elle est strictement sécurisée et en lecture seule.
     
-    Cette fonction utilise la bibliothèque robuste sqlglot pour s'assurer que :
+    Cette fonction utilise la bibliothèque de parsing AST sqlglot pour s'assurer que :
     1. La requête est syntaxiquement valide.
     2. La requête contient uniquement des instructions SELECT de lecture.
-    3. Il n'y a pas d'attaques par injection ou de multi-requêtes dangereuses.
+    3. Il n'y a pas d'attaques par injection ou de multi-requêtes dangereuses (séparées par ';').
     
     Args:
-        sql (str): La requête SQL à valider.
+        sql (str): La requête SQL brute à valider.
         
     Returns:
-        Tuple[bool, str]: Un tuple contenant (est_valide, message_de_statut).
+        Tuple[bool, str]: Un tuple contenant :
+            - (bool) : True si la requête est validée, False si elle présente un risque ou une erreur.
+            - (str) : Un message descriptif du statut (succès ou motif du rejet).
     """
     # Nettoyer et valider que la requête n'est pas vide
     query = sql.strip()
@@ -39,8 +41,6 @@ def validate_sql_query(sql: str) -> Tuple[bool, str]:
         return False, "Instruction SQL invalide."
 
     # Définir les types autorisés (SELECT uniquement)
-    # sqlglot.exp.Select est le type pour les requêtes SELECT standard.
-    # On autorise aussi les UNION et autres opérations ensemblistes de sélection.
     allowed_types = (exp.Select, exp.Union, exp.Subquery)
 
     # Parcourir récursivement tous les nœuds de l'arbre pour détecter des instructions interdites

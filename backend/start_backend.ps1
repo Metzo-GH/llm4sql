@@ -45,7 +45,7 @@ Start-Sleep -Seconds 3
 # 5. Peuplement de la base de données (Seed)
 Write-Host "`n5. Initialisation des données (BD Ouvrages)..." -ForegroundColor Yellow
 try {
-    uv run seed_db.py
+    uv run -m app.database.seed_db
     Write-Host "   [OK] Schéma et données de BD initialisés avec succès !" -ForegroundColor Green
 } catch {
     Write-Host "   [AVERTISSEMENT] Échec de l'initialisation des données." -ForegroundColor Yellow
@@ -55,6 +55,6 @@ try {
 Write-Host "`n====================================================" -ForegroundColor Cyan
 Write-Host "          BACKEND PRÊT ET OPTIMISÉ ! 🎉              " -ForegroundColor Cyan
 Write-Host "====================================================" -ForegroundColor Cyan
-Write-Host "Pour tester l'intégration complète (POC LLM) :" -ForegroundColor Gray
-Write-Host "-> uv run test_llm_db.py" -ForegroundColor Yellow
+Write-Host "Pour exécuter l'intégralité des tests de validation :" -ForegroundColor Gray
+Write-Host "-> uv run pytest" -ForegroundColor Yellow
 Write-Host "====================================================" -ForegroundColor Cyan

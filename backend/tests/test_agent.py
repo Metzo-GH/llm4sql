@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import MagicMock, patch
-from agent import extract_sql_query, get_database_schema_context, run_agent, node_generate_sql, node_execute_sql, should_continue, AgentState
+from app.services.agent import extract_sql_query, get_database_schema_context, run_agent, node_generate_sql, node_execute_sql, should_continue, AgentState
 from langgraph.graph import END
 
 
@@ -44,7 +44,7 @@ def test_get_database_schema_context():
     assert "dessinateur" in context
 
 
-@patch("agent.ChatOllama")
+@patch("app.services.agent.ChatOllama")
 def test_node_generate_sql_success(mock_chat_ollama):
     """
     Vérifie que le nœud de génération SQL appelle correctement le LLM et renvoie la requête SQL.

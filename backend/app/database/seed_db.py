@@ -1,28 +1,32 @@
-import psycopg2
+from app.database.connection import get_db_connection
 
-# Paramètres de connexion PostgreSQL Docker (port 5433)
-DB_PARAMS = {
-    "dbname": "llm4sql_db",
-    "user": "llm4sql_user",
-    "password": "llm4sql_password",
-    "host": "127.0.0.1",
-    "port": "5433"
-}
 
-def seed_database():
+def seed_database() -> None:
     """
-    Connecte à PostgreSQL, supprime l'ancien schéma et crée/peuple le nouveau schéma
-    d'ouvrages BD (exercices du cours) adapté d'Oracle SQL.
+    Supprime l'ancien schéma et peuple la base de données PostgreSQL avec le jeu de données d'ouvrages BD.
+    
+    Cette fonction crée le schéma 'BD Ouvrages' composé de 6 tables :
+    - personne : Auteurs de bande dessinée (dessinateurs, scénaristes, coloristes).
+    - serie : Séries d'albums (ex: 'Blacksad', 'donjon').
+    - ouvrage : Albums individuels.
+    - concept : Concepts thématiques hiérarchiques (ex: 'animal' -> 'chien').
+    - a_pour_mot_cle : Table de liaison entre ouvrages et concepts.
+    - avis : Notes et avis de lecteurs sur les ouvrages.
+    
+    Raises:
+        RuntimeError: En cas d'erreur de connexion ou d'exécution SQL lors du peuplement.
     """
+    conn = None
+    cur = None
     try:
-        print("Connecting to the PostgreSQL database...")
-        conn = psycopg2.connect(**DB_PARAMS)
+        print("Connexion à PostgreSQL pour le peuplement...")
+        conn = get_db_connection()
         cur = conn.cursor()
 
-        print("Dropping existing tables to replace with the BD Ouvrages schema...")
+        print("Nettoyage de l'ancien schéma (DROP TABLES)...")
         cur.execute("DROP TABLE IF EXISTS avis, a_pour_mot_cle, concept, ouvrage, serie, personne CASCADE;")
 
-        print("Creating table: personne...")
+        print("Création de la table: personne...")
         cur.execute("""
             CREATE TABLE personne (
                 idp INT CONSTRAINT personne_pkey PRIMARY KEY,
@@ -33,7 +37,7 @@ def seed_database():
             );
         """)
 
-        print("Creating table: serie...")
+        print("Création de la table: serie...")
         cur.execute("""
             CREATE TABLE serie (
                 ids INT CONSTRAINT serie_pkey PRIMARY KEY,
@@ -41,7 +45,7 @@ def seed_database():
             );
         """)
 
-        print("Creating table: ouvrage...")
+        print("Création de la table: ouvrage...")
         cur.execute("""
             CREATE TABLE ouvrage (
                 ido INT CONSTRAINT ouvrage_pkey PRIMARY KEY,
@@ -55,7 +59,7 @@ def seed_database():
             );
         """)
 
-        print("Creating table: concept...")
+        print("Création de la table: concept...")
         cur.execute("""
             CREATE TABLE concept (
                 idc INT CONSTRAINT concept_pkey PRIMARY KEY,
@@ -64,7 +68,7 @@ def seed_database():
             );
         """)
 
-        print("Creating table: a_pour_mot_cle...")
+        print("Création de la table: a_pour_mot_cle...")
         cur.execute("""
             CREATE TABLE a_pour_mot_cle (
                 ido INT CONSTRAINT apmc_ouvrage REFERENCES ouvrage(ido) ON DELETE CASCADE,
@@ -73,7 +77,7 @@ def seed_database():
             );
         """)
 
-        print("Creating table: avis...")
+        print("Création de la table: avis...")
         cur.execute("""
             CREATE TABLE avis (
                 pseudo VARCHAR(10),
@@ -83,7 +87,7 @@ def seed_database():
             );
         """)
 
-        print("Inserting data into: personne...")
+        print("Insertion des auteurs (personne)...")
         cur.execute("""
             INSERT INTO personne (idp, nom, prenom, date_naiss) VALUES
             (1, 'Blain', 'Christophe', TO_DATE('10/08/1970','DD/MM/YYYY')),
@@ -102,7 +106,7 @@ def seed_database():
             (14, 'Abouet', 'Marguerite', TO_DATE('01/01/1971','DD/MM/YYYY'));
         """)
 
-        print("Inserting data into: serie...")
+        print("Insertion des séries (serie)...")
         cur.execute("""
             INSERT INTO serie (ids, titre) VALUES
             (1, 'Socrate le demi-chien'),
@@ -112,7 +116,7 @@ def seed_database():
             (5, 'Aya de Yopougon');
         """)
 
-        print("Inserting data into: ouvrage...")
+        print("Insertion des albums (ouvrage)...")
         cur.execute("""
             INSERT INTO ouvrage (ido, titre, dessinateur, scenariste, coloriste, ids, num_ordre, date_sortie) VALUES
             (11, 'Héraclès', 1, 2, NULL, 1, 1, TO_DATE('19/01/2002','DD/MM/YYYY')),
@@ -133,7 +137,7 @@ def seed_database():
             (25, 'Volume 2', 13, 14, NULL, 5, 2, TO_DATE('29/09/2006','DD/MM/YYYY'));
         """)
 
-        print("Inserting data into: concept...")
+        print("Insertion des concepts (concept)...")
         cur.execute("""
             INSERT INTO concept (idc, label, concept_pere) VALUES
             (1, 'histoire', NULL),
@@ -157,7 +161,7 @@ def seed_database():
             (19, 'policier', NULL);
         """)
 
-        print("Inserting data into: a_pour_mot_cle...")
+        print("Insertion des liaisons (a_pour_mot_cle)...")
         cur.execute("""
             INSERT INTO a_pour_mot_cle (ido, idc) VALUES
             (11, 8), (11, 12), (11, 4), (11, 17),
@@ -176,7 +180,7 @@ def seed_database():
             (26, 7);
         """)
 
-        print("Inserting data into: avis...")
+        print("Insertion des avis lecteurs (avis)...")
         cur.execute("""
             INSERT INTO avis (pseudo, ido, score) VALUES
             ('mikasa', 11, 3),
@@ -218,15 +222,18 @@ def seed_database():
         """)
 
         conn.commit()
-        print("Database seeded with new Ouvrages BD dataset successfully!")
+        print("Peuplement du jeu de données BD Ouvrages terminé avec succès !")
 
     except Exception as e:
-        print(f"Error while seeding the database: {e}")
+        if conn:
+            conn.rollback()
+        raise RuntimeError(f"Erreur fatale lors du peuplement de la base de données : {str(e)}")
     finally:
-        if 'cur' in locals():
+        if cur:
             cur.close()
-        if 'conn' in locals():
+        if conn:
             conn.close()
+
 
 if __name__ == "__main__":
     seed_database()

@@ -5,8 +5,8 @@ from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 
-from config import settings
-from mcp_server import list_tables, get_schema, execute_query
+from app.core.config import settings
+from app.mcp.mcp_server import list_tables, get_schema, execute_query
 
 
 # =====================================================================
@@ -16,6 +16,14 @@ from mcp_server import list_tables, get_schema, execute_query
 class AgentState(TypedDict):
     """
     Représente l'état partagé tout au long de l'exécution du graphe LangGraph.
+    
+    Attributes:
+        question (str): La question posée par l'utilisateur en français.
+        sql_query (Optional[str]): La requête SQL générée par le nœud SQL_Generator.
+        error_message (Optional[str]): Message d'erreur SQL ou de sécurité si l'exécution échoue.
+        query_results (Optional[List[Dict[str, Any]]]): Données retournées par PostgreSQL si succès.
+        iteration_count (int): Compteur d'itérations pour limiter les essais de correction.
+        schema_context (str): Description structurée du schéma injectée dans le prompt.
     """
     question: str
     sql_query: Optional[str]
@@ -35,7 +43,7 @@ def get_database_schema_context() -> str:
     et formater un texte clair pour le prompt du LLM.
     
     Returns:
-        str: Description structurée du schéma de base de données.
+        str: Description structurée du schéma de la base de données.
     """
     tables_json = list_tables()
     tables_data = json.loads(tables_json)
@@ -94,6 +102,12 @@ def node_generate_sql(state: AgentState) -> Dict[str, Any]:
     """
     Nœud de génération SQL. Reçoit la question et l'état actuel (y compris les erreurs passées),
     et interroge le LLM Ollama local pour obtenir la requête PostgreSQL SELECT correspondante.
+    
+    Args:
+        state (AgentState): L'état courant du graphe.
+        
+    Returns:
+        Dict[str, Any]: Dictionnaire de mise à jour de l'état (sql_query).
     """
     # Charger l'instance Ollama avec une température de 0 pour la précision et le déterminisme
     llm = ChatOllama(
@@ -185,6 +199,12 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     """
     Nœud d'exécution SQL. Prend la requête SQL générée par le nœud précédent,
     l'exécute de manière sécurisée via le serveur MCP, et stocke le résultat ou l'erreur.
+    
+    Args:
+        state (AgentState): L'état courant du graphe.
+        
+    Returns:
+        Dict[str, Any]: Dictionnaire de mise à jour de l'état (query_results, error_message, iteration_count).
     """
     sql = state["sql_query"]
     if not sql:
@@ -225,6 +245,12 @@ def should_continue(state: AgentState) -> str:
     """
     Edge conditionnel pour décider si on continue la boucle d'auto-correction (Self-Healing)
     ou si on s'arrête (succès ou limite d'itérations atteinte).
+    
+    Args:
+        state (AgentState): L'état courant.
+        
+    Returns:
+        str: Le nom du nœud cible ("generate_sql" ou END).
     """
     # S'il n'y a pas d'erreur, on s'arrête
     if state["error_message"] is None:
@@ -273,14 +299,14 @@ agent_app = create_agent_graph()
 
 def run_agent(question: str) -> Dict[str, Any]:
     """
-    Interface simple pour lancer l'agent sur une question utilisateur.
+    Interface simple de haut niveau pour lancer l'agent sur une question utilisateur.
     Elle pré-remplit le schéma contextuel et gère l'état initial.
     
     Args:
-        question (str): La question de l'utilisateur.
+        question (str): La question en français de l'utilisateur.
         
     Returns:
-        Dict[str, Any]: L'état final après exécution du graphe.
+        Dict[str, Any]: L'état final après exécution complète du graphe.
     """
     # 1. Récupérer dynamiquement le schéma de la base
     schema_context = get_database_schema_context()

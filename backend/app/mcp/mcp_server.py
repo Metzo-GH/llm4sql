@@ -1,38 +1,45 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from mcp.server.fastmcp import FastMCP
-from config import settings
-from security import validate_sql_query
 import json
 from typing import List, Dict, Any
 
-# Initialiser le serveur FastMCP avec un nom explicite
+from app.core.config import settings
+from app.core.security import validate_sql_query
+from app.database.connection import get_db_connection
+
+# Initialiser l'instance FastMCP pour notre serveur Model Context Protocol
 mcp = FastMCP("LLM4SQL-Secure-Postgres")
 
 
 def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[str, Any]]:
     """
-    Exécute une requête SQL interne en lecture seule sur PostgreSQL et retourne les résultats.
+    Exécute une requête SQL SELECT interne pour récupérer les schémas et métadonnées.
     
-    Cette méthode est à usage interne pour récupérer les schémas et métadonnées.
+    Cette méthode utilitaire privée se connecte en lecture seule et renvoie les résultats typés.
     
     Args:
         query (str): Requête SQL.
-        params (tuple): Paramètres optionnels de la requête.
+        params (tuple, optional): Paramètres de requête de type tuple.
         
     Returns:
-        List[Dict[str, Any]]: Les lignes sous forme de dictionnaires.
+        List[Dict[str, Any]]: Les résultats sous forme de dictionnaire.
+        
+    Raises:
+        RuntimeError: En cas d'erreur de base de données.
     """
     conn = None
+    cur = None
     try:
-        conn = psycopg2.connect(**settings.get_db_params())
-        # Utiliser RealDictCursor pour récupérer les résultats typés sous forme de dict
+        conn = get_db_connection(readonly=True)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params)
             return cur.fetchall()
     except Exception as e:
-        raise RuntimeError(f"Erreur d'accès à la base de données : {str(e)}")
+        raise RuntimeError(f"Erreur d'accès aux métadonnées : {str(e)}")
     finally:
+        if cur:
+            cur.close()
         if conn:
             conn.close()
 
@@ -99,29 +106,28 @@ def get_schema(table_name: str) -> str:
 @mcp.tool()
 def execute_query(sql: str) -> str:
     """
-    Exécute une requête SQL SELECT sécurisée sur la base de données.
+    Exécute une requête SQL SELECT de manière hautement sécurisée sur la base de données.
     
-    La requête subit un contrôle de sécurité strict en amont pour interdire
-    les opérations d'altération, de modification ou de destruction (Read-Only).
+    La requête subit des vérifications strictes (validation en lecture seule, 
+    absence d'instructions de modification ou de chaînage) en amont.
+    La connexion PostgreSQL est également forcée en mode lecture seule.
     
     Args:
         sql (str): La requête SQL SELECT à exécuter.
         
     Returns:
-        str: Les résultats formatés en JSON en cas de succès, ou un message d'erreur.
+        str: Les résultats formatés en JSON en cas de succès, ou le message d'erreur.
     """
-    # 1. Vérification de sécurité avec notre module de sécurité
+    # 1. Validation de sécurité
     is_safe, message = validate_sql_query(sql)
     if not is_safe:
         return json.dumps({"security_error": message}, indent=2)
         
     # 2. Exécution de la requête
     conn = None
+    cur = None
     try:
-        conn = psycopg2.connect(**settings.get_db_params())
-        # Définir explicitement la connexion en lecture seule au niveau pilote pour une sécurité renforcée
-        conn.readonly = True
-        
+        conn = get_db_connection(readonly=True)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(sql)
             results = cur.fetchall()
@@ -129,7 +135,7 @@ def execute_query(sql: str) -> str:
             # Traiter les valeurs temporelles pour qu'elles soient sérialisables en JSON
             for row in results:
                 for key, val in row.items():
-                    if hasattr(val, 'isoformat'): # Traitement de date, datetime, etc.
+                    if hasattr(val, 'isoformat'):
                         row[key] = val.isoformat()
                         
             return json.dumps({
@@ -144,10 +150,12 @@ def execute_query(sql: str) -> str:
             "db_error": str(e)
         }, indent=2)
     finally:
+        if cur:
+            cur.close()
         if conn:
             conn.close()
 
 
 if __name__ == "__main__":
-    # Permet de démarrer le serveur en mode StdIO par défaut
+    # Démarrage du serveur Model Context Protocol (STDIO)
     mcp.run()

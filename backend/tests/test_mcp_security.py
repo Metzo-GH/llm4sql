@@ -1,6 +1,6 @@
 import pytest
-from security import validate_sql_query
-from mcp_server import list_tables, get_schema, execute_query
+from app.core.security import validate_sql_query
+from app.mcp.mcp_server import list_tables, get_schema, execute_query
 import json
 
 
