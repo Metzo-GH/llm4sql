@@ -126,14 +126,50 @@ La base de données simule une gestion de bandes dessinées (albums, séries, au
 
 ```mermaid
 erDiagram
-    PERSONNE ||--o{ OUVRAGE : dessine
-    PERSONNE ||--o{ OUVRAGE : scenarise
-    PERSONNE ||--o{ OUVRAGE : colorise
-    SERIE ||--o{ OUVRAGE : contient
-    OUVRAGE ||--o{ A_POUR_MOT_CLE : decrit
-    CONCEPT ||--o{ A_POUR_MOT_CLE : associe
-    CONCEPT ||--o{ CONCEPT : "a pour pere"
-    OUVRAGE ||--o{ AVIS : reçoit
+    PERSONNE {
+        int idp PK
+        varchar nom
+        varchar prenom
+        date date_naiss
+        date date_deces
+    }
+    SERIE {
+        int ids PK
+        varchar titre
+    }
+    OUVRAGE {
+        int ido PK
+        varchar titre
+        int dessinateur FK
+        int scenariste FK
+        int coloriste FK
+        int ids FK
+        int num_ordre
+        date date_sortie
+    }
+    CONCEPT {
+        int idc PK
+        varchar label
+        int concept_pere FK
+    }
+    A_POUR_MOT_CLE {
+        int ido PK,FK
+        int idc PK,FK
+    }
+    AVIS {
+        varchar pseudo PK
+        int ido PK,FK
+        int score
+    }
+
+    PERSONNE ||--o{ OUVRAGE : "dessine"
+    PERSONNE ||--o{ OUVRAGE : "scenarise"
+    PERSONNE |o--o{ OUVRAGE : "colorise"
+    SERIE |o--o{ OUVRAGE : "contient"
+    OUVRAGE ||--o{ A_POUR_MOT_CLE : "decrit"
+    CONCEPT ||--o{ A_POUR_MOT_CLE : "associe"
+    CONCEPT |o--o{ CONCEPT : "a_pour_pere"
+    OUVRAGE ||--o{ AVIS : "recoit"
 ```
 
 ### Les Tables en détail :
