@@ -11,7 +11,9 @@ dependencies = [
     "langgraph>=1.2.2",
     "mcp>=1.27.1",
     "psycopg2-binary>=2.9.12",
+    "pydantic-settings>=2.14.1",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
+    "sqlglot>=30.8.0",
     "uvicorn>=0.48.0",
 ]
