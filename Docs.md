@@ -31,41 +31,39 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
 - **Moteur LLM Local :** `Ollama` exécutant le modèle **Qwen 3.5 (9B)** sur GPU (RTX 4070 - 8 Go VRAM).
 - **Connexion Données :** Intégration via le standard MCP (Model Context Protocol) pour une exposition sécurisée et dynamique du schéma SQL au LLM.
 
-## 4. Les 4 Phases du Projet
+## 4. Les 4 Phases du Projet & État d'Avancement
 
-### Phase 1 : Le POC, le Moteur et l'Environnement
-- **Objectif :** Valider l'environnement d'exécution local (LLM + Python).
-- **Tâches :** 
-  - Initialiser l'environnement de développement Python avec `uv`.
-  - Installer Ollama et télécharger le modèle Qwen 3.5 (9B).
-  - Créer une base de données relationnelle de test avec PostgreSQL.
-  - Écrire un script Python basique qui valide que le modèle parvient à générer une requête SQL valide à partir du schéma.
+### Phase 1 : Le POC, le Moteur et l'Environnement (100% VALIDÉE)
+- **Objectif :** Valider l'environnement d'exécution local (LLM + Python + PostgreSQL).
+- **État :** Terminé avec succès.
+- **Tâches et Checklist :** 
+  - [x] **Initialiser l'environnement de développement Python avec `uv`** (création du `.venv`, gestionnaire ultra-rapide validé dans `backend/`).
+  - [x] **Configurer Ollama et valider le modèle local** (utilisation avec succès du modèle `qwen3.5:9b` en local).
+  - [x] **Créer une base de données relationnelle locale robuste sous Docker Compose** (PostgreSQL 16 configuré et lancé sur le port **5433** pour éviter tout conflit avec un service PostgreSQL Windows natif).
+  - [x] **Initialiser le schéma et peupler le jeu de données cible** (jeu de données de Bandes Dessinées "ouvrages" avec tables `personne`, `serie`, `ouvrage`, `concept`, `a_pour_mot_cle` et `avis`, peuplé via `seed_db.py`).
+  - [x] **Développer le script POC d'intégration complète (`test_llm_db.py`)** (connexion à PostgreSQL, lecture automatique du schéma SQL de façon dynamique, sollicitation d'Ollama/Qwen 3.5 en français, génération de la requête SQL valide, et exécution en base pour en afficher les résultats).
 
-### Phase 2 : Le Cœur (Agent LangGraph & MCP)
+### Phase 2 : Le Cœur (Agent LangGraph & MCP) (EN ATTENTE)
 - **Objectif :** Rendre l'IA robuste face aux erreurs SQL grâce à l'orchestration.
 - **Tâches :** 
-  - Mettre en place un serveur/client MCP pour exposer la base de données de test au LLM.
-  - Implémenter l'agent intelligent avec **LangGraph** :
-    1. Le LLM génère le SQL.
-    2. Exécution du SQL.
-    3. Si erreur, retour à l'état de génération avec l'erreur comme feedback.
-  - Implémenter le système de **RAG dynamique** : base vectorielle stockant des exemples (Few-shot) pour améliorer la génération initiale.
+  - [ ] **Mettre en place un serveur MCP Python sur-mesure (Option B)** (serveur souverain sécurisé en lecture seule, bloquant les requêtes d'écriture/destruction comme `DROP`, `DELETE` ou `UPDATE`).
+  - [ ] **Implémenter l'agent intelligent avec LangGraph** (boucle génération SQL -> exécution -> détection d'erreur -> feedback d'auto-correction).
+  - [ ] **Implémenter le RAG de Few-Shot Prompting** (vectorisation et injection dynamique d'exemples de requêtes pertinents pour guider le modèle).
 
-### Phase 3 : L'Écosystème Web (FastAPI + React/Vite)
+### Phase 3 : L'Écosystème Web (FastAPI + React/Vite) (EN ATTENTE)
 - **Objectif :** Fournir une interface métier exploitable et agréable.
 - **Tâches :** 
-  - Packer le script d'orchestration dans une API REST avec **FastAPI**.
-  - Initialiser un frontend moderne avec **Vite + React (TypeScript)**.
-  - Développer l'interface de "Chat" conversationnel.
-  - Intégrer l'affichage du tableau de résultats.
-  - Implémenter la **Data Visualisation** (graphiques intelligents selon les données) et l'**Export CSV**.
+  - [ ] **Encapsuler l'agent dans FastAPI** (routes d'exécution de requêtes, flux SSE pour le streaming, historique).
+  - [ ] **Initialiser le frontend moderne Vite + React + TypeScript** (mise en place de la stack, JSDoc/TSDoc).
+  - [ ] **Développer l'UI conversationnelle** (Chat fluide avec affichage du SQL généré, bouton de validation Human-in-the-loop).
+  - [ ] **Concevoir la visualisation de données** (rendu tabulaire dynamique, graphiques intelligents auto-adaptés avec Recharts et export CSV).
 
-### Phase 4 : Tests, Ajustements
+### Phase 4 : Tests, Ajustements & Clôture (EN ATTENTE)
 - **Objectif :** Garantir la solidité de la solution et préparer le livrable final.
 - **Tâches :** 
-  - Mettre la boucle de rétroaction à l'épreuve avec des questions métier "tordues".
-  - Vérifier la robustesse (Edge cases, sécurité basique).
-  - Rédiger la documentation (JSDoc/TSDoc, README).
+  - [ ] **Faire passer des tests avancés** (stress-test du self-healing avec des questions complexes, y compris des requêtes récursives standard).
+  - [ ] **Vérifier la robustesse globale** (sécurité anti-injection SQL basique, gestion d'erreurs d'infrastructure).
+  - [ ] **Finaliser la documentation** (JSDoc/TSDoc sur l'ensemble du projet, README complets).
 
 ## 5. Contraintes et Prérequis
 

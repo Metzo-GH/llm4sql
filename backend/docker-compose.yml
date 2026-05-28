@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: llm4sql-postgres
+    environment:
+      POSTGRES_USER: llm4sql_user
+      POSTGRES_PASSWORD: llm4sql_password
+      POSTGRES_DB: llm4sql_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

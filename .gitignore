@@ -1,3 +1,11 @@
 # Antigravity & AI Map
 /#AI_MAP.md
 .antigravity/
+
+# Python Virtual Environment & Config
+.venv/
+backend/.venv/
+.env
+backend/.env
+__pycache__/
+*.pyc
