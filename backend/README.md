@@ -12,6 +12,9 @@ Le backend repose sur une stack moderne, rapide et robuste :
 3. **Ollama** avec le modèle **Qwen 3.5 (9B)** comme moteur d'intelligence artificielle locale.
 4. **LangGraph** (prochaine phase) pour orchestrer l'agent et sa boucle d'auto-correction (*Self-Healing*).
 5. **FastAPI** (prochaine phase) pour exposer l'agent via une API REST rapide et moderne.
+6. **Pytest** pour exécuter les tests automatisés unitaires et d'intégration.
+
+---
 
 ## ⚡ Démarrage Automatisé & Optimisations (Recommandé) 🛠️
 
@@ -51,13 +54,11 @@ ollama run qwen3.5:9b
 *(Si le modèle n'est pas présent, Ollama le téléchargera automatiquement depuis son registre public).*
 
 ### Étape 3 : Installation du gestionnaire `uv`
-`uv` est un outil révolutionnaire qui remplace avantageusement `pip`, `pipenv` ou `poetry`.
-Si vous n'avez pas installé `uv`, ouvrez PowerShell et lancez la commande suivante :
+`uv` est un outil de pointe pour la gestion des paquets Python. Si vous ne l'avez pas, ouvrez PowerShell et lancez :
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
-Par défaut, sous Windows, `uv` s'installe dans le dossier utilisateur : `~/.local/bin/`. 
-*(Note : Si la commande `uv` n'est pas reconnue par la suite, vous pouvez ajouter ce dossier au PATH système ou préfixer vos commandes par `& "$env:USERPROFILE\.local\bin\uv"`).*
+Par défaut, sous Windows, `uv` s'installe dans `~/.local/bin/`.
 
 ### Étape 4 : Initialisation de l'environnement virtuel Python
 Positionnez-vous dans le répertoire du backend :
@@ -74,31 +75,27 @@ Les dépendances clés installées incluent :
 - `langgraph`, `langchain-core` et `langchain-ollama` (pour le moteur agentique)
 - `fastapi` et `uvicorn` (pour l'API web)
 - `mcp` (SDK du protocole Model Context Protocol d'Anthropic)
+- `pytest` et `pytest-asyncio` (cadre de tests asynchrones)
 
 ---
 
-## 💾 La Base de Données "Ovrages BD" (Docker PostgreSQL)
+## 💾 La Base de Données "Ouvrages BD" (Docker PostgreSQL)
 
 ### ⚠️ Gestion de conflit de port sous Windows (Pédagogie)
-Par défaut, PostgreSQL s'exécute sur le port **`5432`**. Cependant, si vous avez déjà un serveur PostgreSQL installé nativement sur votre système Windows (service Windows `postgres.exe`), lancer Docker sur le port `5432` provoquera un conflit d'accès au port.
-
-Pour résoudre cela de manière robuste et isolée :
-- Notre configuration Docker est configurée pour exposer le port **`5433`** de votre machine hôte vers le port `5432` interne du conteneur.
-- Votre service PostgreSQL natif Windows continue de tourner paisiblement sur le port `5432` sans aucun conflit.
+Par défaut, PostgreSQL s'exécute sur le port **`5432`**. Cependant, si vous avez déjà un serveur PostgreSQL installé nativement sur votre système Windows, lancer Docker sur le port `5432` provoquera un conflit d'accès.
+Pour résoudre cela :
+- Notre configuration Docker expose le port **`5433`** de votre machine hôte vers le port `5432` interne du conteneur.
+- Votre service PostgreSQL natif Windows continue de tourner sur le port `5432` sans aucun conflit.
 - Notre application se connecte à Docker à l'adresse `127.0.0.1:5433`.
 
 ### Démarrage de la base de données
-Pour démarrer la base PostgreSQL locale dans Docker, exécutez la commande suivante depuis le dossier `backend` :
 ```powershell
 docker compose up -d
 ```
-*(Le paramètre `-d` permet de lancer le conteneur PostgreSQL en arrière-plan sans bloquer votre terminal).*
-
 Pour vérifier que le conteneur tourne correctement :
 ```powershell
 docker compose ps
 ```
-Vous devriez voir le conteneur `llm4sql-postgres` dans l'état `Up` sur le port `0.0.0.0:5433->5432/tcp`.
 
 ---
 
@@ -119,77 +116,50 @@ erDiagram
 ```
 
 ### Les Tables en détail :
-1. **`personne`** : Stocke les auteurs de BD (dessinateurs, scénaristes, coloristes).
-   - `idp` (Clé primaire)
-   - `nom`, `prenom`, `date_naiss`, `date_deces`
-2. **`serie`** : Liste les séries d'albums (ex: *Blacksad*, *Trolls de Troy*, *Donjon*).
-   - `ids` (Clé primaire)
-   - `titre`
-3. **`ouvrage`** : Stocke chaque album/album individuel de bande dessinée.
-   - `ido` (Clé primaire)
-   - `titre`, `dessinateur` (clé étrangère vers `personne`), `scenariste` (clé étrangère vers `personne`), `coloriste` (clé étrangère optionnelle), `ids` (clé étrangère optionnelle vers `serie`), `num_ordre`, `date_sortie`
-4. **`concept`** : Représente des concepts thématiques hiérarchiques (ex: *animal* -> *chien*, *moyen-âge*, *philosophie*).
-   - `idc` (Clé primaire)
-   - `label`, `concept_pere` (clé étrangère réflexive vers `concept` pour la hiérarchie)
+1. **`personne`** : Stocke les auteurs de BD.
+2. **`serie`** : Liste les séries d'albums (ex: *Blacksad*, *Trolls de Troy*).
+3. **`ouvrage`** : Stocke chaque album/ouvrage individuel de bande dessinée.
+4. **`concept`** : Représente des concepts thématiques hiérarchiques (ex: *animal* -> *chien*).
 5. **`a_pour_mot_cle`** : Table d'association liant les ouvrages aux concepts.
-   - `ido` (Clé étrangère vers `ouvrage`), `idc` (Clé étrangère vers `concept`)
 6. **`avis`** : Recense les critiques et notes des lecteurs.
-   - `pseudo` (Nom du lecteur), `ido` (Clé étrangère vers `ouvrage`), `score` (Note entière de 0 à 5)
 
 ### Peupler la base de données (Seed)
-Pour vider d'anciennes tables et remplir la base avec le jeu de données d'ouvrages et d'avis d'exemple, exécutez :
 ```powershell
 uv run seed_db.py
 ```
-*Le script va automatiquement initialiser les tables et injecter les jeux de données de test.*
 
 ---
 
-## ⚡ Lancement et Fonctionnement du POC (`test_llm_db.py`)
+## 🧪 Cadre de Tests Automatisés (TDD) 🟢
 
-Le script `test_llm_db.py` sert à valider que tout le système (PostgreSQL Docker + Ollama Qwen 3.5) communique parfaitement ensemble de manière locale et souveraine.
+Pour garantir que notre code reste robuste et qu'aucune régression n'est introduite, nous avons configuré un cadre de tests basé sur **`pytest`** :
+1. **Validation unitaire** des syntaxes SQL générées.
+2. **Validation d'intégration** avec la base de données PostgreSQL dans Docker.
+3. **Tests de sécurité** pour bloquer toute commande SQL malveillante.
 
-### Comment fonctionne le POC sous le capot ?
-1. **Extraction de schéma dynamique** : Le script interroge la base PostgreSQL locale pour extraire dynamiquement les noms des tables, leurs colonnes et types.
-2. **Construction de Prompt enrichie** : Le script crée un Prompt système contenant la description complète de votre schéma de base de données.
-3. **Appel au LLM Local** : La question en français est injectée et envoyée à Ollama (`qwen3.5:9b`).
-4. **Génération SQL** : Le LLM renvoie uniquement une requête PostgreSQL propre.
-5. **Exécution en base** : Le script exécute cette requête SQL directement sur votre base locale dans Docker et affiche les résultats sous forme de tableau formaté dans la console.
-
-### Exécuter le POC
-Lancez la commande suivante :
+### Exécuter les tests :
+Depuis le dossier `backend`, lancez la commande suivante :
 ```powershell
-uv run test_llm_db.py
+uv run pytest
 ```
+*Le système découvrira et exécutera automatiquement tous les tests présents dans le répertoire.*
 
-### Exemple de résultat de test
-Dans le script, la question posée est :
-> *"Donne-moi la liste des ouvrages dessinés par Christophe Blain."*
+---
 
-Le modèle local Qwen 3.5 analyse le schéma, comprend la jointure complexe et génère :
-```sql
-SELECT o.titre
-FROM ouvrage o
-JOIN personne p ON o.dessinateur = p.idp
-WHERE p.prenom = 'Christophe' AND p.nom = 'Blain';
-```
+## 🛡️ Audit de Santé & Sécurité (Health Audit)
 
-Le script exécute la requête et vous retourne instantanément dans votre terminal :
-```text
-titre
---------------------
-Héraclès
-Ulysse
-Après la pluie
-Carnet d'un matelot
-```
+Un audit complet a été réalisé et consigné dans **`health_audit.md`** à la racine de la conversation. Les points critiques pris en compte sont :
+- **Sécurisation en lecture seule** : Pour la phase 2, nous construisons un serveur MCP avec un décorateur `@read_only` empêchant toute altération de données (`DROP`, `DELETE`, `UPDATE`, `INSERT`).
+- **Gestion de la VRAM** : Stabilisation à 8 Go maximum grâce à la configuration `q8_0` pour le cache KV.
+- **Résilience** : La boucle d'auto-correction de LangGraph utilisera les retours d'erreurs PostgreSQL natifs pour corriger les requêtes en temps réel.
 
 ---
 
 ## 📁 Liste des Fichiers du Backend
 
-- [`docker-compose.yml`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/docker-compose.yml) : Configuration du conteneur PostgreSQL 16 exposant le port `5433`.
+- [`docker-compose.yml`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/docker-compose.yml) : Configuration du conteneur PostgreSQL 16.
 - [`seed_db.py`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/seed_db.py) : Script Python d'initialisation et d'insertion des données de BD.
-- [`test_llm_db.py`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/test_llm_db.py) : Le script de validation (POC) traduisant la question en SQL et l'exécutant.
+- [`test_llm_db.py`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/test_llm_db.py) : Le script de validation (POC) de traduction SQL et exécution.
+- [`start_backend.ps1`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/start_backend.ps1) : Script d'automatisation complet sous Windows/PowerShell.
 - [`pyproject.toml`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/pyproject.toml) et [`uv.lock`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/uv.lock) : Fichiers de configuration et de verrouillage des dépendances gérés par `uv`.
-- [`.python-version`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/.python-version) : Spécifie la version locale de Python utilisée (ex: 3.12).
+- [`.python-version`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/.python-version) : Version de Python utilisée.
