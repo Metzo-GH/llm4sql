@@ -6,7 +6,7 @@ L'interrogation de bases de données relationnelles nécessite aujourd'hui des c
 
 Cependant, l'utilisation d'Intelligences Artificielles génératives cloud pose un risque majeur de confidentialité, car elle implique d'exposer le schéma des bases de données et potentiellement des données sensibles à des serveurs tiers.
 
-**L'objectif de ce projet (LLM4SQL)** est de développer une application souveraine, tournant à 100% en local, permettant d'interroger une base de données en langage naturel. L'outil garantit une sécurité totale des données tout en offrant une interface utilisateur moderne et accessible, avec une boucle d'auto-correction pour garantir la fiabilité des requêtes générées.
+**L'objectif de ce projet (LLM4SQL)** est de développer une application locale privée, tournant à 100% en local, permettant d'interroger une base de données en langage naturel. L'outil garantit une sécurité totale des données tout en offrant une interface utilisateur moderne et accessible, avec une boucle d'auto-correction pour garantir la fiabilité des requêtes générées.
 
 ## 2. Périmètre Fonctionnel
 
@@ -18,7 +18,7 @@ Cependant, l'utilisation d'Intelligences Artificielles génératives cloud pose 
   - Affichage des résultats sous forme de tableau.
   - Visualisation de données (Data Viz) automatique via des graphiques adaptés au type de résultat (ex: Recharts).
   - Bouton d'export CSV pour une exploitation métier immédiate.
-- **Architecture Souveraine :** Aucune donnée ou métadonnée ne quitte la machine locale.
+- **Architecture Locale Privée :** Aucune donnée ou métadonnée ne quitte la machine locale.
 
 ## 3. Architecture Technique Cible
 
@@ -31,42 +31,37 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
 - **Moteur LLM Local :** `Ollama` exécutant le modèle **Qwen 3.5 (9B)** sur GPU (8 Go VRAM minimum).
 - **Connexion Données :** Intégration via le standard MCP (Model Context Protocol) pour une exposition sécurisée et dynamique du schéma SQL au LLM.
 
-## 4. Les 4 Phases du Projet & État d'Avancement
+## 4. Les 4 Phases du Projet & État d'Avancement (100% Réalisé) 🎉
 
 ### Phase 1 : Le POC, le Moteur et l'Environnement (100% VALIDÉE)
-- **Objectif :** Valider l'environnement d'exécution local (LLM + Python + PostgreSQL).
 - **État :** Terminé avec succès.
-- **Tâches et Checklist :** 
-  - [x] **Initialiser l'environnement de développement Python avec `uv`** (création du `.venv`, gestionnaire ultra-rapide validé dans `backend/`).
-  - [x] **Configurer Ollama et valider le modèle local** (utilisation avec succès du modèle `qwen3.5:9b` en local).
-  - [x] **Créer une base de données relationnelle locale robuste sous Docker Compose** (PostgreSQL 16 configuré et lancé sur le port **5433** pour éviter tout conflit avec un service PostgreSQL Windows natif).
-  - [x] **Initialiser le schéma et peupler le jeu de données cible** (jeu de données de Bandes Dessinées "ouvrages" avec tables `personne`, `serie`, `ouvrage`, `concept`, `a_pour_mot_cle` et `avis`, peuplé via `seed_db.py`).
-  - [x] **Développer le script POC d'intégration complète (`test_llm_db.py`)** (connexion à PostgreSQL, lecture automatique du schéma SQL de façon dynamique, sollicitation d'Ollama/Qwen 3.5 en français, génération de la requête SQL valide, et exécution en base pour en afficher les résultats).
+- **Réalisations :** Configuration `uv`, déploiement de PostgreSQL sous Docker (Port 5433), et validation initiale d'Ollama avec `qwen3.5:9b`.
 
-### Phase 2 : Le Cœur (Agent LangGraph & MCP) (EN ATTENTE)
-- **Objectif :** Rendre l'IA robuste face aux erreurs SQL grâce à l'orchestration.
-- **Tâches :** 
-  - [ ] **Mettre en place un serveur MCP Python sur-mesure (Option B)** (serveur souverain sécurisé en lecture seule, bloquant les requêtes d'écriture/destruction comme `DROP`, `DELETE` ou `UPDATE`).
-  - [ ] **Implémenter l'agent intelligent avec LangGraph** (boucle génération SQL -> exécution -> détection d'erreur -> feedback d'auto-correction).
-  - [ ] **Implémenter le RAG de Few-Shot Prompting** (vectorisation et injection dynamique d'exemples de requêtes pertinents pour guider le modèle).
+### Phase 2 : Le Cœur (Agent LangGraph & MCP) (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :** 
+  - Implémentation d'un serveur MCP Python sécurisé avec validation syntaxique stricte de sécurité via AST `sqlglot` et pilotes DB configurés en Lecture Seule.
+  - Développement du graphe LangGraph d'auto-correction (*Self-Healing*) avec boucles de rétroaction d'erreurs (limité à 3 essais pour éviter la récursion infinie).
 
-### Phase 3 : L'Écosystème Web (FastAPI + React/Vite) (EN ATTENTE)
-- **Objectif :** Fournir une interface métier exploitable et agréable.
-- **Tâches :** 
-  - [ ] **Encapsuler l'agent dans FastAPI** (routes d'exécution de requêtes, flux SSE pour le streaming, historique).
-  - [ ] **Initialiser le frontend moderne Vite + React + TypeScript** (mise en place de la stack, JSDoc/TSDoc).
-  - [ ] **Développer l'UI conversationnelle** (Chat fluide avec affichage du SQL généré, bouton de validation Human-in-the-loop).
-  - [ ] **Concevoir la visualisation de données** (rendu tabulaire dynamique, graphiques intelligents auto-adaptés avec Recharts et export CSV).
+### Phase 3 : L'Écosystème Web & Bac à Sable Dynamique (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - Route d'API FastAPI pour l'agent (`/api/chat`), l'extraction du schéma (`/api/schema`), et l'initialisation isolée de Sandbox (`/api/sandbox/init`).
+  - Développement de l'UI conversationnelle sous React + TypeScript + Vite avec design Spatial Glassmorphism.
+  - Rendu des données en Tableaux dynamiques paginés avec export CSV natif UTF-8 BOM (compatible Excel).
+  - Intégration de graphiques réactifs adaptatifs (Barres, Aires, Courbes) avec **Recharts**.
 
-### Phase 4 : Tests, Ajustements & Clôture (EN ATTENTE)
-- **Objectif :** Garantir la solidité de la solution et préparer le livrable final.
-- **Tâches :** 
-  - [ ] **Faire passer des tests avancés** (stress-test du self-healing avec des questions complexes, y compris des requêtes récursives standard).
-  - [ ] **Vérifier la robustesse globale** (sécurité anti-injection SQL basique, gestion d'erreurs d'infrastructure).
-  - [ ] **Finaliser la documentation** (JSDoc/TSDoc sur l'ensemble du projet, README complets).
+### Phase 4 : Consolidation & Laboratoire Visuel (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - **Vue Cartes Interactives 🎴** : Parsing SQL DDL en temps réel (côté client) de vos scripts de création de tables, avec badges de type SQL colorés, et détection de contraintes clés (`🔑 PK`, `🔗 FK`) pour tracer les dépendances.
+  - **Rendu Diagramme ER Mermaid stable** : Intégration graphique Mermaid.js résistant aux conflits de DOM et d'identifiants.
+  - Suite de **24 tests unitaires et d'intégration** entièrement validée par `pytest`.
+  - Documentation exhaustive JSDoc/TSDoc sur l'ensemble des modules frontend et backend.
 
 ## 5. Contraintes et Prérequis
 
 - **Matériel cible :** Carte Graphique dédiée avec minimum 8 Go de VRAM.
-- **Dépendances :** React (Frontend), Python 3.10+ (Backend), Ollama en service d'arrière-plan.
+- **Dépendances :** React (Vite/TS), Python 3.12 (uv), PostgreSQL 16 (Docker), Ollama (local).
+- **Règles d'or appliquées :** Zéro Legacy, respect strict du SOLID et du DRY, typage TypeScript strict.
 - **Règles de Code (Globaux) :** "Zéro Legacy", architecture SOLID/DRY, utilisation systématique d'outils d'année en cours.

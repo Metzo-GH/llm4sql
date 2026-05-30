@@ -33,6 +33,7 @@ def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[st
     try:
         conn = get_db_connection(readonly=True)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SET search_path TO user_sandbox, public;")
             cur.execute(query, params)
             return cur.fetchall()
     except Exception as e:
@@ -55,7 +56,7 @@ def list_tables() -> str:
     query = """
         SELECT table_name 
         FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        WHERE table_schema IN ('user_sandbox', 'public')
           AND table_type = 'BASE TABLE'
         ORDER BY table_name;
     """
@@ -81,7 +82,7 @@ def get_schema(table_name: str) -> str:
     query = """
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns 
-        WHERE table_schema = 'public' 
+        WHERE table_schema IN ('user_sandbox', 'public')
           AND table_name = %s
         ORDER BY ordinal_position;
     """
@@ -129,6 +130,7 @@ def execute_query(sql: str) -> str:
     try:
         conn = get_db_connection(readonly=True)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SET search_path TO user_sandbox, public;")
             cur.execute(sql)
             results = cur.fetchall()
             

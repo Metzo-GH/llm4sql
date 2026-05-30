@@ -1,6 +1,6 @@
 # LLM4SQL - Moteur Backend & Agent SQL Local 🚀
 
-Ce dossier contient le moteur backend souverain de **LLM4SQL**. L'application est conçue pour fonctionner **à 100% en local** sur votre machine. Elle traduit des questions en langage naturel en requêtes SQL valides, les exécute sur une base de données PostgreSQL et utilise un agent intelligent pour s'auto-corriger en cas d'erreur.
+Ce dossier contient le moteur backend local et sécurisé de **LLM4SQL**. L'application est conçue pour fonctionner **à 100% en local** sur votre machine. Elle traduit des questions en langage naturel en requêtes SQL valides, les exécute sur une base de données PostgreSQL et utilise un agent intelligent pour s'auto-corriger en cas d'erreur.
 
 ---
 
@@ -40,19 +40,18 @@ backend/
 Pour vous simplifier la vie, un script d'automatisation PowerShell a été créé : **[`start_backend.ps1`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/start_backend.ps1)**. 
 
 ### Que fait ce script automatiquement pour vous ?
-1. **Active le Turbo Quant (KV Cache en 8-bit)** : Configure la variable d'environnement `$env:OLLAMA_KV_CACHE_TYPE = "q8_0"` pour diviser par 2 l'empreinte VRAM du contexte et prévenir les crashs d'Out-of-Memory.
-2. **Active Flash Attention** : Force `$env:OLLAMA_FLASH_ATTENTION = "1"` pour accélérer la vitesse de calcul logique.
-3. **Configure l'environnement Python** : Ajoute le chemin local de `uv` au PATH de votre terminal.
-4. **Gère l'infrastructure Docker** : Lance la base de données PostgreSQL sur le port sécurisé `5433`.
-5. **Initialise vos données** : Vide et peuple les tables avec le jeu de données "BD Ouvrages" automatiquement via `app.database.seed_db`.
+1. **Optimise Ollama sous Windows** : L'application Ollama en arrière-plan sous Windows ignore les variables de session. Ce script inscrit donc de manière **permanente** (via le profil Utilisateur Windows) les variables nécessaires (`OLLAMA_KV_CACHE_TYPE="q4_0"`, `OLLAMA_FLASH_ATTENTION="1"`, `OLLAMA_KEEP_ALIVE="-1"`) et redémarre silencieusement Ollama. Cela garantit que le modèle reste en mémoire vive (RAM) et répond instantanément sans temps de chargement fastidieux !
+2. **Configure l'environnement Python** : Ajoute le chemin local de `uv` au PATH de votre terminal.
+3. **Gère l'infrastructure Docker** : Lance la base de données PostgreSQL sur le port sécurisé `5433`.
+4. **Initialise vos données** : Vide et peuple les tables avec le jeu de données "BD Ouvrages" automatiquement via `app.database.seed_db`.
 
 ### Comment l'utiliser ?
 Ouvrez PowerShell et lancez simplement :
 ```powershell
 cd "c:\Users\Metzo\Documents\projet ia\llm4sql\backend"
-./start_backend.ps1
+.\start_backend.ps1
 ```
-Et voilà ! Tout est prêt, configuré et testé en une seule commande !
+Et voilà ! Tout est prêt, configuré et optimisé en une seule commande !
 
 ---
 
@@ -91,6 +90,47 @@ Les dépendances clés installées incluent :
 - `pydantic-settings` (gestion de la configuration par environnement)
 - `sqlglot` (analyseur AST SQL)
 - `pytest` et `pytest-asyncio` (cadre de tests asynchrones)
+
+---
+
+## 🔌 Points d'Accès de l'API (FastAPI)
+
+Le serveur FastAPI s'exécute par défaut sur le port **8000** (`http://127.0.0.1:8000`) et expose les routes suivantes :
+
+### 1. Discussion SQL Agentique & Self-Healing
+- **URL :** `POST /api/chat`
+- **Description :** Reçoit une question en langage naturel, la traduit en SQL, l'exécute de manière isolée et applique une boucle d'auto-correction automatique (jusqu'à 3 tentatives) via LangGraph en cas d'erreur PostgreSQL.
+- **Corps de requête :**
+  ```json
+  {
+    "question": "trouver le nom des abonnés ayant des livres non rendus..."
+  }
+  ```
+
+### 2. Bac à sable SQL (Sandbox) Dynamique
+- **URL :** `POST /api/sandbox/init`
+- **Description :** Permet d'isoler l'utilisateur en effaçant puis en recréant un schéma PostgreSQL isolé nommé `user_sandbox`. Y exécute vos structures `CREATE TABLE` et vos scripts d'insertions `INSERT INTO` à la volée.
+- **Corps de requête :**
+  ```json
+  {
+    "schema_sql": "CREATE TABLE ...",
+    "insert_sql": "INSERT INTO ..."
+  }
+  ```
+
+### 3. Visualisation de Schéma (Mermaid) par l'IA
+- **URL :** `POST /api/sandbox/visualize`
+- **Description :** Convertit votre code SQL de création de tables brut en code de diagramme relationnel Mermaid.js en interrogeant le LLM local (Qwen) à température 0.
+- **Corps de requête :**
+  ```json
+  {
+    "schema_sql": "CREATE TABLE ..."
+  }
+  ```
+
+### 4. Récupération du Schéma Actif
+- **URL :** `GET /api/schema`
+- **Description :** Récupère la description textuelle structurée et mise en cache de toutes les tables actives (soit dans `user_sandbox` s'il a été initialisé, soit dans `public` par défaut).
 
 ---
 
@@ -153,12 +193,12 @@ erDiagram
         int concept_pere FK
     }
     A_POUR_MOT_CLE {
-        int ido PK,FK
-        int idc PK,FK
+        int ido PK "FK"
+        int idc PK "FK"
     }
     AVIS {
         varchar pseudo PK
-        int ido PK,FK
+        int ido PK "FK"
         int score
     }
 
@@ -203,5 +243,5 @@ uv run pytest
 
 Un audit complet a été réalisé et consigné dans **`health_audit.md`** à la racine de la conversation. Les points critiques pris en compte sont :
 - **Sécurisation en lecture seule** : Pour la phase 2, nous avons construit un validateur SQL (`app/core/security.py`) basé sur `sqlglot` interceptant toute requête autre que `SELECT` (blocage de `DROP`, `DELETE`, `UPDATE`, `INSERT`, etc.). De plus, la connexion PostgreSQL est également forcée en mode `readonly = True` au niveau du pilote.
-- **Gestion de la VRAM** : Stabilisation à 8 Go maximum grâce à la configuration `q8_0` pour le cache KV d'Ollama.
+- **Gestion de la VRAM** : Stabilisation et réduction drastique de l'empreinte VRAM grâce à la configuration `q4_0` pour le cache KV d'Ollama.
 - **Résilience** : La boucle d'auto-correction de LangGraph utilise les retours d'erreurs PostgreSQL natifs pour corriger les requêtes en temps réel (boucle limitée à 3 tentatives pour éviter toute boucle infinie).

@@ -32,6 +32,7 @@ class AgentState(TypedDict):
     query_results: Optional[List[Dict[str, Any]]]
     iteration_count: int
     schema_context: str
+    simulate_only: bool
 
 
 # =====================================================================
@@ -63,7 +64,7 @@ def get_database_schema_context() -> str:
         FROM 
             information_schema.columns 
         WHERE 
-            table_schema = 'public'
+            table_schema IN ('user_sandbox', 'public')
         ORDER BY 
             table_name, 
             ordinal_position;
@@ -73,6 +74,7 @@ def get_database_schema_context() -> str:
     try:
         conn = get_db_connection(readonly=True)
         with conn.cursor() as cur:
+            cur.execute("SET search_path TO user_sandbox, public;")
             cur.execute(query)
             rows = cur.fetchall()
             
@@ -144,7 +146,8 @@ def node_generate_sql(state: AgentState) -> Dict[str, Any]:
     llm = ChatOllama(
         model=settings.OLLAMA_MODEL,
         base_url=settings.OLLAMA_BASE_URL,
-        temperature=0.0
+        temperature=0.0,
+        keep_alive=-1 # Force le maintien en RAM après la requête pour éviter les lenteurs
     )
 
     # Contextualisation Few-Shot (RAG statique ultra-performant)
@@ -244,6 +247,14 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
             "iteration_count": state["iteration_count"] + 1
         }
         
+    if state.get("simulate_only"):
+        # Mode Simulation : Ne pas exécuter la requête
+        return {
+            "query_results": [],
+            "error_message": None,
+            "iteration_count": state["iteration_count"] + 1
+        }
+        
     # Exécuter la requête SQL via l'outil sécurisé du serveur MCP
     execution_result_str = execute_query(sql)
     execution_result = json.loads(execution_result_str)
@@ -328,19 +339,21 @@ agent_app = create_agent_graph()
 # 5. Interface d'entrée simplifiée (API interne)
 # =====================================================================
 
-def run_agent(question: str) -> Dict[str, Any]:
+def run_agent(question: str, custom_schema: Optional[str] = None, simulate_only: bool = False) -> Dict[str, Any]:
     """
     Interface simple de haut niveau pour lancer l'agent sur une question utilisateur.
     Elle pré-remplit le schéma contextuel et gère l'état initial.
     
     Args:
         question (str): La question en français de l'utilisateur.
+        custom_schema (Optional[str]): Schéma personnalisé fourni par l'utilisateur.
+        simulate_only (bool): Si vrai, l'agent ne tente pas d'exécuter la requête SQL.
         
     Returns:
         Dict[str, Any]: L'état final après exécution complète du graphe.
     """
-    # 1. Récupérer dynamiquement le schéma de la base
-    schema_context = get_database_schema_context()
+    # 1. Déterminer le schéma à utiliser
+    schema_context = custom_schema if custom_schema else get_database_schema_context()
     
     # 2. Définir l'état de départ
     initial_state: AgentState = {
@@ -349,7 +362,8 @@ def run_agent(question: str) -> Dict[str, Any]:
         "error_message": None,
         "query_results": None,
         "iteration_count": 0,
-        "schema_context": schema_context
+        "schema_context": schema_context,
+        "simulate_only": simulate_only
     }
     
     # 3. Exécuter le graphe

@@ -9,11 +9,28 @@ Write-Host "      DÉMARRAGE AUTOMATISÉ DU BACKEND LLM4SQL       " -ForegroundC
 Write-Host "====================================================" -ForegroundColor Cyan
 
 # 1. Configuration des optimisations avancées d'Ollama (Turbo Quant & Speed)
-Write-Host "`n1. Configuration des optimisations VRAM d'Ollama..." -ForegroundColor Yellow
-$env:OLLAMA_KV_CACHE_TYPE = "q8_0"
-$env:OLLAMA_FLASH_ATTENTION = "1"
-Write-Host "   [OK] KV Cache quantifié en 8-bit activé (OLLAMA_KV_CACHE_TYPE=q8_0)" -ForegroundColor Green
-Write-Host "   [OK] Flash Attention activée (OLLAMA_FLASH_ATTENTION=1)" -ForegroundColor Green
+Write-Host "`n1. Configuration globale des optimisations Ollama sous Windows..." -ForegroundColor Yellow
+
+# Application permanente des variables dans le profil Utilisateur Windows
+[Environment]::SetEnvironmentVariable("OLLAMA_KV_CACHE_TYPE", "q4_0", "User")
+[Environment]::SetEnvironmentVariable("OLLAMA_FLASH_ATTENTION", "1", "User")
+[Environment]::SetEnvironmentVariable("OLLAMA_KEEP_ALIVE", "-1", "User")
+
+Write-Host "   [OK] Variables systèmes inscrites (KV Cache, Flash Attention, Keep Alive)." -ForegroundColor Green
+
+Write-Host "   [~] Redémarrage de l'application Ollama..." -ForegroundColor Yellow
+Stop-Process -Name "ollama*" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+# Lancement de l'application système Windows Ollama (pour récupérer l'icône dans la barre des tâches)
+$ollamaAppPath = "$env:LOCALAPPDATA\Programs\Ollama\ollama app.exe"
+if (Test-Path $ollamaAppPath) {
+    Start-Process $ollamaAppPath -ErrorAction SilentlyContinue
+    Write-Host "   [OK] Ollama redémarré avec succès (vérifiez l'icône dans la barre des tâches) !" -ForegroundColor Green
+} else {
+    # Fallback si l'application n'est pas installée au chemin standard
+    Start-Process "ollama" -ArgumentList "serve" -WindowStyle Hidden -ErrorAction SilentlyContinue
+    Write-Host "   [AVERTISSEMENT] Application Ollama introuvable au chemin par défaut. Serveur invisible lancé." -ForegroundColor Yellow
+}
 
 # 2. Ajout de uv local au PATH pour la session courante
 Write-Host "`n2. Configuration de l'environnement Python (uv)..." -ForegroundColor Yellow
