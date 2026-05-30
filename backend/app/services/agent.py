@@ -6,6 +6,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 
 from app.core.config import settings
+from app.database.connection import get_db_connection
 from app.mcp.mcp_server import list_tables, get_schema, execute_query
 
 
@@ -37,37 +38,67 @@ class AgentState(TypedDict):
 # 2. Fonctions d'aide (Helpers)
 # =====================================================================
 
+# Variable de cache globale en mémoire pour éviter les requêtes DB répétées en local
+_SCHEMA_CACHE: Optional[str] = None
+
+
 def get_database_schema_context() -> str:
     """
-    Interroge les outils MCP locaux pour récupérer le schéma de toutes les tables 
-    et formater un texte clair pour le prompt du LLM.
+    Récupère le schéma de toutes les tables en une seule requête (résout le pattern N+1)
+    et le met en cache en mémoire pour accélérer les appels futurs.
     
     Returns:
         str: Description structurée du schéma de la base de données.
     """
-    tables_json = list_tables()
-    tables_data = json.loads(tables_json)
-    
-    if "error" in tables_data:
-        return "Impossible de récupérer le schéma de la base de données."
-        
-    schema_blocks = []
-    for table_name in tables_data["tables"]:
-        schema_json = get_schema(table_name)
-        schema_data = json.loads(schema_json)
-        
-        if "error" in schema_data:
-            continue
+    global _SCHEMA_CACHE
+    if _SCHEMA_CACHE is not None:
+        return _SCHEMA_CACHE
+
+    query = """
+        SELECT 
+            table_name, 
+            column_name, 
+            data_type, 
+            is_nullable
+        FROM 
+            information_schema.columns 
+        WHERE 
+            table_schema = 'public'
+        ORDER BY 
+            table_name, 
+            ordinal_position;
+    """
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection(readonly=True)
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
             
-        columns_desc = []
-        for col in schema_data["schema"]:
-            null_status = "NULL" if col["nullable"] else "NOT NULL"
-            columns_desc.append(f"  - {col['column']} ({col['type']}) {null_status}")
+            # Organiser par table
+            tables = {}
+            for row in rows:
+                t_name, c_name, d_type, is_null = row
+                if t_name not in tables:
+                    tables[t_name] = []
+                null_status = "NULL" if is_null == "YES" else "NOT NULL"
+                tables[t_name].append(f"  - {c_name} ({d_type}) {null_status}")
             
-        columns_text = "\n".join(columns_desc)
-        schema_blocks.append(f"Table '{table_name}' :\n{columns_text}")
-        
-    return "\n\n".join(schema_blocks)
+            schema_blocks = []
+            for t_name, columns in sorted(tables.items()):
+                columns_text = "\n".join(columns)
+                schema_blocks.append(f"Table '{t_name}' :\n{columns_text}")
+                
+            _SCHEMA_CACHE = "\n\n".join(schema_blocks)
+            return _SCHEMA_CACHE
+    except Exception as e:
+        return f"Erreur lors de la récupération du schéma : {str(e)}"
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 
 def extract_sql_query(text: str) -> str:

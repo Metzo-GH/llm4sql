@@ -136,3 +136,20 @@ def test_mcp_execute_query_security_block():
     res = execute_query("DELETE FROM personne;")
     data = json.loads(res)
     assert "security_error" in data
+
+
+def test_sql_validation_blocked_system_functions():
+    """
+    Vérifie que les appels aux fonctions système PostgreSQL dangereuses (pg_sleep, pg_read_file)
+    sont interceptés et bloqués par le moteur de sécurité.
+    """
+    malicious_queries = [
+        "SELECT pg_sleep(5);",
+        "SELECT pg_read_file('/etc/passwd');",
+        "SELECT pg_ls_dir('.');",
+        "SELECT * FROM ouvrage WHERE ido = (SELECT pg_sleep(10));"
+    ]
+    for q in malicious_queries:
+        is_safe, message = validate_sql_query(q)
+        assert is_safe is False, f"Devrait être bloqué (fonction système hostile) : {q}"
+        assert "fonction système" in message or "Sécurité" in message
