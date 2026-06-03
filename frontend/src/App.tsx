@@ -21,7 +21,9 @@ export default function App() {
     setInsertSql,
     mermaidCode,
     isSandboxLoading,
+    isVisualizing,
     handleApplySandbox,
+    handleGenerateDiagram,
   } = useSandbox();
 
   // Delegate NL Translation & Chat queries to useChat hook
@@ -123,27 +125,42 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex-1 min-h-0" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+          <div className="flex-1 min-h-0" style={{ flex: 1, minHeight: 0 }}>
             {sandboxTab === 'schema' && (
-              <textarea
-                value={schemaSql}
-                onChange={(e) => setSchemaSql(e.target.value)}
-                placeholder="Collez ici le code de création de vos tables (CREATE TABLE...)"
-                className="input-field w-full h-full font-mono text-xs"
-                style={{ width: '100%', height: '100%', resize: 'none', fontSize: '11px', padding: '12px' }}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px' }}>
+                <textarea
+                  value={schemaSql}
+                  onChange={(e) => setSchemaSql(e.target.value)}
+                  placeholder="Collez ici le code de création de vos tables (CREATE TABLE...)"
+                  className="input-field w-full font-mono text-xs"
+                  style={{ width: '100%', flex: 1, resize: 'none', fontSize: '11px', padding: '12px' }}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', gap: '4px', alignItems: 'center', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.15)', lineHeight: 1.3 }}>
+                  <span>⚠️ <b>Sécurité :</b> Ces scripts DDL s'exécutent localement pour configurer votre sandbox. Par ailleurs, les requêtes générées par l'IA dans le Chat sont bridées en Lecture Seule absolue (SELECT).</span>
+                </div>
+              </div>
             )}
             {sandboxTab === 'data' && (
-              <textarea
-                value={insertSql}
-                onChange={(e) => setInsertSql(e.target.value)}
-                placeholder="Optionnel : Collez ici vos insertions de données (INSERT INTO...)"
-                className="input-field w-full h-full font-mono text-xs"
-                style={{ width: '100%', height: '100%', resize: 'none', fontSize: '11px', padding: '12px' }}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px' }}>
+                <textarea
+                  value={insertSql}
+                  onChange={(e) => setInsertSql(e.target.value)}
+                  placeholder="Optionnel : Collez ici vos insertions de données (INSERT INTO...)"
+                  className="input-field w-full font-mono text-xs"
+                  style={{ width: '100%', flex: 1, resize: 'none', fontSize: '11px', padding: '12px' }}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', gap: '4px', alignItems: 'center', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.15)', lineHeight: 1.3 }}>
+                  <span>⚠️ <b>Sécurité :</b> L'exécution DML s'applique en écriture sur l'espace `user_sandbox`. Ne chargez que des jeux de données certifiés.</span>
+                </div>
+              </div>
             )}
             {sandboxTab === 'visual' && (
-              <SchemaVisualizer mermaidCode={mermaidCode} schemaSql={schemaSql} />
+              <SchemaVisualizer 
+                mermaidCode={mermaidCode} 
+                schemaSql={schemaSql} 
+                onGenerateDiagram={handleGenerateDiagram}
+                isVisualizing={isVisualizing}
+              />
             )}
           </div>
         </section>

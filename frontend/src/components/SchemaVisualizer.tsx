@@ -5,6 +5,8 @@ import { Table, Search, Link2, Key, HelpCircle } from 'lucide-react';
 interface SchemaVisualizerProps {
   mermaidCode: string;
   schemaSql?: string;
+  onGenerateDiagram?: () => Promise<void>;
+  isVisualizing?: boolean;
 }
 
 interface ColumnInfo {
@@ -180,7 +182,12 @@ function getTypeBadgeStyle(type: string): React.CSSProperties {
  * SchemaVisualizer Component that offers both a 100% robust interactive Card Explorer
  * and a fixed Mermaid ER Diagram renderer.
  */
-export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ mermaidCode, schemaSql = "" }) => {
+export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ 
+  mermaidCode, 
+  schemaSql = "", 
+  onGenerateDiagram, 
+  isVisualizing = false 
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'mermaid'>('cards');
   const [searchTerm, setSearchTerm] = useState('');
@@ -213,12 +220,12 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ mermaidCode,
           if (containerRef.current) {
             containerRef.current.innerHTML = `
               <div class="flex flex-col items-center justify-center h-full p-6 text-center text-muted">
-                <div style={{ color: 'var(--accent-ruby)', fontWeight: 600, fontSize: '13px', marginBottom: '8px' }}>Erreur de rendu du diagramme</div>
+                <div style="color: var(--accent-ruby); font-weight: 600; font-size: 13px; margin-bottom: 8px;">Erreur de rendu du diagramme</div>
                 <p class="text-xs max-w-xs mb-3">Le format du code ER diagramme renvoyé par le LLM contient des erreurs de syntaxe.</p>
                 <pre style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 10px; text-align: left; max-width: 100%; overflow-x: auto; color: var(--text-muted)">
                   <code>${e.message || String(e)}</code>
                 </pre>
-                <div class="text-xs mt-3 text-emerald font-medium">💡 Basculez sur la "Vue Cartes" ci-dessus, elle fonctionne parfaitement !</div>
+                <div class="text-xs mt-3 font-medium" style="color: var(--accent-emerald);">💡 Basculez sur la "Vue Cartes" ci-dessus, elle fonctionne parfaitement !</div>
               </div>
             `;
           }
@@ -263,10 +270,8 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ mermaidCode,
           </button>
           <button
             onClick={() => setViewMode('mermaid')}
-            disabled={!mermaidCode}
             className={`px-3 py-1 rounded-md text-xs transition-all ${viewMode === 'mermaid' ? 'bg-primary text-white font-semibold' : 'text-muted'}`}
-            style={{ border: 'none', background: viewMode === 'mermaid' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'mermaid' ? '#fff' : 'var(--text-muted)', cursor: !mermaidCode ? 'not-allowed' : 'pointer', opacity: !mermaidCode ? 0.5 : 1, fontSize: '11px', padding: '6px 12px' }}
-            title={!mermaidCode ? "Appliquez le schéma pour générer le diagramme" : ""}
+            style={{ border: 'none', background: viewMode === 'mermaid' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'mermaid' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '6px 12px' }}
           >
             Diagramme 📊
           </button>
@@ -432,6 +437,29 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ mermaidCode,
                 );
               })
             )}
+          </div>
+        ) : isVisualizing ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted p-4 bg-surface-solid rounded-lg border border-subtle" style={{ height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3" style={{ borderBottomColor: 'var(--accent-primary)', width: '32px', height: '32px', borderLeftWidth: '2px', borderRightWidth: '2px', borderTopWidth: '2px', borderBottomWidth: '2px', borderRadius: '50%', borderStyle: 'solid', borderColor: 'transparent' }} />
+            <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Génération en cours</h3>
+            <p className="text-xs max-w-xs" style={{ fontSize: '12px', maxWidth: '280px', margin: 0 }}>
+              Le LLM local traduit votre schéma SQL en diagramme ER. Cela peut prendre quelques dizaines de secondes...
+            </p>
+          </div>
+        ) : !mermaidCode ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted p-4 bg-surface-solid rounded-lg border border-subtle" style={{ height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+            <HelpCircle size={36} className="opacity-40 mb-3" style={{ marginBottom: '12px', opacity: 0.4, color: 'var(--accent-primary)' }} />
+            <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Diagramme non généré</h3>
+            <p className="text-xs max-w-xs mb-4" style={{ fontSize: '12px', maxWidth: '280px', margin: '0 0 16px 0' }}>
+              Pour économiser vos ressources locales, le diagramme n'est plus généré automatiquement au démarrage de la base.
+            </p>
+            <button
+              onClick={onGenerateDiagram}
+              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
+              style={{ fontSize: '12px', cursor: 'pointer' }}
+            >
+              Générer le diagramme avec l'IA 🪄
+            </button>
           </div>
         ) : (
           <div 

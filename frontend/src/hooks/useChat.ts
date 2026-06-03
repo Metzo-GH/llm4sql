@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Message } from '../components/ChatInterface';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8500';
 
 /**
  * Custom React hook orchestrating chat messaging flows, agentic LLM API calls,
@@ -109,7 +109,7 @@ export function useChat() {
         {
           id: assistantMsgId,
           sender: 'assistant',
-          content: "❌ Impossible de joindre l'API locale LLM4SQL. Assurez-vous que le serveur FastAPI tourne sur le port 8000.",
+          content: "❌ Impossible de joindre l'API locale LLM4SQL. Assurez-vous que le serveur FastAPI tourne sur le port 8500.",
         },
       ]);
     } finally {

@@ -15,6 +15,7 @@ Write-Host "`n1. Configuration globale des optimisations Ollama sous Windows..."
 [Environment]::SetEnvironmentVariable("OLLAMA_KV_CACHE_TYPE", "q4_0", "User")
 [Environment]::SetEnvironmentVariable("OLLAMA_FLASH_ATTENTION", "1", "User")
 [Environment]::SetEnvironmentVariable("OLLAMA_KEEP_ALIVE", "-1", "User")
+[Environment]::SetEnvironmentVariable("OLLAMA_NUM_PARALLEL", "1", "User")
 
 Write-Host "   [OK] Variables systèmes inscrites (KV Cache, Flash Attention, Keep Alive)." -ForegroundColor Green
 
@@ -68,10 +69,12 @@ try {
     Write-Host "   [AVERTISSEMENT] Échec de l'initialisation des données." -ForegroundColor Yellow
 }
 
-# 6. Fin du script de démarrage
+# 6. Fin du script de démarrage et lancement de FastAPI
 Write-Host "`n====================================================" -ForegroundColor Cyan
 Write-Host "          BACKEND PRÊT ET OPTIMISÉ ! 🎉              " -ForegroundColor Cyan
 Write-Host "====================================================" -ForegroundColor Cyan
-Write-Host "Pour exécuter l'intégralité des tests de validation :" -ForegroundColor Gray
-Write-Host "-> uv run pytest" -ForegroundColor Yellow
+Write-Host "Lancement automatique du serveur FastAPI..." -ForegroundColor Yellow
 Write-Host "====================================================" -ForegroundColor Cyan
+
+# Lancement du serveur FastAPI avec uv et uvicorn
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8500 --reload

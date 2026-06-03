@@ -4,6 +4,16 @@ from unittest.mock import MagicMock, patch
 from app.services.agent import extract_sql_query, get_database_schema_context, run_agent, node_generate_sql, node_execute_sql, should_continue, AgentState
 from langgraph.graph import END
 
+@pytest.fixture(autouse=True)
+def reset_agent_globals():
+    """
+    Réinitialise les variables globales de l'agent (cache de schéma et instance LLM)
+    avant chaque test pour éviter les effets de bord entre les tests mockés et réels.
+    """
+    import app.services.agent as agent_module
+    agent_module._SCHEMA_CACHE = None
+    agent_module._llm = None
+
 
 def test_extract_sql_query_markdown_sql():
     """

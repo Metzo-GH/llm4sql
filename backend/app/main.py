@@ -1,3 +1,5 @@
+import asyncio
+import time
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -114,7 +116,12 @@ async def init_sandbox(request: SandboxInitRequest) -> SandboxInitResponse:
     """
     try:
         from app.database.connection import init_user_sandbox
-        init_user_sandbox(schema_sql=request.schema_sql, insert_sql=request.insert_sql)
+        # Exécuter l'initialisation synchrone de la sandbox dans un thread pool pour éviter de bloquer l'event-loop
+        await asyncio.to_thread(
+            init_user_sandbox,
+            schema_sql=request.schema_sql,
+            insert_sql=request.insert_sql
+        )
         
         # Mettre à jour le cache mémoire du schéma pour LangGraph
         import app.services.agent as agent_module
@@ -134,34 +141,45 @@ async def visualize_schema(request: VisualizeRequest) -> VisualizeResponse:
     Convertit un schéma SQL DDL brut en diagramme Mermaid.js via l'IA locale.
     """
     try:
-        from langchain_ollama import ChatOllama
+        from app.services.agent import get_llm
         from langchain_core.messages import SystemMessage
         
-        llm = ChatOllama(
-            model=settings.OLLAMA_MODEL,
-            base_url=settings.OLLAMA_BASE_URL,
-            temperature=0.0
-        )
+        llm = get_llm()
         
         prompt = f"""Tu es un expert en modélisation de bases de données. 
 Convertis le schéma SQL suivant en un diagramme Entité-Relation Mermaid (erDiagram).
-Ne retourne AUCUN autre texte, aucune explication.
-Retourne UNIQUEMENT le texte du diagramme (commençant par erDiagram).
-Ne mets PAS de blocs ```mermaid.
+
+Règles de syntaxe Mermaid cruciales :
+1. N'écris JAMAIS de parenthèses ou de virgules pour spécifier les types de colonnes (écris `varchar` au lieu de `varchar(50)` et `decimal` au lieu de `decimal(10,2)`).
+2. Ne sépare pas les lignes de colonnes par des virgules ou des points-virgules dans les définitions de tables.
+3. Ne retourne AUCUN autre texte, aucune explication.
+4. Retourne UNIQUEMENT le texte du diagramme (commençant par erDiagram).
+5. Ne mets PAS de blocs ```mermaid.
 
 Schéma SQL :
 {request.schema_sql}
 """
-        response = llm.invoke([SystemMessage(content=prompt)])
+        # Utiliser l'appel asynchrone natif ainvoke pour ne pas bloquer l'event-loop
+        response = await llm.ainvoke([SystemMessage(content=prompt)])
         
         code = response.content.strip()
-        # Nettoyage de sécurité si le LLM ajoute des balises Markdown
+        # 1. Nettoyage de sécurité si le LLM ajoute des balises Markdown
         if code.startswith("```mermaid"):
             code = code[10:]
         elif code.startswith("```"):
             code = code[3:]
         if code.endswith("```"):
             code = code[:-3]
+        code = code.strip()
+        
+        # 2. Correction automatique de la syntaxe des types (suppression des paramètres)
+        # Exemple : varchar(50) -> varchar, decimal(10, 2) -> decimal
+        import re
+        code = re.sub(r'(\w+)\([\d\s,]+\)', r'\1', code)
+        
+        # 3. Suppression des virgules et points-virgules de fin de ligne dans les définitions
+        code = re.sub(r',\s*$', '', code, flags=re.MULTILINE)
+        code = re.sub(r';\s*$', '', code, flags=re.MULTILINE)
             
         return VisualizeResponse(mermaid_code=code.strip())
     except Exception as e:
@@ -206,14 +224,24 @@ async def chat(request: ChatRequest) -> ChatResponse:
             detail="La question fournie ne peut pas être vide."
         )
         
+    print("\n" + "="*60)
+    print(f"📥 [API HTTP] REQUÊTE REÇUE : '{request.question}'")
+    print("="*60)
+    start_time = time.time()
+        
     try:
-        # Exécuter le graphe de l'agent de manière asynchrone (ou synchrone wrappé)
-        # run_agent est synchrone mais effectue des requêtes réseau locales rapides
-        final_state = run_agent(
+        # Exécuter le graphe de l'agent synchrone dans un thread séparé de manière non-bloquante via asyncio.to_thread
+        final_state = await asyncio.to_thread(
+            run_agent,
             question=request.question,
             custom_schema=request.custom_schema,
             simulate_only=request.simulate_only
         )
+        
+        total_time = time.time() - start_time
+        print("\n" + "="*60)
+        print(f"📤 [API HTTP] RÉPONSE PRÊTE en {total_time:.2f}s (Itérations: {final_state['iteration_count']})")
+        print("="*60 + "\n")
         
         return ChatResponse(
             question=final_state["question"],
@@ -223,6 +251,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
             iteration_count=final_state["iteration_count"]
         )
     except Exception as e:
+        total_time = time.time() - start_time
+        print("\n" + "="*60)
+        print(f"💥 [API HTTP] ERREUR INTERNE en {total_time:.2f}s : {str(e)}")
+        print("="*60 + "\n")
         raise HTTPException(
             status_code=500,
             detail=f"Une erreur interne est survenue lors de l'exécution de l'agent : {str(e)}"

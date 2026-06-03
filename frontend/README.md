@@ -24,7 +24,7 @@ Un espace de configuration locale dynamique composé de 3 onglets :
 - **Onglet Données :** Permet d'insérer des données de simulation `INSERT INTO`.
 - **Onglet Visuel (Double affichage) :**
   - **Vue Cartes Interactives 🎴 :** Analyse le code SQL DDL en temps réel (côté client) pour afficher des fiches de tables détaillant les noms, types SQL colorés thématiquement et badges d'identifiants (`🔑 PK` pour clé primaire, `🔗 FK` pour clé étrangère). Cliquer sur une table met en évidence ses dépendances relationnelles.
-  - **Vue Diagramme ER 📊 :** Rendu graphique stable Mermaid.js qui trace le schéma relationnel en s'appuyant sur le LLM local (FastAPI `/api/sandbox/visualize`).
+  - **Vue Diagramme ER 📊 :** Rendu graphique stable Mermaid.js qui trace le schéma relationnel en s'appuyant sur le LLM local (FastAPI `/api/sandbox/visualize`). Pour économiser la VRAM et accélérer l'import, la génération se fait asynchroniquement sur demande via le bouton "Générer le diagramme avec l'IA".
 
 ### 2. Messagerie Agentique & Auto-Correction
 - **Bulle de dialogue fluide** affichant les messages en temps réel.
@@ -40,7 +40,7 @@ Un espace de configuration locale dynamique composé de 3 onglets :
 ## 🚀 Guide de Démarrage Rapide
 
 ### Prérequis
-Assurez-vous d'avoir installé **Node.js (v18+)** et d'avoir démarré le backend FastAPI sur le port `8000` au préalable.
+Assurez-vous d'avoir installé **Node.js (v18+)** et d'avoir démarré le backend FastAPI sur le port `8500` au préalable.
 
 ### Étape 1 : Installation des dépendances
 Positionnez-vous dans le dossier `frontend` et installez les paquets requis :

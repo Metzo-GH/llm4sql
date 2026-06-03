@@ -1,5 +1,7 @@
 import json
 import re
+import time
+import threading
 from typing import TypedDict, List, Dict, Any, Optional
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -42,6 +44,30 @@ class AgentState(TypedDict):
 # Variable de cache globale en mémoire pour éviter les requêtes DB répétées en local
 _SCHEMA_CACHE: Optional[str] = None
 
+# Singleton et verrou pour garantir une instanciation unique thread-safe
+_llm_lock = threading.Lock()
+_llm: Optional[ChatOllama] = None
+
+def get_llm() -> ChatOllama:
+    """
+    Récupère ou initialise de manière paresseuse le singleton ChatOllama.
+    Cette méthode est thread-safe pour éviter les instanciations concurrentes du LLM.
+    
+    Returns:
+        ChatOllama: L'instance unique du client LLM local.
+    """
+    global _llm
+    if _llm is None:
+        with _llm_lock:
+            if _llm is None:
+                _llm = ChatOllama(
+                    model=settings.OLLAMA_MODEL,
+                    base_url=settings.OLLAMA_BASE_URL,
+                    temperature=0.0,
+                    keep_alive=-1 # Force le maintien en RAM après la requête pour éviter les lenteurs
+                )
+    return _llm
+
 
 def get_database_schema_context() -> str:
     """
@@ -69,38 +95,32 @@ def get_database_schema_context() -> str:
             table_name, 
             ordinal_position;
     """
-    conn = None
-    cur = None
     try:
-        conn = get_db_connection(readonly=True)
-        with conn.cursor() as cur:
-            cur.execute("SET search_path TO user_sandbox, public;")
-            cur.execute(query)
-            rows = cur.fetchall()
-            
-            # Organiser par table
-            tables = {}
-            for row in rows:
-                t_name, c_name, d_type, is_null = row
-                if t_name not in tables:
-                    tables[t_name] = []
-                null_status = "NULL" if is_null == "YES" else "NOT NULL"
-                tables[t_name].append(f"  - {c_name} ({d_type}) {null_status}")
-            
-            schema_blocks = []
-            for t_name, columns in sorted(tables.items()):
-                columns_text = "\n".join(columns)
-                schema_blocks.append(f"Table '{t_name}' :\n{columns_text}")
+        # Utilisation de context managers imbriqués pour garantir une fermeture propre et déterministe
+        with get_db_connection(readonly=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SET search_path TO user_sandbox, public;")
+                cur.execute(query)
+                rows = cur.fetchall()
                 
-            _SCHEMA_CACHE = "\n\n".join(schema_blocks)
-            return _SCHEMA_CACHE
+                # Organiser par table
+                tables = {}
+                for row in rows:
+                    t_name, c_name, d_type, is_null = row
+                    if t_name not in tables:
+                        tables[t_name] = []
+                    null_status = "NULL" if is_null == "YES" else "NOT NULL"
+                    tables[t_name].append(f"  - {c_name} ({d_type}) {null_status}")
+                
+                schema_blocks = []
+                for t_name, columns in sorted(tables.items()):
+                    columns_text = "\n".join(columns)
+                    schema_blocks.append(f"Table '{t_name}' :\n{columns_text}")
+                    
+                _SCHEMA_CACHE = "\n\n".join(schema_blocks)
+                return _SCHEMA_CACHE
     except Exception as e:
         return f"Erreur lors de la récupération du schéma : {str(e)}"
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 def extract_sql_query(text: str) -> str:
@@ -142,13 +162,13 @@ def node_generate_sql(state: AgentState) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Dictionnaire de mise à jour de l'état (sql_query).
     """
-    # Charger l'instance Ollama avec une température de 0 pour la précision et le déterminisme
-    llm = ChatOllama(
-        model=settings.OLLAMA_MODEL,
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=0.0,
-        keep_alive=-1 # Force le maintien en RAM après la requête pour éviter les lenteurs
-    )
+    # Utilisation du singleton global llm via le lazy loader get_llm()
+
+    iteration = state["iteration_count"] + 1
+    print(f"\n[🧠 ÉTAPE 1 - GÉNÉRATION SQL] (Essai #{iteration})")
+    print(f"  💭 Réflexion du LLM ({settings.OLLAMA_MODEL}) en cours...")
+    
+    start_time = time.time()
 
     # Contextualisation Few-Shot (RAG statique ultra-performant)
     few_shot_examples = """
@@ -218,11 +238,26 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     else:
         messages.append(HumanMessage(content=f"Question à traduire : {state['question']}"))
 
-    # Appeler le LLM local
-    response = llm.invoke(messages)
+    # Appeler le LLM local via le singleton paresseux get_llm()
+    print(f"  📥 [PROMPT ENVOYÉ AU LLM] :")
+    if len(messages) > 1:
+        print(f"    - Message de correction:\n{messages[-1].content}")
+    else:
+        print(f"    - Question: {state['question']}")
+
+    response = get_llm().invoke(messages)
+    
+    # Afficher la réponse brute du LLM
+    print(f"  📤 [RÉPONSE BRUTE DU LLM] :")
+    print(f"  --- DÉBUT RÉPONSE ---")
+    print(response.content)
+    print(f"  --- FIN RÉPONSE ---")
     
     # Extraire et nettoyer la requête SQL de la réponse
     generated_sql = extract_sql_query(response.content)
+    
+    elapsed = time.time() - start_time
+    print(f"  ✅ SQL généré en {elapsed:.2f}s")
     
     return {
         "sql_query": generated_sql
@@ -242,38 +277,48 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     """
     sql = state["sql_query"]
     if not sql:
+        print("\n[⚡ ÉTAPE 2 - EXÉCUTION SQL] Aucune requête SQL à exécuter.")
         return {
             "error_message": "Aucune requête SQL n'a été générée.",
             "iteration_count": state["iteration_count"] + 1
         }
         
     if state.get("simulate_only"):
-        # Mode Simulation : Ne pas exécuter la requête
+        print("\n[⚡ ÉTAPE 2 - EXÉCUTION SQL] Mode simulation activé. Pas d'exécution physique.")
         return {
             "query_results": [],
             "error_message": None,
             "iteration_count": state["iteration_count"] + 1
         }
         
+    print(f"\n[⚡ ÉTAPE 2 - EXÉCUTION SQL] Exécution de la requête sur PostgreSQL...")
+    start_time = time.time()
+    
     # Exécuter la requête SQL via l'outil sécurisé du serveur MCP
     execution_result_str = execute_query(sql)
     execution_result = json.loads(execution_result_str)
     
+    elapsed = time.time() - start_time
+    
     if "security_error" in execution_result:
+        print(f"  ❌ Alerte Sécurité ({elapsed:.2f}s) : {execution_result['security_error']}")
         return {
             "error_message": f"Alerte de Sécurité : {execution_result['security_error']}",
             "iteration_count": state["iteration_count"] + 1
         }
         
     if not execution_result.get("success", False):
+        print(f"  ❌ Échec de l'exécution ({elapsed:.2f}s) : {execution_result.get('db_error')}")
         return {
             "error_message": execution_result.get("db_error", "Erreur d'exécution inconnue."),
             "iteration_count": state["iteration_count"] + 1
         }
         
     # Succès
+    data_rows = execution_result.get("data", [])
+    print(f"  ✅ Requête exécutée avec succès en {elapsed:.2f}s ({len(data_rows)} ligne(s) retournée(s)).")
     return {
-        "query_results": execution_result.get("data", []),
+        "query_results": data_rows,
         "error_message": None, # Efface l'erreur
         "iteration_count": state["iteration_count"] + 1
     }
@@ -296,13 +341,16 @@ def should_continue(state: AgentState) -> str:
     """
     # S'il n'y a pas d'erreur, on s'arrête
     if state["error_message"] is None:
+        print("\n[🎉 FIN] Requête résolue avec succès et validée !")
         return END
         
     # Si on a atteint la limite de 3 tentatives de correction, on s'arrête aussi pour éviter une boucle infinie
     if state["iteration_count"] >= 3:
+        print(f"\n[🛑 FIN] Limite d'itérations d'auto-correction atteinte ({state['iteration_count']}/3). Abandon.")
         return END
         
     # Sinon, on retourne au nœud de génération pour corriger
+    print(f"\n[🔄 AUTO-CORRECTION] Une erreur est survenue. Lancement de la correction automatique (Tentative #{state['iteration_count'] + 1}/3)...")
     return "generate_sql"
 
 
@@ -352,6 +400,9 @@ def run_agent(question: str, custom_schema: Optional[str] = None, simulate_only:
     Returns:
         Dict[str, Any]: L'état final après exécution complète du graphe.
     """
+    print(f"\n🚀 [DÉBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}'")
+    start_time = time.time()
+    
     # 1. Déterminer le schéma à utiliser
     schema_context = custom_schema if custom_schema else get_database_schema_context()
     
@@ -368,4 +419,7 @@ def run_agent(question: str, custom_schema: Optional[str] = None, simulate_only:
     
     # 3. Exécuter le graphe
     final_state = agent_app.invoke(initial_state)
+    
+    elapsed = time.time() - start_time
+    print(f"🏁 [FIN AGENT] Cycle complet exécuté en {elapsed:.2f}s (Auto-corrections : {max(0, final_state['iteration_count'] - 1)}).")
     return final_state

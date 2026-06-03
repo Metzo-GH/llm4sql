@@ -3,6 +3,7 @@ from psycopg2.extras import RealDictCursor
 from mcp.server.fastmcp import FastMCP
 import json
 from typing import List, Dict, Any
+from decimal import Decimal
 
 from app.core.config import settings
 from app.core.security import validate_sql_query
@@ -134,11 +135,13 @@ def execute_query(sql: str) -> str:
             cur.execute(sql)
             results = cur.fetchall()
             
-            # Traiter les valeurs temporelles pour qu'elles soient sérialisables en JSON
+            # Traiter les valeurs temporelles et décimales pour qu'elles soient sérialisables en JSON
             for row in results:
                 for key, val in row.items():
                     if hasattr(val, 'isoformat'):
                         row[key] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        row[key] = float(val)
                         
             return json.dumps({
                 "success": True,

@@ -19,7 +19,7 @@ Ce document consigne l'audit de santé complet de l'architecture actuelle de **L
 
 ### SRP (Single Responsibility Principle) - *Respecté à 100%*
 - **Backend (🟢 Validé)** : Le backend sépare parfaitement l'orchestration de l'API (`main.py`), la gestion des pilotes de base de données (`connection.py`), la logique de décision LangGraph (`agent.py`) et la validation de sécurité (`security.py`).
-- **Frontend (🟢 Validé & Refactorisé)** : La logique d'état et les appels d'API complexes ont été entièrement extraits de [`App.tsx`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/frontend/src/App.tsx) et isolés dans deux hooks React personnalisés :
+- **Frontend (🟢 Validé & Refactorisé)** : La logique d'état et les appels d'API complexes ont été entièrement extraits de [`App.tsx`](frontend/src/App.tsx) et isolés dans deux hooks React personnalisés :
   1. `useSandbox.ts` : Encapsule l'application du schéma, les données, la gestion d'onglets et le visualiseur.
   2. `useChat.ts` : Orchestre les messages, l'appel agentique au LLM et la mise en cache mémoire locale des résultats SQL.
   `App.tsx` n'a plus qu'une responsabilité de couche de présentation épurée et lisible.
@@ -74,8 +74,8 @@ Pour maintenir la propreté du code sur le long terme sans casser les fonctionna
 
 ### 1. Séparation de la Logique Métier React (Frontend) (🟢 RÉALISÉ & VALIDÉ)
 Les appels d'API et la gestion d'état ont été extraits avec succès de `App.tsx` vers les hooks React dédiés dans le répertoire `frontend/src/hooks/` :
-- [`useSandbox.ts`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/frontend/src/hooks/useSandbox.ts) : Encapsule les scripts DDL/DML, le chargement, et l'initialisation de Sandbox.
-- [`useChat.ts`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/frontend/src/hooks/useChat.ts) : Gère le chat, l'auto-correction, et les résultats en cache.
+- [`useSandbox.ts`](frontend/src/hooks/useSandbox.ts) : Encapsule les scripts DDL/DML, le chargement, et l'initialisation de Sandbox.
+- [`useChat.ts`](frontend/src/hooks/useChat.ts) : Gère le chat, l'auto-correction, et les résultats en cache.
   
 *Cette modification a permis d'épurer l'orchestrateur principal en éliminant toute dette technique liée à la taille de fichier.*
 

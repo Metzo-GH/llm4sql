@@ -37,10 +37,10 @@ backend/
 
 ## ⚡ Démarrage Automatisé & Optimisations (Recommandé) 🛠️
 
-Pour vous simplifier la vie, un script d'automatisation PowerShell a été créé : **[`start_backend.ps1`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/start_backend.ps1)**. 
+Pour vous simplifier la vie, un script d'automatisation PowerShell a été créé : **[`start_backend.ps1`](start_backend.ps1)**. 
 
 ### Que fait ce script automatiquement pour vous ?
-1. **Optimise Ollama sous Windows** : L'application Ollama en arrière-plan sous Windows ignore les variables de session. Ce script inscrit donc de manière **permanente** (via le profil Utilisateur Windows) les variables nécessaires (`OLLAMA_KV_CACHE_TYPE="q4_0"`, `OLLAMA_FLASH_ATTENTION="1"`, `OLLAMA_KEEP_ALIVE="-1"`) et redémarre silencieusement Ollama. Cela garantit que le modèle reste en mémoire vive (RAM) et répond instantanément sans temps de chargement fastidieux !
+1. **Optimise Ollama sous Windows** : L'application Ollama en arrière-plan sous Windows ignore les variables de session. Ce script inscrit donc de manière **permanente** (via le profil Utilisateur Windows) les variables nécessaires (`OLLAMA_KV_CACHE_TYPE="q4_0"`, `OLLAMA_FLASH_ATTENTION="1"`, `OLLAMA_KEEP_ALIVE="-1"`, `OLLAMA_NUM_PARALLEL="1"`) et redémarre silencieusement Ollama. Cela garantit que le modèle reste en mémoire vive (RAM), n'alloue qu'un seul slot de contexte et répond instantanément sans temps de chargement fastidieux !
 2. **Configure l'environnement Python** : Ajoute le chemin local de `uv` au PATH de votre terminal.
 3. **Gère l'infrastructure Docker** : Lance la base de données PostgreSQL sur le port sécurisé `5433`.
 4. **Initialise vos données** : Vide et peuple les tables avec le jeu de données "BD Ouvrages" automatiquement via `app.database.seed_db`.
@@ -48,7 +48,7 @@ Pour vous simplifier la vie, un script d'automatisation PowerShell a été cré�
 ### Comment l'utiliser ?
 Ouvrez PowerShell et lancez simplement :
 ```powershell
-cd "c:\Users\Metzo\Documents\projet ia\llm4sql\backend"
+cd backend
 .\start_backend.ps1
 ```
 Et voilà ! Tout est prêt, configuré et optimisé en une seule commande !
@@ -65,9 +65,9 @@ Assurez-vous d'avoir installé sur votre machine :
 - **Ollama** : [Télécharger Ollama](https://ollama.com/) (nécessaire pour faire tourner l'IA localement).
 
 ### Étape 2 : Démarrage du modèle local (Ollama)
-Assurez-vous que le modèle Qwen 3.5 9B est installé et prêt :
+Assurez-vous que le modèle Qwen 3.5 4B est installé et prêt :
 ```bash
-ollama run qwen3.5:9b
+ollama run qwen3.5:4b
 ```
 
 ### Étape 3 : Installation du gestionnaire `uv`
@@ -79,7 +79,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ### Étape 4 : Initialisation de l'environnement virtuel Python
 Positionnez-vous dans le répertoire du backend et synchronisez les dépendances déclarées dans `pyproject.toml` :
 ```powershell
-cd "c:\Users\Metzo\Documents\projet ia\llm4sql\backend"
+cd backend
 uv sync
 ```
 Les dépendances clés installées incluent :
@@ -95,7 +95,7 @@ Les dépendances clés installées incluent :
 
 ## 🔌 Points d'Accès de l'API (FastAPI)
 
-Le serveur FastAPI s'exécute par défaut sur le port **8000** (`http://127.0.0.1:8000`) et expose les routes suivantes :
+Le serveur FastAPI s'exécute par défaut sur le port **8500** (`http://127.0.0.1:8500`) (le port par défaut 8000 a été basculé sur 8500 pour éviter tout conflit avec les plages d'exclusions de ports réservées par Windows/Hyper-V) et expose les routes suivantes :
 
 ### 1. Discussion SQL Agentique & Self-Healing
 - **URL :** `POST /api/chat`

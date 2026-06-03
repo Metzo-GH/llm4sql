@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8500';
 
 /**
  * Custom React hook managing the SQL Sandbox DDL/DML lifecycle and visualizer tabs.
@@ -12,10 +12,11 @@ export function useSandbox() {
   const [insertSql, setInsertSql] = useState('');
   const [mermaidCode, setMermaidCode] = useState('');
   const [isSandboxLoading, setIsSandboxLoading] = useState(false);
+  const [isVisualizing, setIsVisualizing] = useState(false);
 
   /**
-   * Wipes and recreates the user_sandbox schema in PostgreSQL, applies user tables and inserts,
-   * and requests the local LLM to visualize the schema as a Mermaid diagram.
+   * Wipes and recreates the user_sandbox schema in PostgreSQL, applies user tables and inserts.
+   * This operation is local, instant and does not call the LLM.
    */
   const handleApplySandbox = async () => {
     if (!schemaSql.trim()) return;
@@ -23,7 +24,7 @@ export function useSandbox() {
     setMermaidCode(''); // Reset visual state
     
     try {
-      // 1. Initialize the isolated sandbox schema in PostgreSQL
+      // Initialize the isolated sandbox schema in PostgreSQL
       const resInit = await fetch(`${API_BASE_URL}/api/sandbox/init`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,25 +33,39 @@ export function useSandbox() {
       
       if (!resInit.ok) throw new Error("Erreur lors de l'initialisation du Sandbox");
 
-      // 2. Call the LLM visualizer API to translate DDL DDL into Mermaid code
+      setSandboxTab('visual'); // Auto-switch to the interactive cards visualizer
+      alert("✅ Base de données initialisée instantanément ! Vous pouvez maintenant interroger votre base.");
+    } catch (e) {
+      console.error(e);
+      alert("❌ Une erreur s'est produite lors de la configuration du Sandbox.");
+    } finally {
+      setIsSandboxLoading(false);
+    }
+  };
+
+  /**
+   * Calls the LLM visualizer API to translate DDL SQL into Mermaid code.
+   */
+  const handleGenerateDiagram = async () => {
+    if (!schemaSql.trim() || isVisualizing) return;
+    setIsVisualizing(true);
+
+    try {
       const resVis = await fetch(`${API_BASE_URL}/api/sandbox/visualize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schema_sql: schemaSql }),
       });
 
-      if (resVis.ok) {
-        const dataVis = await resVis.json();
-        setMermaidCode(dataVis.mermaid_code);
-        setSandboxTab('visual'); // Auto-switch to the interactive cards visualizer
-      }
-      
-      alert("✅ Laboratoire SQL prêt ! Vous pouvez maintenant interroger votre base.");
+      if (!resVis.ok) throw new Error("Erreur lors de la génération du diagramme");
+
+      const dataVis = await resVis.json();
+      setMermaidCode(dataVis.mermaid_code);
     } catch (e) {
       console.error(e);
-      alert("❌ Une erreur s'est produite lors de la configuration du Sandbox.");
+      alert("❌ Impossible de générer le diagramme avec l'IA locale.");
     } finally {
-      setIsSandboxLoading(false);
+      setIsVisualizing(false);
     }
   };
 
@@ -64,6 +79,8 @@ export function useSandbox() {
     mermaidCode,
     setMermaidCode,
     isSandboxLoading,
+    isVisualizing,
     handleApplySandbox,
+    handleGenerateDiagram,
   };
 }
