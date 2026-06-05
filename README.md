@@ -1,6 +1,6 @@
 # LLM4SQL - Assistant & Sandbox SQL Local Privé 🚀
 
-**LLM4SQL** est une application locale et isolée, s'exécutant **à 100% en local**, conçue pour traduire des questions en langage naturel en requêtes PostgreSQL valides, les exécuter de manière isolée et restituer les données de façon interactive (Tableaux filtrés, Graphiques adaptatifs et Export CSV).
+**LLM4SQL** est une application locale et isolée, s'exécutant **à 100% en local**, conçue pour traduire des questions en langage naturel en requêtes SQL valides, les exécuter de manière isolée et restituer les données de façon interactive (Tableaux filtrés, Graphiques adaptatifs et Export CSV).
 
 L'outil intègre un **bac à sable (Sandbox) dynamique** permettant de charger n'importe quelle structure de base de données à la volée, de modéliser les tables en direct sous forme de cartes relationnelles interactives ou de diagrammes ER Mermaid, et d'interroger cette base sur-mesure via une boucle d'auto-correction intelligente (*Self-Healing*).
 
@@ -8,7 +8,7 @@ L'outil intègre un **bac à sable (Sandbox) dynamique** permettant de charger n
 
 ## 🎨 Aperçu des Fonctionnalités Clés
 
-- **Messagerie IA Locale & Self-Healing** : Moteur d'orchestration agentique basé sur **LangGraph** et **Qwen 3.5 (4B)**. Si une requête SQL générée échoue, l'agent capture l'erreur PostgreSQL et se corrige de façon autonome.
+- **Messagerie IA Locale & Self-Healing** : Moteur d'orchestration agentique basé sur **LangGraph** et **Qwen 3.5 (4B)**. Si une requête SQL générée échoue, l'agent capture l'erreur SQL et se corrige de façon autonome.
 - **Sécurité Absolue (Defense in Depth)** : Validation syntaxique stricte des requêtes générées via l'arbre AST **SQLGlot** (interdit toute altération type `DROP`, `DELETE`, `UPDATE`), pilotes DB physiquement forcés en **Lecture Seule** (`readonly = True`) et isolation totale de la Sandbox.
 - **Laboratoire Visuel de Schéma** :
   - **Vue Cartes 🎴 (Parsing temps réel)** : Modélisation dynamique du DDL (`CREATE TABLE`) affichant les attributs, types HSL colorés et badges de clés (`🔑 PK`, `🔗 FK`) avec détection de liens relationnels.
