@@ -225,7 +225,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
         
     print("\n" + "="*60)
-    print(f"📥 [API HTTP] REQUÊTE REÇUE : '{request.question}'")
+    print(f"[API IN] REQUÊTE REÇUE : '{request.question}'")
     print("="*60)
     start_time = time.time()
         
@@ -240,7 +240,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         
         total_time = time.time() - start_time
         print("\n" + "="*60)
-        print(f"📤 [API HTTP] RÉPONSE PRÊTE en {total_time:.2f}s (Itérations: {final_state['iteration_count']})")
+        print(f"[API OUT] RÉPONSE PRÊTE en {total_time:.2f}s (Itérations: {final_state['iteration_count']})")
         print("="*60 + "\n")
         
         return ChatResponse(
@@ -253,7 +253,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     except Exception as e:
         total_time = time.time() - start_time
         print("\n" + "="*60)
-        print(f"💥 [API HTTP] ERREUR INTERNE en {total_time:.2f}s : {str(e)}")
+        print(f"[API ERR] ERREUR INTERNE en {total_time:.2f}s : {str(e)}")
         print("="*60 + "\n")
         raise HTTPException(
             status_code=500,

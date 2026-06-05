@@ -165,41 +165,85 @@ def node_generate_sql(state: AgentState) -> Dict[str, Any]:
     # Utilisation du singleton global llm via le lazy loader get_llm()
 
     iteration = state["iteration_count"] + 1
-    print(f"\n[🧠 ÉTAPE 1 - GÉNÉRATION SQL] (Essai #{iteration})")
-    print(f"  💭 Réflexion du LLM ({settings.OLLAMA_MODEL}) en cours...")
+    print(f"\n[ETAPE 1 - GENERATION SQL] (Essai #{iteration})")
+    print(f"  Reflexion du LLM ({settings.OLLAMA_MODEL}) en cours...")
     
     start_time = time.time()
 
     # Contextualisation Few-Shot (RAG statique ultra-performant)
     few_shot_examples = """
-Voici des exemples de traduction de questions en français vers PostgreSQL :
+Voici des exemples abstraits illustrant le style d'écriture SQL, la syntaxe PostgreSQL et le formatage attendus :
 
-Exemple 1 :
-Question : "les ouvrages sortis en 2021"
+Exemple 1 (Filtres temporels / extraction d'année) :
+Question : "Donne-moi les éléments créés en 2024"
 SQL :
 ```sql
-SELECT ido, titre FROM ouvrage WHERE EXTRACT(YEAR FROM date_sortie) = 2021;
+SELECT id_element, nom_element FROM elements WHERE EXTRACT(YEAR FROM date_creation) = 2024;
 ```
 
-Exemple 2 :
-Question : "les ouvrages dessinés par Christophe Blain"
+Exemple 2 (Double jointure sur une même table de référence) :
+Question : "trouver les articles avec le nom de leur contact principal et secondaire"
 SQL :
 ```sql
-SELECT o.ido, o.titre FROM ouvrage o JOIN personne p ON o.dessinateur = p.idp WHERE p.nom = 'Blain' AND p.prenom = 'Christophe';
+SELECT a.id_article, a.titre, c1.nom AS contact_principal, c2.nom AS contact_secondaire 
+FROM articles a 
+JOIN contacts c1 ON a.id_contact_principal = c1.id_contact 
+JOIN contacts c2 ON a.id_contact_secondaire = c2.id_contact;
 ```
 
-Exemple 3 :
-Question : "les ouvrages dessinés par Christophe Blain et scénarisés par Joann Sfar"
+Exemple 3 (Jointure gauche avec agrégation, comptage et valeurs nulles par défaut) :
+Question : "le nombre d'évaluations, la note minimale, maximale et moyenne de chaque produit (0 ou null si aucune)"
 SQL :
 ```sql
-SELECT o.ido, o.titre FROM ouvrage o JOIN personne p1 ON o.dessinateur = p1.idp JOIN personne p2 ON o.scenariste = p2.idp WHERE p1.nom = 'Blain' AND p1.prenom = 'Christophe' AND p2.nom = 'Sfar' AND p2.prenom = 'Joann';
+SELECT id_produit, nom_produit, COUNT(e.id_evaluation) AS nb_evaluations, 
+       MIN(e.note) AS note_min, MAX(e.note) AS note_max, 
+       COALESCE(ROUND(AVG(e.note), 2), 0.00) AS note_moyenne 
+FROM produits 
+LEFT JOIN evaluations e USING (id_produit) 
+GROUP BY id_produit, nom_produit;
 ```
 
-Exemple 4 :
-Question : "le nombre d'avis, le plus petit score, le plus grand score et le score moyen de chaque ouvrage"
+Exemple 4 (Recherche de l'optimum/maximum via CTE / expression de table commune) :
+Question : "les livres qui ont la meilleure note moyenne des lecteurs"
 SQL :
 ```sql
-SELECT ido, titre, COUNT(score) AS nb_avis, MIN(score) AS score_min, MAX(score) AS score_max, ROUND(AVG(score), 2) AS score_moy FROM ouvrage LEFT JOIN avis USING (ido) GROUP BY ido, titre;
+WITH stats_livres AS (
+    SELECT id_livre, titre_livre, AVG(note) AS note_moyenne
+    FROM livres
+    JOIN evaluations USING (id_livre)
+    GROUP BY id_livre, titre_livre
+)
+SELECT id_livre, titre_livre
+FROM stats_livres
+WHERE note_moyenne = (SELECT MAX(note_moyenne) FROM stats_livres);
+```
+
+Exemple 5 (Histogramme / Pivot conditionnel) :
+Question : "compter le nombre d'examens ayant obtenu la note de niveau A, B ou C"
+SQL :
+```sql
+SELECT 
+    SUM(CASE WHEN note >= 16 THEN 1 ELSE 0 END) AS niveau_a,
+    SUM(CASE WHEN note >= 12 AND note < 16 THEN 1 ELSE 0 END) AS niveau_b,
+    SUM(CASE WHEN note >= 10 AND note < 12 THEN 1 ELSE 0 END) AS niveau_c
+FROM resultats;
+```
+
+Exemple 6 (Hiérarchie / Requête récursive) :
+Question : "récupérer récursivement toutes les sous-catégories de la catégorie 'Électronique'"
+SQL :
+```sql
+WITH RECURSIVE hierar_categories AS (
+    SELECT id_categorie, nom_categorie, id_categorie_parente
+    FROM categories
+    WHERE nom_categorie = 'Électronique'
+    UNION ALL
+    SELECT c.id_categorie, c.nom_categorie, c.id_categorie_parente
+    FROM categories c
+    JOIN hierar_categories hc ON c.id_categorie_parente = hc.id_categorie
+)
+SELECT id_categorie, nom_categorie, id_categorie_parente 
+FROM hierar_categories;
 ```
 """
 
@@ -239,7 +283,7 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
         messages.append(HumanMessage(content=f"Question à traduire : {state['question']}"))
 
     # Appeler le LLM local via le singleton paresseux get_llm()
-    print(f"  📥 [PROMPT ENVOYÉ AU LLM] :")
+    print(f"  [PROMPT ENVOYE AU LLM] :")
     if len(messages) > 1:
         print(f"    - Message de correction:\n{messages[-1].content}")
     else:
@@ -248,16 +292,16 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     response = get_llm().invoke(messages)
     
     # Afficher la réponse brute du LLM
-    print(f"  📤 [RÉPONSE BRUTE DU LLM] :")
-    print(f"  --- DÉBUT RÉPONSE ---")
+    print(f"  [REPONSE BRUTE DU LLM] :")
+    print(f"  --- DEBUT REPONSE ---")
     print(response.content)
-    print(f"  --- FIN RÉPONSE ---")
+    print(f"  --- FIN REPONSE ---")
     
     # Extraire et nettoyer la requête SQL de la réponse
     generated_sql = extract_sql_query(response.content)
     
     elapsed = time.time() - start_time
-    print(f"  ✅ SQL généré en {elapsed:.2f}s")
+    print(f"  [OK] SQL genere en {elapsed:.2f}s")
     
     return {
         "sql_query": generated_sql
@@ -277,21 +321,21 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     """
     sql = state["sql_query"]
     if not sql:
-        print("\n[⚡ ÉTAPE 2 - EXÉCUTION SQL] Aucune requête SQL à exécuter.")
+        print("\n[ETAPE 2 - EXECUTION SQL] Aucune requete SQL a executer.")
         return {
-            "error_message": "Aucune requête SQL n'a été générée.",
+            "error_message": "Aucune requete SQL n'a ete generee.",
             "iteration_count": state["iteration_count"] + 1
         }
         
     if state.get("simulate_only"):
-        print("\n[⚡ ÉTAPE 2 - EXÉCUTION SQL] Mode simulation activé. Pas d'exécution physique.")
+        print("\n[ETAPE 2 - EXECUTION SQL] Mode simulation active. Pas d'execution physique.")
         return {
             "query_results": [],
             "error_message": None,
             "iteration_count": state["iteration_count"] + 1
         }
         
-    print(f"\n[⚡ ÉTAPE 2 - EXÉCUTION SQL] Exécution de la requête sur PostgreSQL...")
+    print(f"\n[ETAPE 2 - EXECUTION SQL] Execution de la requete sur PostgreSQL...")
     start_time = time.time()
     
     # Exécuter la requête SQL via l'outil sécurisé du serveur MCP
@@ -301,22 +345,22 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     elapsed = time.time() - start_time
     
     if "security_error" in execution_result:
-        print(f"  ❌ Alerte Sécurité ({elapsed:.2f}s) : {execution_result['security_error']}")
+        print(f"  [ERROR] Alerte Securite ({elapsed:.2f}s) : {execution_result['security_error']}")
         return {
-            "error_message": f"Alerte de Sécurité : {execution_result['security_error']}",
+            "error_message": f"Alerte de Securite : {execution_result['security_error']}",
             "iteration_count": state["iteration_count"] + 1
         }
         
     if not execution_result.get("success", False):
-        print(f"  ❌ Échec de l'exécution ({elapsed:.2f}s) : {execution_result.get('db_error')}")
+        print(f"  [ERROR] Echec de l'execution ({elapsed:.2f}s) : {execution_result.get('db_error')}")
         return {
-            "error_message": execution_result.get("db_error", "Erreur d'exécution inconnue."),
+            "error_message": execution_result.get("db_error", "Erreur d'execution inconnue."),
             "iteration_count": state["iteration_count"] + 1
         }
         
     # Succès
     data_rows = execution_result.get("data", [])
-    print(f"  ✅ Requête exécutée avec succès en {elapsed:.2f}s ({len(data_rows)} ligne(s) retournée(s)).")
+    print(f"  [OK] Requete executee avec succes en {elapsed:.2f}s ({len(data_rows)} ligne(s) retournee(s)).")
     return {
         "query_results": data_rows,
         "error_message": None, # Efface l'erreur
@@ -341,16 +385,16 @@ def should_continue(state: AgentState) -> str:
     """
     # S'il n'y a pas d'erreur, on s'arrête
     if state["error_message"] is None:
-        print("\n[🎉 FIN] Requête résolue avec succès et validée !")
+        print("\n[FIN] Requete resolue avec succes et validee !")
         return END
         
     # Si on a atteint la limite de 3 tentatives de correction, on s'arrête aussi pour éviter une boucle infinie
     if state["iteration_count"] >= 3:
-        print(f"\n[🛑 FIN] Limite d'itérations d'auto-correction atteinte ({state['iteration_count']}/3). Abandon.")
+        print(f"\n[FIN] Limite d'iterations d'auto-correction atteinte ({state['iteration_count']}/3). Abandon.")
         return END
         
     # Sinon, on retourne au nœud de génération pour corriger
-    print(f"\n[🔄 AUTO-CORRECTION] Une erreur est survenue. Lancement de la correction automatique (Tentative #{state['iteration_count'] + 1}/3)...")
+    print(f"\n[AUTO-CORRECTION] Une erreur est survenue. Lancement de la correction automatique (Tentative #{state['iteration_count'] + 1}/3)...")
     return "generate_sql"
 
 
@@ -400,7 +444,7 @@ def run_agent(question: str, custom_schema: Optional[str] = None, simulate_only:
     Returns:
         Dict[str, Any]: L'état final après exécution complète du graphe.
     """
-    print(f"\n🚀 [DÉBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}'")
+    print(f"\n[DEBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}'")
     start_time = time.time()
     
     # 1. Déterminer le schéma à utiliser
@@ -421,5 +465,5 @@ def run_agent(question: str, custom_schema: Optional[str] = None, simulate_only:
     final_state = agent_app.invoke(initial_state)
     
     elapsed = time.time() - start_time
-    print(f"🏁 [FIN AGENT] Cycle complet exécuté en {elapsed:.2f}s (Auto-corrections : {max(0, final_state['iteration_count'] - 1)}).")
+    print(f"[FIN AGENT] Cycle complet execute en {elapsed:.2f}s (Auto-corrections : {max(0, final_state['iteration_count'] - 1)}).")
     return final_state
