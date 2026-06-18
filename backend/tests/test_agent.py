@@ -12,7 +12,8 @@ def reset_agent_globals():
     """
     import app.services.agent as agent_module
     agent_module._SCHEMA_CACHE = None
-    agent_module._llm = None
+    if hasattr(agent_module, "_llm_cache"):
+        agent_module._llm_cache.clear()
 
 
 def test_extract_sql_query_markdown_sql():
@@ -52,6 +53,59 @@ def test_get_database_schema_context():
     assert "Table 'avis'" in context
     assert "ido" in context
     assert "dessinateur" in context
+
+
+def test_get_dynamic_schema_context_empty():
+    """
+    Vérifie que get_dynamic_schema_context avec une liste vide retourne le schéma complet.
+    """
+    from app.services.agent import get_dynamic_schema_context
+    context = get_dynamic_schema_context([])
+    assert "Table 'ouvrage'" in context
+    assert "Table 'personne'" in context
+
+
+def test_get_dynamic_schema_context_specific():
+    """
+    Vérifie que get_dynamic_schema_context retourne uniquement les schémas demandés.
+    """
+    from app.services.agent import get_dynamic_schema_context
+    context = get_dynamic_schema_context(["personne"])
+    assert "Table 'personne'" in context
+    assert "Table 'ouvrage'" not in context
+    assert "idp" in context
+
+
+@patch("app.services.agent.ChatOllama")
+def test_node_select_tables_success(mock_chat_ollama):
+    """
+    Vérifie que le nœud de sélection des tables appelle le LLM et extrait les tables correctement.
+    """
+    from app.services.agent import node_select_tables
+    
+    mock_response = MagicMock()
+    mock_response.content = '["ouvrage", "personne"]'
+    
+    mock_llm_instance = MagicMock()
+    mock_llm_instance.invoke.return_value = mock_response
+    mock_chat_ollama.return_value = mock_llm_instance
+    
+    state: AgentState = {
+        "question": "trouve les ouvrages dessinés par personne",
+        "sql_query": None,
+        "error_message": None,
+        "query_results": None,
+        "iteration_count": 0,
+        "schema_context": "",
+        "tables": []
+    }
+    
+    result = node_select_tables(state)
+    assert "tables" in result
+    assert "ouvrage" in result["tables"]
+    assert "personne" in result["tables"]
+    assert len(result["tables"]) == 2
+    assert result["steps"][0]["node"] == "select_tables"
 
 
 @patch("app.services.agent.ChatOllama")

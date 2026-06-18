@@ -9,6 +9,8 @@ L'outil intègre un **bac à sable (Sandbox) dynamique** permettant de charger n
 ## 🎨 Aperçu des Fonctionnalités Clés
 
 - **Messagerie IA Locale & Self-Healing** : Moteur d'orchestration agentique basé sur **LangGraph** et **Qwen 3.5 (4B)**. Si une requête SQL générée échoue, l'agent capture l'erreur SQL et se corrige de façon autonome.
+- **Optimisation "Diviser pour Régner" & Cache Sémantique** : Refonte de l'agent LangGraph pour sélectionner uniquement les tables concernées par la question via MCP (réduisant le prompt à moins de 350 jetons). Ajout d'un cache sémantique en mémoire (vectorisation cosinus Ollama et Jaccard) ramenant le temps de réponse pour les questions répétées à **0ms**.
+- **Observabilité & Télémétrie en Direct** : Panneau de trace d'exécution complet des nœuds du graphe (temps, tokens/s), affichage des badges des tables interrogées, accordéon de réflexion pliable pour la pensée du modèle (`<think>`), et tiroir de réglages dynamiques (Modèle, Température, Contexte).
 - **Sécurité Absolue (Defense in Depth)** : Validation syntaxique stricte des requêtes générées via l'arbre AST **SQLGlot** (interdit toute altération type `DROP`, `DELETE`, `UPDATE`), pilotes DB physiquement forcés en **Lecture Seule** (`readonly = True`) et isolation totale de la Sandbox.
 - **Laboratoire Visuel de Schéma** :
   - **Vue Cartes 🎴 (Parsing temps réel)** : Modélisation dynamique du DDL (`CREATE TABLE`) affichant les attributs, types HSL colorés et badges de clés (`🔑 PK`, `🔗 FK`) avec détection de liens relationnels.

@@ -63,7 +63,10 @@ def test_api_chat_success(mock_run_agent):
     mock_run_agent.assert_called_once_with(
         question="liste des ouvrages",
         custom_schema=None,
-        simulate_only=False
+        simulate_only=False,
+        model=None,
+        temperature=None,
+        context_size=None
     )
 
 

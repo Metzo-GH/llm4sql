@@ -31,7 +31,7 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
 - **Moteur LLM Local :** `Ollama` exécutant le modèle **Qwen 3.5 (9B)** sur GPU (8 Go VRAM minimum).
 - **Connexion Données :** Intégration via le standard MCP (Model Context Protocol) pour une exposition sécurisée et dynamique du schéma SQL au LLM.
 
-## 4. Les 4 Phases du Projet & État d'Avancement (100% Réalisé) 🎉
+## 4. Les 5 Phases du Projet & État d'Avancement (100% Réalisé) 🎉
 
 ### Phase 1 : Le POC, le Moteur et l'Environnement (100% VALIDÉE)
 - **État :** Terminé avec succès.
@@ -58,6 +58,15 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
   - **Rendu Diagramme ER Mermaid stable** : Intégration graphique Mermaid.js résistant aux conflits de DOM et d'identifiants.
   - Suite de **24 tests unitaires et d'intégration** entièrement validée par `pytest`.
   - Documentation exhaustive JSDoc/TSDoc sur l'ensemble des modules frontend et backend.
+
+### Phase 5 : Optimisations, Cache Sémantique & Diviser pour Régner (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - **Refonte "Diviser pour Régner"** : Ajout du nœud de sélection de tables (`select_tables`) qui interroge les fonctions MCP et restreint la taille du prompt de génération.
+  - **Consolidation du Few-Shot** : Réduction du prompt à 2 exemples d'or complets pour éviter le collapse du modèle local `qwen3.5:4b`.
+  - **Cache sémantique (RAG Mémoire)** : Système de cache basé sur des embeddings Ollama (Cosinus) avec repli Jaccard résilient.
+  - **Télémétrie & Observabilité** : Suivi des métriques de performance, vitesse d'inférence en tokens/s, badges des tables interrogées et accordéon pliable pour la réflexion du modèle (`<think>`).
+  - **Interface de Configuration** : Tiroir déroulant d'options de configuration (Modèle, Température, Contexte).
 
 ## 5. Contraintes et Prérequis
 

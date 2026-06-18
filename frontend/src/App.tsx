@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { ChatInterface } from './components/ChatInterface';
 import { DataTable } from './components/DataTable';
 import { DataVisualization } from './components/DataVisualization';
 import { SchemaVisualizer } from './components/SchemaVisualizer';
 import { useSandbox } from './hooks/useSandbox';
 import { useChat } from './hooks/useChat';
-import { Database, Table, BarChart3, HelpCircle, Terminal, Play, LayoutTemplate, Braces, Eye } from 'lucide-react';
+import { Database, Table, BarChart3, HelpCircle, Terminal, Play, LayoutTemplate, Braces, Eye, Settings } from 'lucide-react';
 
 /**
  * Main Application orchestrator. Acts as a visual container, aligning the 3-column
@@ -38,7 +39,15 @@ export default function App() {
     setActiveView,
     handleSendMessage,
     handleSelectMessageData,
+    model,
+    setModel,
+    temperature,
+    setTemperature,
+    contextSize,
+    setContextSize,
   } = useChat();
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Retrieve selected dataset and query SQL for the visualizer
   const activeData = activeMessageId ? resultsStore[messageIdFilter(activeMessageId)] : [];
@@ -71,13 +80,81 @@ export default function App() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={`p-2 rounded-lg border transition-all ${isSettingsOpen ? 'bg-primary border-glow text-white' : 'bg-surface border-subtle text-muted hover:text-main'}`}
+            style={{ 
+              border: '1px solid var(--border-subtle)', 
+              borderRadius: '8px', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: isSettingsOpen ? 'var(--accent-primary)' : 'transparent',
+              color: isSettingsOpen ? '#fff' : 'var(--text-muted)'
+            }}
+            title="Paramètres de l'Agent"
+          >
+            <Settings size={18} />
+          </button>
           <div className="hidden md:flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="w-2 h-2 rounded-full bg-emerald" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-emerald)' }}></span>
             <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>FastAPI: OK</span>
           </div>
         </div>
       </header>
+
+      {/* Collapsible Settings Panel */}
+      {isSettingsOpen && (
+        <div className="glass-panel mx-6 mt-4 p-4 animate-fade-in" style={{ margin: '16px 24px 0 24px', padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', borderRadius: '12px', background: 'var(--bg-card)' }}>
+          <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Modèle Ollama</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="input-field text-xs"
+              style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
+            >
+              <option value="qwen3.5:4b">Qwen 3.5 (4B) - Par défaut</option>
+              <option value="qwen3.5:9b">Qwen 3.5 (9B)</option>
+              <option value="deepseek-r1:1.5b">DeepSeek R1 (1.5B) - Raisonnement</option>
+              <option value="deepseek-r1:8b">DeepSeek R1 (8B) - Raisonnement</option>
+              <option value="llama3:latest">Llama 3 (8B)</option>
+            </select>
+          </div>
+          
+          <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Température</label>
+              <span className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{temperature.toFixed(1)}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1.0"
+              step="0.1"
+              value={temperature}
+              onChange={(e) => setTemperature(parseFloat(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
+            />
+          </div>
+          
+          <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Taille du Contexte (num_ctx)</label>
+            <input
+              type="number"
+              min="512"
+              max="32768"
+              step="512"
+              value={contextSize}
+              onChange={(e) => setContextSize(parseInt(e.target.value) || 2048)}
+              className="input-field text-xs"
+              style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Main Content Layout: Balanced Desktop 3-Column Grid */}
       <main className="main-grid">

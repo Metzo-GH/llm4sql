@@ -47,6 +47,9 @@ class ChatRequest(BaseModel):
         False,
         description="Si vrai, l'agent générera le SQL mais ne l'exécutera pas."
     )
+    model: Optional[str] = Field(None, description="Modèle Ollama à utiliser (optionnel).")
+    temperature: Optional[float] = Field(None, description="Température de génération (optionnelle).")
+    context_size: Optional[int] = Field(None, description="Taille du contexte Ollama (optionnelle).")
 
 
 class ChatResponse(BaseModel):
@@ -58,6 +61,9 @@ class ChatResponse(BaseModel):
     error_message: Optional[str] = Field(None, description="Message d'erreur SQL ou de sécurité si échec.")
     query_results: Optional[List[Dict[str, Any]]] = Field(None, description="Résultats de l'exécution SQL (dictionnaire JSON).")
     iteration_count: int = Field(..., description="Le nombre d'itérations d'auto-correction réalisées.")
+    steps: List[Dict[str, Any]] = Field(default=[], description="Trace des étapes d'exécution de l'agent.")
+    cache_hit: bool = Field(default=False, description="Indique si la réponse provient du cache sémantique.")
+    tables: List[str] = Field(default=[], description="Liste des tables impliquées dans la requête.")
 
 
 class SchemaResponse(BaseModel):
@@ -235,7 +241,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
             run_agent,
             question=request.question,
             custom_schema=request.custom_schema,
-            simulate_only=request.simulate_only
+            simulate_only=request.simulate_only,
+            model=request.model,
+            temperature=request.temperature,
+            context_size=request.context_size
         )
         
         total_time = time.time() - start_time
@@ -248,7 +257,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
             sql_query=final_state["sql_query"],
             error_message=final_state["error_message"],
             query_results=final_state["query_results"],
-            iteration_count=final_state["iteration_count"]
+            iteration_count=final_state["iteration_count"],
+            steps=final_state.get("steps", []),
+            cache_hit=final_state.get("cache_hit", False),
+            tables=final_state.get("tables", [])
         )
     except Exception as e:
         total_time = time.time() - start_time

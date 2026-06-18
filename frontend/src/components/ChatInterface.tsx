@@ -9,6 +9,9 @@ export interface Message {
   errorMessage?: string;
   iterationCount?: number;
   hasData?: boolean;
+  steps?: Array<any>;
+  cacheHit?: boolean;
+  tables?: Array<string>;
 }
 
 interface ChatInterfaceProps {
@@ -20,6 +23,32 @@ interface ChatInterfaceProps {
   onSelectMessageData: (messageId: string) => void;
   activeMessageDataId: string | null;
 }
+
+/**
+ * Découpe la réflexion (balise think) de la réponse finale pour les LLM de raisonnement.
+ */
+function parseThinking(content: string): { thinking: string, answer: string } {
+  if (!content) return { thinking: '', answer: '' };
+  
+  const thinkStart = content.indexOf('<think>');
+  if (thinkStart === -1) {
+    return { thinking: '', answer: content };
+  }
+  
+  const thinkEnd = content.indexOf('</think>');
+  if (thinkEnd === -1) {
+    return {
+      thinking: content.substring(thinkStart + 7).trim(),
+      answer: ''
+    };
+  }
+  
+  return {
+    thinking: content.substring(thinkStart + 7, thinkEnd).trim(),
+    answer: content.substring(thinkEnd + 8).trim()
+  };
+}
+
 
 /**
  * Composant ChatInterface offrant l'interface de messagerie fluide avec
@@ -35,6 +64,32 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   activeMessageDataId,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [loadingStatus, setLoadingStatus] = React.useState('Analyse de la question...');
+
+  // Gérer le changement dynamique de statut de chargement
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingStatus('Analyse de la question...');
+      return;
+    }
+    
+    const statuses = [
+      { delay: 0, text: '🔍 Sélection des tables requises via MCP...' },
+      { delay: 2000, text: '🧠 Réflexion et génération de la requête SQL (Qwen 3.5)...' },
+      { delay: 7000, text: '🛡️ Analyse AST sqlglot et exécution sécurisée...' },
+      { delay: 12000, text: '⚡ Finalisation des résultats et du rapport d\'exécution...' }
+    ];
+    
+    const timers = statuses.map(s => 
+      setTimeout(() => {
+        setLoadingStatus(s.text);
+      }, s.delay)
+    );
+    
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [isLoading]);
 
   // Faire défiler automatiquement vers le bas à chaque nouveau message
   useEffect(() => {
@@ -123,8 +178,73 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     boxShadow: isUser ? 'none' : '0 4px 15px -5px rgba(0,0,0,0.3)'
                   }}
                 >
-                  {/* Texte du message */}
-                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</div>
+                  {/* Badge de Cache Sémantique */}
+                  {!isUser && msg.cacheHit && (
+                    <div className="mb-2 flex items-center gap-1.5 text-xs text-emerald" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontSize: '11px', color: 'var(--accent-emerald)', fontWeight: 600 }}>
+                      <span style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                        ⚡ Cache Sémantique (0ms)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Texte du message avec support de réflexion (balise think) */}
+                  {(() => {
+                    if (isUser) {
+                      return <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</div>;
+                    }
+                    const { thinking, answer } = parseThinking(msg.content);
+                    return (
+                      <>
+                        {thinking && (
+                          <details 
+                            className="mb-3 rounded-lg" 
+                            style={{ 
+                              marginBottom: '12px', 
+                              borderRadius: '8px', 
+                              border: '1px solid rgba(147, 51, 234, 0.15)', 
+                              backgroundColor: 'rgba(147, 51, 234, 0.03)',
+                              padding: '10px 12px'
+                            }}
+                            open={isLoading && !answer}
+                          >
+                            <summary 
+                              className="text-xs font-semibold select-none text-purple-glow" 
+                              style={{ 
+                                fontSize: '11px', 
+                                fontWeight: 600, 
+                                color: 'hsl(265, 90%, 70%)', 
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <span>💡 Réflexion du modèle ({msg.steps?.[0]?.model || 'Raisonnement'})</span>
+                            </summary>
+                            <div 
+                              className="mt-2 text-xs font-mono text-muted border-l-2 border-purple-glow/30 pl-3" 
+                              style={{ 
+                                marginTop: '8px', 
+                                fontSize: '12px', 
+                                color: 'var(--text-muted)', 
+                                borderLeft: '2px solid rgba(147, 51, 234, 0.3)', 
+                                paddingLeft: '12px',
+                                whiteSpace: 'pre-wrap', 
+                                lineHeight: 1.4 
+                              }}
+                            >
+                              {thinking}
+                            </div>
+                          </details>
+                        )}
+                        {answer ? (
+                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{answer}</div>
+                        ) : !thinking ? (
+                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
 
                   {/* Requête SQL générée (Assistant uniquement) */}
                   {msg.sqlQuery && (
@@ -198,6 +318,158 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       {activeMessageDataId === msg.id ? 'Données actives dans l\'explorateur' : 'Explorer les résultats de cette requête'}
                     </button>
                   )}
+
+                  {/* Rapport d'exécution de l'agent (Trace technique) */}
+                  {!isUser && msg.steps && msg.steps.length > 0 && (
+                    <details 
+                      className="mt-3 border-t border-subtle pt-2" 
+                      style={{ 
+                        marginTop: '12px', 
+                        paddingTop: '8px', 
+                        borderTop: '1px solid var(--border-subtle)' 
+                      }}
+                    >
+                      <summary 
+                        className="text-xs text-muted cursor-pointer hover:text-main select-none flex items-center gap-1"
+                        style={{ 
+                          fontSize: '11px', 
+                          color: 'var(--text-muted)', 
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        ⚙️ Rapport d'exécution de l'agent ({msg.steps.length} étape(s))
+                      </summary>
+                      
+                      <div className="mt-2 space-y-2" style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {/* 1. Métriques de performance globales */}
+                        {msg.steps.some(s => s.node === 'generate_sql') && (
+                          <div 
+                            style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: 'repeat(2, 1fr)', 
+                              gap: '6px', 
+                              backgroundColor: 'rgba(0,0,0,0.2)', 
+                              padding: '8px', 
+                              borderRadius: '6px', 
+                              fontSize: '10px' 
+                            }}
+                          >
+                            {msg.steps.filter(s => s.node === 'generate_sql').map((step, idx) => {
+                              const percent = step.context_size && step.prompt_tokens
+                                ? Math.min(100, Math.round((step.prompt_tokens / step.context_size) * 100))
+                                : 0;
+                              return (
+                                <React.Fragment key={idx}>
+                                  <div style={{ color: 'var(--text-muted)' }}>Tokens Envoyés : <span style={{ color: 'var(--text-heading)', fontWeight: 600 }}>{step.prompt_tokens} t</span></div>
+                                  <div style={{ color: 'var(--text-muted)' }}>Tokens Générés : <span style={{ color: 'var(--text-heading)', fontWeight: 600 }}>{step.eval_tokens} t</span></div>
+                                  <div style={{ color: 'var(--text-muted)' }}>Vitesse Inférence : <span style={{ color: 'var(--accent-secondary)', fontWeight: 600 }}>{step.tokens_per_second} t/s</span></div>
+                                  <div style={{ color: 'var(--text-muted)' }}>Génération : <span style={{ color: 'var(--text-heading)', fontWeight: 600 }}>{step.elapsed} s</span></div>
+                                  
+                                  {step.context_size && step.prompt_tokens && (
+                                    <div style={{ gridColumn: 'span 2', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                                        <span>Utilisation Contexte : {step.prompt_tokens} / {step.context_size} tokens</span>
+                                        <span style={{ color: percent > 85 ? 'var(--accent-ruby)' : 'var(--text-muted)', fontWeight: 600 }}>{percent}%</span>
+                                      </div>
+                                      <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div 
+                                          style={{ 
+                                            width: `${percent}%`, 
+                                            height: '100%', 
+                                            background: 'linear-gradient(90deg, var(--accent-emerald) 0%, var(--accent-primary) 100%)', 
+                                            borderRadius: '3px' 
+                                          }} 
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* 2. Badges des tables impliquées */}
+                        {msg.tables && msg.tables.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Tables consultées :</span>
+                            {msg.tables.map((table, tIdx) => (
+                              <span 
+                                key={tIdx} 
+                                style={{ 
+                                  fontSize: '10px', 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px', 
+                                  backgroundColor: 'rgba(147, 51, 234, 0.1)', 
+                                  border: '1px solid rgba(147, 51, 234, 0.2)',
+                                  color: 'hsl(265, 90%, 75%)',
+                                  fontWeight: 500
+                                }}
+                              >
+                                {table}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 3. Chronologie des étapes LangGraph */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', fontFamily: 'monospace', paddingLeft: '4px' }}>
+                          {msg.steps.map((step, idx) => {
+                            if (step.node === 'semantic_cache') {
+                              return (
+                                <div key={idx} style={{ color: 'var(--accent-emerald)', display: 'flex', gap: '6px' }}>
+                                  <span>[cache]</span>
+                                  <span>{step.message}</span>
+                                </div>
+                              );
+                            }
+                            if (step.node === 'select_tables') {
+                              return (
+                                <div key={idx} style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <span style={{ color: 'var(--accent-emerald)' }}>[node]</span>
+                                    <span>select_tables - Tables ciblées : {step.selected_tables && step.selected_tables.length > 0 ? step.selected_tables.join(', ') : 'aucune'} (en {step.elapsed}s)</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (step.node === 'generate_sql') {
+                              return (
+                                <div key={idx} style={{ color: 'var(--accent-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <span>[node]</span>
+                                    <span>generate_sql (essai #{step.iteration}) - SQL généré en {step.elapsed}s</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (step.node === 'execute_sql') {
+                              return (
+                                <div 
+                                  key={idx} 
+                                  style={{ 
+                                    color: step.success ? 'var(--accent-emerald)' : 'var(--accent-ruby)', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: '2px' 
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <span>[node]</span>
+                                    <span>
+                                      execute_sql - {step.success ? `Exécuté (${step.row_count} lignes) en ${step.elapsed}s` : `Échec de l'exécution : ${step.error}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+                      </div>
+                    </details>
+                  )}
                 </div>
               </div>
             );
@@ -210,10 +482,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="w-8 h-8 rounded-full bg-surface border border-glow flex items-center justify-center" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-glow)', backgroundColor: 'var(--bg-surface-solid)' }}>
               <Bot size={16} className="text-primary pulse-loading" style={{ color: 'var(--accent-primary)' }} />
             </div>
-            <div className="bg-surface border border-subtle rounded-2xl px-4 py-3 flex items-center gap-1.5" style={{ borderRadius: '16px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--bg-surface-solid)', border: '1px solid var(--border-subtle)' }}>
-              <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', animationDelay: '0ms', animation: 'bounce 1s infinite ease-in-out' }}></span>
-              <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', animationDelay: '200ms', animation: 'bounce 1s infinite ease-in-out' }}></span>
-              <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', animationDelay: '400ms', animation: 'bounce 1s infinite ease-in-out' }}></span>
+            <div className="bg-surface border border-subtle rounded-2xl px-4 py-3 flex flex-col gap-2" style={{ borderRadius: '16px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'var(--bg-surface-solid)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', animationDelay: '0ms', animation: 'bounce 1s infinite ease-in-out' }}></span>
+                <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', animationDelay: '200ms', animation: 'bounce 1s infinite ease-in-out' }}></span>
+                <span className="w-2 h-2 bg-muted rounded-full animate-bounce" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)', animationDelay: '400ms', animation: 'bounce 1s infinite ease-in-out' }}></span>
+              </div>
+              <div className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                {loadingStatus}
+              </div>
             </div>
           </div>
         )}

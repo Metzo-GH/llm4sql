@@ -21,6 +21,11 @@ export function useChat() {
   // Visual explorer mode ('table' | 'chart')
   const [activeView, setActiveView] = useState<'table' | 'chart'>('table');
 
+  // Agent configuration states
+  const [model, setModel] = useState('qwen3.5:4b');
+  const [temperature, setTemperature] = useState(0.0);
+  const [contextSize, setContextSize] = useState(4096);
+
   /**
    * Submits the user's natural language question, processes agentic API calls,
    * detects SQL errors, and triggers auto-correction cycles.
@@ -45,7 +50,12 @@ export function useChat() {
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const payload = { question: userQuestion };
+      const payload = { 
+        question: userQuestion,
+        model,
+        temperature,
+        context_size: contextSize
+      };
 
       // 2. Fetch from LLM FastAPI endpoint
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
@@ -92,6 +102,9 @@ export function useChat() {
         errorMessage: data.error_message,
         iterationCount: data.iteration_count,
         hasData: hasData,
+        steps: data.steps,
+        cacheHit: data.cache_hit,
+        tables: data.tables,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -139,5 +152,11 @@ export function useChat() {
     setActiveView,
     handleSendMessage,
     handleSelectMessageData,
+    model,
+    setModel,
+    temperature,
+    setTemperature,
+    contextSize,
+    setContextSize,
   };
 }
