@@ -825,11 +825,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <Terminal size={12} />
             <span>Logs</span>
           </button>
-
-          <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald" style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--accent-emerald)', boxShadow: '0 0 8px var(--accent-emerald)' }}></span>
-            <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>BD Ouvrages</span>
-          </div>
         </div>
       </div>
 

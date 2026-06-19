@@ -85,7 +85,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
     <div className="flex flex-col h-full gap-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
       {/* Barre d'outils (Recherche + Export) */}
       <div className="flex items-center justify-between gap-3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        <div className="relative flex-1" style={{ display: 'flex', flex: 1 }}>
+        <div className="relative flex-1" style={{ display: 'flex', flex: 1, position: 'relative' }}>
           <Search size={16} className="text-muted absolute left-3 top-3.5" style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
           <input
             type="text"

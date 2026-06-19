@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Message } from '../components/ChatInterface';
 
 const API_BASE_URL = 'http://localhost:8500';
@@ -38,6 +38,66 @@ export function useChat() {
   
   // Real-time context window usage
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
+
+  const [apiOnline, setApiOnline] = useState(false);
+  const [loadedModelStatus, setLoadedModelStatus] = useState<any>(null);
+  const [installedModels, setInstalledModels] = useState<string[]>(['qwen3.5:4b', 'qwen3.5:9b', 'deepseek-r1:1.5b', 'deepseek-r1:8b']);
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/`);
+        if (res.ok) {
+          setApiOnline(true);
+        } else {
+          setApiOnline(false);
+        }
+      } catch (err) {
+        setApiOnline(false);
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/ollama/status`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.online && data.models && data.models.length > 0) {
+            setLoadedModelStatus(data.models[0]);
+          } else {
+            setLoadedModelStatus(null);
+          }
+        } else {
+          setLoadedModelStatus(null);
+        }
+      } catch (err) {
+        setLoadedModelStatus(null);
+      }
+    };
+
+    const fetchModels = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/ollama/models`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.models && data.models.length > 0) {
+            setInstalledModels(data.models);
+          }
+        }
+      } catch (err) {
+        console.error("Erreur lors de la récupération des modèles Ollama:", err);
+      }
+    };
+
+    checkStatus();
+    fetchModels();
+
+    const statusInterval = setInterval(checkStatus, 5000);
+    const modelsInterval = setInterval(fetchModels, 15000);
+
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(modelsInterval);
+    };
+  }, []);
 
   /**
    * Submits the user's natural language question, processes agentic API calls,
@@ -276,5 +336,8 @@ export function useChat() {
     setContextSize,
     liveLogs,
     contextUsage,
+    apiOnline,
+    loadedModelStatus,
+    installedModels,
   };
 }

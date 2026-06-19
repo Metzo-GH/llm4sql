@@ -47,6 +47,9 @@ export default function App() {
     setContextSize,
     liveLogs,
     contextUsage,
+    apiOnline,
+    loadedModelStatus,
+    installedModels,
   } = useChat();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -68,7 +71,7 @@ export default function App() {
   return (
     <div className="app-layout">
       {/* Global Application Header */}
-      <header className="glass-panel px-6 py-4 flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
+      <header className="glass-panel px-6 py-4 flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', position: 'relative', zIndex: 100 }}>
         <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-primary), hsl(265, 95%, 65%))' }}>
             <Terminal size={22} style={{ color: 'var(--text-heading)' }} />
@@ -83,80 +86,131 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className={`p-2 rounded-lg border transition-all ${isSettingsOpen ? 'bg-primary border-glow text-white' : 'bg-surface border-subtle text-muted hover:text-main'}`}
-            style={{ 
-              border: '1px solid var(--border-subtle)', 
-              borderRadius: '8px', 
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: isSettingsOpen ? 'var(--accent-primary)' : 'transparent',
-              color: isSettingsOpen ? '#fff' : 'var(--text-muted)'
-            }}
-            title="Paramètres de l'Agent"
-          >
-            <Settings size={18} />
-          </button>
+          {/* Real-time Ollama status */}
+          {loadedModelStatus ? (
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-subtle" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-subtle)', backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-secondary)', boxShadow: '0 0 6px var(--accent-secondary)' }}></span>
+              <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Ollama: <strong style={{ color: 'var(--text-heading)' }}>{loadedModelStatus.name}</strong> ({loadedModelStatus.processor})
+              </span>
+              <span className="text-xs text-muted font-mono" style={{ fontSize: '10px', color: 'var(--text-muted)', borderLeft: '1px solid var(--border-subtle)', paddingLeft: '8px', marginLeft: '2px' }}>
+                Ctx: {loadedModelStatus.context_length >= 1024 ? `${Math.round(loadedModelStatus.context_length / 1024)}k` : loadedModelStatus.context_length}
+              </span>
+            </div>
+          ) : apiOnline ? (
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-subtle" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-subtle)', backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+              <span className="w-2 h-2 rounded-full" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)' }}></span>
+              <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Ollama: Veille / Inactif
+              </span>
+            </div>
+          ) : null}
+
+          {/* Settings button with dropdown wrapper */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className={`p-2 rounded-lg border transition-all ${isSettingsOpen ? 'bg-primary border-glow text-white' : 'bg-surface border-subtle text-muted hover:text-main'}`}
+              style={{ 
+                border: '1px solid var(--border-subtle)', 
+                borderRadius: '8px', 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isSettingsOpen ? 'var(--accent-primary)' : 'transparent',
+                color: isSettingsOpen ? '#fff' : 'var(--text-muted)'
+              }}
+              title="Paramètres de l'Agent"
+            >
+              <Settings size={18} />
+            </button>
+
+            {isSettingsOpen && (
+              <div 
+                className="glass-panel animate-fade-in" 
+                style={{ 
+                  position: 'absolute',
+                  right: 0,
+                  top: '44px',
+                  width: '280px',
+                  padding: '16px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '12px', 
+                  borderRadius: '12px', 
+                  background: 'var(--bg-surface-solid)',
+                  border: '1px solid var(--border-active)',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.7)',
+                  zIndex: 9999
+                }}
+              >
+                <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Modèle Ollama</label>
+                  <select
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="input-field text-xs"
+                    style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
+                  >
+                    {installedModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Température</label>
+                    <span className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{temperature.toFixed(1)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1.0"
+                    step="0.1"
+                    value={temperature}
+                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Taille du Contexte</label>
+                  <select
+                    value={contextSize}
+                    onChange={(e) => setContextSize(parseInt(e.target.value))}
+                    className="input-field text-xs"
+                    style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
+                  >
+                    <option value={4096}>4k (4096 tokens)</option>
+                    <option value={8192}>8k (8192 tokens)</option>
+                    <option value={16384}>16k (16384 tokens)</option>
+                    <option value={32768}>32k (32768 tokens)</option>
+                    <option value={65536}>64k (65536 tokens)</option>
+                    <option value={131072}>128k (131072 tokens)</option>
+                    <option value={262144}>256k (262144 tokens)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dynamic FastAPI status */}
           <div className="hidden md:flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="w-2 h-2 rounded-full bg-emerald" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-emerald)' }}></span>
-            <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>FastAPI: OK</span>
+            <span className="w-2 h-2 rounded-full" style={{ 
+              width: '8px', 
+              height: '8px', 
+              borderRadius: '50%', 
+              backgroundColor: apiOnline ? 'var(--accent-emerald)' : 'var(--accent-ruby)',
+              boxShadow: apiOnline ? '0 0 8px var(--accent-emerald)' : '0 0 8px var(--accent-ruby)'
+            }}></span>
+            <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              FastAPI: {apiOnline ? 'En ligne' : 'Hors ligne'}
+            </span>
           </div>
         </div>
       </header>
-
-      {/* Collapsible Settings Panel */}
-      {isSettingsOpen && (
-        <div className="glass-panel mx-6 mt-4 p-4 animate-fade-in" style={{ margin: '16px 24px 0 24px', padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', borderRadius: '12px', background: 'var(--bg-card)' }}>
-          <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Modèle Ollama</label>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="input-field text-xs"
-              style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
-            >
-              <option value="qwen3.5:4b">Qwen 3.5 (4B) - Par défaut</option>
-              <option value="qwen3.5:9b">Qwen 3.5 (9B)</option>
-              <option value="deepseek-r1:1.5b">DeepSeek R1 (1.5B) - Raisonnement</option>
-              <option value="deepseek-r1:8b">DeepSeek R1 (8B) - Raisonnement</option>
-              <option value="llama3:latest">Llama 3 (8B)</option>
-            </select>
-          </div>
-          
-          <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Température</label>
-              <span className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{temperature.toFixed(1)}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1.0"
-              step="0.1"
-              value={temperature}
-              onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
-            />
-          </div>
-          
-          <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Taille du Contexte (num_ctx)</label>
-            <input
-              type="number"
-              min="512"
-              max="32768"
-              step="512"
-              value={contextSize}
-              onChange={(e) => setContextSize(parseInt(e.target.value) || 2048)}
-              className="input-field text-xs"
-              style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Main Content Layout: Balanced Desktop 3-Column Grid */}
       <main className="main-grid">
