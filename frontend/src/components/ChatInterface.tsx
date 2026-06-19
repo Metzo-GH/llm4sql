@@ -203,6 +203,8 @@ const ChatMessage: React.FC<{
 }> = ({ msg, isLoading, activeMessageDataId, onSelectMessageData, liveLogs = [] }) => {
   const isUser = msg.sender === 'user';
   const [isThinkingOpen, setIsThinkingOpen] = React.useState(true);
+  const thinkingRef = React.useRef<HTMLDivElement>(null);
+  const thinking = msg.thinking || parseThinking(msg.content).thinking;
 
   // Fermer la réflexion par défaut une fois le chargement terminé
   React.useEffect(() => {
@@ -210,6 +212,13 @@ const ChatMessage: React.FC<{
       setIsThinkingOpen(false);
     }
   }, [isLoading]);
+
+  // Scroller automatiquement vers le bas de la réflexion lors de la génération
+  React.useEffect(() => {
+    if (isLoading && thinkingRef.current) {
+      thinkingRef.current.scrollTop = thinkingRef.current.scrollHeight;
+    }
+  }, [thinking, isLoading]);
 
   const parsedSteps = !isUser && isLoading ? parseLiveLogsToSteps(liveLogs) : [];
 
@@ -463,6 +472,7 @@ const ChatMessage: React.FC<{
                     <span>💡 Réflexion du modèle ({msg.steps?.[0]?.model || 'Raisonnement'})</span>
                   </summary>
                   <div 
+                    ref={thinkingRef}
                     className="mt-2 text-xs font-mono text-muted border-l-2 border-purple-glow/30 pl-3" 
                     style={{ 
                       marginTop: '8px', 
@@ -471,7 +481,11 @@ const ChatMessage: React.FC<{
                       borderLeft: '2px solid rgba(147, 51, 234, 0.3)', 
                       paddingLeft: '12px',
                       whiteSpace: 'pre-wrap', 
-                      lineHeight: 1.4 
+                      lineHeight: 1.4,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      paddingRight: '8px',
+                      scrollbarWidth: 'thin'
                     }}
                   >
                     {thinking}

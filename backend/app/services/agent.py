@@ -93,7 +93,8 @@ def get_llm(model: Optional[str] = None, temperature: float = 0.0, context_size:
                     base_url=settings.OLLAMA_BASE_URL,
                     temperature=temperature,
                     num_ctx=context_size,
-                    keep_alive=-1
+                    keep_alive=-1,
+                    reasoning=True
                 )
     return _llm_cache[cache_key]
 
@@ -163,17 +164,23 @@ def extract_sql_query(text: str) -> str:
     Returns:
         str: La requête SQL nettoyée.
     """
-    # Chercher les blocs ```sql ... ```
-    match = re.search(r"```sql(.*?)```", text, re.DOTALL | re.IGNORECASE)
+    # Retirer le bloc de réflexion s'il est présent (gère le bloc fermé ou non)
+    clean_text = text
+    if "<think>" in clean_text.lower():
+        clean_text = re.sub(r"<think>.*?</think>", "", clean_text, flags=re.DOTALL | re.IGNORECASE)
+        clean_text = re.sub(r"<think>.*", "", clean_text, flags=re.DOTALL | re.IGNORECASE)
+        
+    # Chercher les blocs ```sql ... ``` sur le texte nettoyé
+    match = re.search(r"```sql(.*?)```", clean_text, re.DOTALL | re.IGNORECASE)
     if match:
         return match.group(1).strip()
     
     # Chercher des blocs ``` ... ``` génériques
-    match_generic = re.search(r"```(.*?)```", text, re.DOTALL)
+    match_generic = re.search(r"```(.*?)```", clean_text, re.DOTALL)
     if match_generic:
         return match_generic.group(1).strip()
         
-    return text.strip()
+    return clean_text.strip()
 
 
 # =====================================================================
@@ -443,17 +450,55 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     if callback:
         content_parts = []
         full_metadata = {}
+        has_started_thinking = False
+        has_finished_thinking = False
+        
         for chunk in llm.stream(messages):
-            content_parts.append(chunk.content)
+            reasoning_content = chunk.additional_kwargs.get("reasoning_content", "")
+            content = chunk.content
+            
+            # Gérer le début de la réflexion
+            if reasoning_content and not has_started_thinking:
+                send_agent_event("token", "<think>")
+                content_parts.append("<think>")
+                has_started_thinking = True
+                
+            # Gérer la fin de la réflexion (transition vers le contenu normal)
+            if content and has_started_thinking and not has_finished_thinking:
+                send_agent_event("token", "</think>")
+                content_parts.append("</think>")
+                has_finished_thinking = True
+                
+            # Envoyer le token approprié
+            if reasoning_content:
+                send_agent_event("token", reasoning_content)
+                content_parts.append(reasoning_content)
+            elif content:
+                # Sécurité : fermer la balise de réflexion si le contenu commence mais qu'on ne l'a pas fermée
+                if has_started_thinking and not has_finished_thinking:
+                    send_agent_event("token", "</think>")
+                    content_parts.append("</think>")
+                    has_finished_thinking = True
+                send_agent_event("token", content)
+                content_parts.append(content)
+                
             if chunk.response_metadata:
                 full_metadata.update(chunk.response_metadata)
-            send_agent_event("token", chunk.content)
+                
+        # Sécurité de fin : s'assurer que la balise de réflexion est bien fermée si on a réfléchi
+        if has_started_thinking and not has_finished_thinking:
+            send_agent_event("token", "</think>")
+            content_parts.append("</think>")
             
         generated_content = "".join(content_parts)
         from langchain_core.messages import AIMessage
         response = AIMessage(content=generated_content, response_metadata=full_metadata)
     else:
         response = llm.invoke(messages)
+        # Si le modèle a produit une réflexion en mode synchrone, on la reconstruit dans response.content
+        reasoning_content = response.additional_kwargs.get("reasoning_content")
+        if reasoning_content:
+            response.content = f"<think>\n{reasoning_content}\n</think>\n{response.content}"
     
     print(f"  [REPONSE BRUTE DU LLM] :")
     print(f"  --- DEBUT REPONSE ---")
