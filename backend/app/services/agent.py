@@ -3,6 +3,7 @@ import re
 import time
 import threading
 import operator
+import contextvars
 from typing import TypedDict, List, Dict, Any, Optional, Annotated
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -13,6 +14,20 @@ from sqlglot import exp
 from app.core.config import settings
 from app.database.connection import get_db_connection
 from app.mcp.mcp_server import list_tables, get_schema, execute_query
+
+# ContextVar pour diffuser des événements de télémétrie (logs, tokens, etc.) en temps réel
+event_callback_var = contextvars.ContextVar("event_callback", default=None)
+
+def send_agent_event(event_type: str, data: Any):
+    """
+    Diffuse un événement de télémétrie en temps réel (si un callback est enregistré).
+    """
+    callback = event_callback_var.get()
+    if callback:
+        try:
+            callback({"type": event_type, "data": data})
+        except Exception:
+            pass
 
 
 # =====================================================================
@@ -225,6 +240,7 @@ def node_select_tables(state: AgentState) -> Dict[str, Any]:
     Nœud de sélection des tables. Identifie les tables pertinentes pour la question
     afin de réduire la taille du prompt.
     """
+    send_agent_event("log", "[ETAPE 0 - SELECTION TABLES] Identification des tables requises...")
     print(f"\n[ETAPE 0 - SELECTION TABLES]")
     print(f"  Identification des tables requises...")
     
@@ -304,6 +320,7 @@ Règles à respecter strictement :
 
     elapsed = time.time() - start_time
     print(f"  [OK] Tables sélectionnées en {elapsed:.2f}s : {selected_tables}")
+    send_agent_event("log", f"  [OK] Tables sélectionnées en {elapsed:.2f}s : {selected_tables}")
     
     step_info = {
         "node": "select_tables",
@@ -324,8 +341,10 @@ def node_generate_sql(state: AgentState) -> Dict[str, Any]:
     et interroge le LLM Ollama local pour obtenir la requête PostgreSQL SELECT correspondante.
     """
     iteration = state["iteration_count"] + 1
+    model_name = state.get("model") or settings.OLLAMA_MODEL
+    send_agent_event("log", f"[ETAPE 1 - GENERATION SQL] (Essai #{iteration}) Réflexion du LLM ({model_name}) en cours...")
     print(f"\n[ETAPE 1 - GENERATION SQL] (Essai #{iteration})")
-    print(f"  Réflexion du LLM ({settings.OLLAMA_MODEL}) en cours...")
+    print(f"  Réflexion du LLM ({model_name}) en cours...")
     
     start_time = time.time()
 
@@ -406,12 +425,35 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     else:
         messages.append(HumanMessage(content=f"Question à traduire : {state['question']}"))
 
-    model_name = state.get("model") or settings.OLLAMA_MODEL
     temp = state.get("temperature") if state.get("temperature") is not None else 0.0
     ctx_size = state.get("context_size") or 4096
 
+    # Estimer le nombre de tokens du prompt
+    prompt_content = system_prompt + "\n" + "\n".join(m.content for m in messages[1:])
+    estimated_prompt_tokens = len(prompt_content) // 3
+    send_agent_event("context_usage", {
+        "prompt_tokens": estimated_prompt_tokens,
+        "context_size": ctx_size,
+        "estimated": True
+    })
+
     llm = get_llm(model=model_name, temperature=temp, context_size=ctx_size)
-    response = llm.invoke(messages)
+    
+    callback = event_callback_var.get()
+    if callback:
+        content_parts = []
+        full_metadata = {}
+        for chunk in llm.stream(messages):
+            content_parts.append(chunk.content)
+            if chunk.response_metadata:
+                full_metadata.update(chunk.response_metadata)
+            send_agent_event("token", chunk.content)
+            
+        generated_content = "".join(content_parts)
+        from langchain_core.messages import AIMessage
+        response = AIMessage(content=generated_content, response_metadata=full_metadata)
+    else:
+        response = llm.invoke(messages)
     
     print(f"  [REPONSE BRUTE DU LLM] :")
     print(f"  --- DEBUT REPONSE ---")
@@ -419,12 +461,12 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     print(f"  --- FIN REPONSE ---")
     
     metadata = getattr(response, "response_metadata", {})
-    prompt_tokens = metadata.get("prompt_eval_count", 0)
+    prompt_tokens = metadata.get("prompt_eval_count", 0) or estimated_prompt_tokens
     eval_tokens = metadata.get("eval_count", 0)
     eval_duration = metadata.get("eval_duration", 0)
     
     if not isinstance(prompt_tokens, (int, float)):
-        prompt_tokens = 0
+        prompt_tokens = estimated_prompt_tokens
     if not isinstance(eval_tokens, (int, float)):
         eval_tokens = 0
     if not isinstance(eval_duration, (int, float)):
@@ -434,9 +476,18 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     if eval_tokens > 0 and eval_duration > 0:
         tokens_per_sec = round(eval_tokens / (eval_duration * 1e-9), 2)
         
+    send_agent_event("context_usage", {
+        "prompt_tokens": prompt_tokens,
+        "eval_tokens": eval_tokens,
+        "context_size": ctx_size,
+        "estimated": False
+    })
+    
     generated_sql = extract_sql_query(response.content)
     elapsed = time.time() - start_time
     print(f"  [OK] SQL généré en {elapsed:.2f}s (Tokens/s: {tokens_per_sec})")
+    send_agent_event("log", f"  [REPONSE BRUTE DU LLM] :\n  --- DEBUT REPONSE ---\n{response.content}\n  --- FIN REPONSE ---")
+    send_agent_event("log", f"  [OK] SQL généré en {elapsed:.2f}s (Tokens/s: {tokens_per_sec})")
     
     step_info = {
         "node": "generate_sql",
@@ -469,6 +520,7 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     
     if not sql:
         print("\n[ETAPE 2 - EXECUTION SQL] Aucune requete SQL a executer.")
+        send_agent_event("log", "[ETAPE 2 - EXECUTION SQL] Aucune requete SQL a executer.")
         return {
             "error_message": "Aucune requete SQL n'a ete generee.",
             "iteration_count": iteration,
@@ -484,6 +536,7 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
         
     if state.get("simulate_only"):
         print("\n[ETAPE 2 - EXECUTION SQL] Mode simulation active. Pas d'execution physique.")
+        send_agent_event("log", "[ETAPE 2 - EXECUTION SQL] Mode simulation active. Pas d'execution physique.")
         return {
             "query_results": [],
             "error_message": None,
@@ -500,6 +553,7 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
         }
         
     print(f"\n[ETAPE 2 - EXECUTION SQL] Execution de la requete sur PostgreSQL...")
+    send_agent_event("log", "[ETAPE 2 - EXECUTION SQL] Execution de la requete sur PostgreSQL...")
     start_time = time.time()
     
     # Exécuter la requête SQL via l'outil sécurisé du serveur MCP
@@ -511,6 +565,7 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     if "security_error" in execution_result:
         err_msg = f"Alerte de Securite : {execution_result['security_error']}"
         print(f"  [ERROR] Alerte Securite ({elapsed:.2f}s) : {execution_result['security_error']}")
+        send_agent_event("log", f"  [ERROR] Alerte Securite ({elapsed:.2f}s) : {execution_result['security_error']}")
         return {
             "error_message": err_msg,
             "iteration_count": iteration,
@@ -527,6 +582,7 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     if not execution_result.get("success", False):
         db_err = execution_result.get("db_error", "Erreur d'execution inconnue.")
         print(f"  [ERROR] Echec de l'execution ({elapsed:.2f}s) : {db_err}")
+        send_agent_event("log", f"  [ERROR] Echec de l'execution ({elapsed:.2f}s) : {db_err}")
         return {
             "error_message": db_err,
             "iteration_count": iteration,
@@ -543,6 +599,7 @@ def node_execute_sql(state: AgentState) -> Dict[str, Any]:
     # Succès
     data_rows = execution_result.get("data", [])
     print(f"  [OK] Requete executee avec succes en {elapsed:.2f}s ({len(data_rows)} ligne(s) retournee(s)).")
+    send_agent_event("log", f"  [OK] Requete executee avec succes en {elapsed:.2f}s ({len(data_rows)} ligne(s) retournee(s)).")
     return {
         "query_results": data_rows,
         "error_message": None,
@@ -576,15 +633,18 @@ def should_continue(state: AgentState) -> str:
     # S'il n'y a pas d'erreur, on s'arrête
     if state["error_message"] is None:
         print("\n[FIN] Requete resolue avec succes et validee !")
+        send_agent_event("log", "[FIN] Requete resolue avec succes et validee !")
         return END
         
     # Si on a atteint la limite de 3 tentatives de correction, on s'arrête aussi pour éviter une boucle infinie
     if state["iteration_count"] >= 3:
         print(f"\n[FIN] Limite d'iterations d'auto-correction atteinte ({state['iteration_count']}/3). Abandon.")
+        send_agent_event("log", f"[FIN] Limite d'iterations d'auto-correction atteinte ({state['iteration_count']}/3). Abandon.")
         return END
         
     # Sinon, on retourne au nœud de génération pour corriger
     print(f"\n[AUTO-CORRECTION] Une erreur est survenue. Lancement de la correction automatique (Tentative #{state['iteration_count'] + 1}/3)...")
+    send_agent_event("log", f"[AUTO-CORRECTION] Une erreur est survenue. Lancement de la correction automatique (Tentative #{state['iteration_count'] + 1}/3)...")
     return "generate_sql"
 
 
@@ -636,6 +696,7 @@ def run_agent(
     Elle intègre la vérification du cache sémantique et la mise en cache des réponses.
     """
     print(f"\n[DEBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}'")
+    send_agent_event("log", f"[DEBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}'")
     start_time = time.time()
     
     # 1. Vérification du cache sémantique (RAG Mémoire)
@@ -645,6 +706,8 @@ def run_agent(
     cached_res = semantic_cache.check(question, model=active_model)
     if cached_res:
         print(f"[CACHE HIT] Résultat sémantique trouvé pour : '{question}'")
+        send_agent_event("log", f"[CACHE HIT] Résultat sémantique trouvé pour : '{question}'")
+        send_agent_event("log", "[FIN] Requete resolue avec succes et validee !")
         return {
             "question": question,
             "sql_query": cached_res["sql_query"],
@@ -697,5 +760,6 @@ def run_agent(
         
     elapsed = time.time() - start_time
     print(f"[FIN AGENT] Cycle complet execute en {elapsed:.2f}s (Auto-corrections : {max(0, final_state['iteration_count'] - 1)}).")
+    send_agent_event("log", f"[FIN AGENT] Cycle complet execute en {elapsed:.2f}s (Auto-corrections : {max(0, final_state['iteration_count'] - 1)}).")
     final_state["cache_hit"] = False
     return final_state

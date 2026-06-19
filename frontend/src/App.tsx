@@ -45,6 +45,8 @@ export default function App() {
     setTemperature,
     contextSize,
     setContextSize,
+    liveLogs,
+    contextUsage,
   } = useChat();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -252,6 +254,8 @@ export default function App() {
             onSendMessage={handleSendMessage}
             onSelectMessageData={handleSelectMessageData}
             activeMessageDataId={activeMessageId}
+            liveLogs={liveLogs}
+            contextUsage={contextUsage}
           />
         </section>
 
