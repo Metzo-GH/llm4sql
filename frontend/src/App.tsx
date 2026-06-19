@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ChatInterface } from './components/ChatInterface';
 import { DataTable } from './components/DataTable';
 import { DataVisualization } from './components/DataVisualization';
@@ -12,6 +12,23 @@ import { Database, Table, BarChart3, HelpCircle, Terminal, Play, LayoutTemplate,
  * layout and passing custom-hook operations to individual sub-panels.
  */
 export default function App() {
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  /**
+   * Triggers a temporary visual Toast message on the UI.
+   */
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+  }, []);
+
+  // Clear toast after 3 seconds automatically
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   // Delegate DDL Sandbox operations to useSandbox hook
   const {
     sandboxTab,
@@ -25,7 +42,7 @@ export default function App() {
     isVisualizing,
     handleApplySandbox,
     handleGenerateDiagram,
-  } = useSandbox();
+  } = useSandbox({ onShowToast: showToast });
 
   // Delegate NL Translation & Chat queries to useChat hook
   const {
@@ -55,103 +72,75 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Retrieve selected dataset and query SQL for the visualizer
-  const activeData = activeMessageId ? resultsStore[messageIdFilter(activeMessageId)] : [];
-  
-  /**
-   * Safe helper to match the exact selected assistant message ID.
-   */
-  function messageIdFilter(id: string): string {
-    return id;
-  }
+  const activeData = useMemo(() => {
+    return activeMessageId ? resultsStore[activeMessageId] : [];
+  }, [activeMessageId, resultsStore]);
 
-  const activeSQL = activeMessageId 
-    ? messages.find(m => m.id === activeMessageId)?.sqlQuery 
-    : undefined;
+  const activeSQL = useMemo(() => {
+    return activeMessageId 
+      ? messages.find(m => m.id === activeMessageId)?.sqlQuery 
+      : undefined;
+  }, [activeMessageId, messages]);
 
   return (
     <div className="app-layout">
       {/* Global Application Header */}
-      <header className="glass-panel px-6 py-4 flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', position: 'relative', zIndex: 100 }}>
-        <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-primary), hsl(265, 95%, 65%))' }}>
-            <Terminal size={22} style={{ color: 'var(--text-heading)' }} />
+      <header className="glass-panel app-header">
+        <div className="app-logo-group">
+          <div className="app-logo-badge">
+            <Terminal size={18} className="app-logo-icon" />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold m-0" style={{ fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-              LLM<span style={{ color: 'var(--accent-primary)' }}>4</span>SQL
+            <h1 className="app-title">
+              LLM<span className="app-title-accent">4</span>SQL
             </h1>
-            <p className="text-xs text-muted m-0" style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+            <p className="app-subtitle">
               Assistant SQL Agentique Local
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="app-header-actions">
           {/* Real-time Ollama status */}
           {loadedModelStatus ? (
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-subtle" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-subtle)', backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-secondary)', boxShadow: '0 0 6px var(--accent-secondary)' }}></span>
-              <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Ollama: <strong style={{ color: 'var(--text-heading)' }}>{loadedModelStatus.name}</strong> ({loadedModelStatus.processor})
+            <div className="hidden lg:flex app-ollama-status">
+              <span className="app-ollama-status-dot app-ollama-status-dot-active animate-pulse"></span>
+              <span className="app-ollama-text">
+                Ollama: <strong className="app-ollama-text-bold">{loadedModelStatus.name}</strong> ({loadedModelStatus.processor})
               </span>
-              <span className="text-xs text-muted font-mono" style={{ fontSize: '10px', color: 'var(--text-muted)', borderLeft: '1px solid var(--border-subtle)', paddingLeft: '8px', marginLeft: '2px' }}>
+              <span className="app-ollama-ctx font-mono">
                 Ctx: {loadedModelStatus.context_length >= 1024 ? `${Math.round(loadedModelStatus.context_length / 1024)}k` : loadedModelStatus.context_length}
               </span>
             </div>
           ) : apiOnline ? (
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-subtle" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', border: '1px solid var(--border-subtle)', backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-              <span className="w-2 h-2 rounded-full" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)' }}></span>
-              <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            <div className="hidden lg:flex app-ollama-status">
+              <span className="app-ollama-status-dot"></span>
+              <span className="app-ollama-text">
                 Ollama: Veille / Inactif
               </span>
             </div>
           ) : null}
 
           {/* Settings button with dropdown wrapper */}
-          <div style={{ position: 'relative' }}>
+          <div className="settings-dropdown-wrapper">
             <button
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className={`p-2 rounded-lg border transition-all ${isSettingsOpen ? 'bg-primary border-glow text-white' : 'bg-surface border-subtle text-muted hover:text-main'}`}
-              style={{ 
-                border: '1px solid var(--border-subtle)', 
-                borderRadius: '8px', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: isSettingsOpen ? 'var(--accent-primary)' : 'transparent',
-                color: isSettingsOpen ? '#fff' : 'var(--text-muted)'
-              }}
+              className={`settings-btn ${isSettingsOpen ? 'settings-btn-active' : ''}`}
               title="Paramètres de l'Agent"
+              aria-label="Paramètres de l'Agent"
+              aria-haspopup="true"
+              aria-expanded={isSettingsOpen}
             >
               <Settings size={18} />
             </button>
 
             {isSettingsOpen && (
-              <div 
-                className="glass-panel animate-fade-in" 
-                style={{ 
-                  position: 'absolute',
-                  right: 0,
-                  top: '44px',
-                  width: '280px',
-                  padding: '16px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '12px', 
-                  borderRadius: '12px', 
-                  background: 'var(--bg-surface-solid)',
-                  border: '1px solid var(--border-active)',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.7)',
-                  zIndex: 9999
-                }}
-              >
-                <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Modèle Ollama</label>
+              <div className="glass-panel settings-dropdown animate-fade-in">
+                <div className="settings-field-group">
+                  <label className="settings-label">Modèle Ollama</label>
                   <select
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    className="input-field text-xs"
-                    style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
+                    className="input-field settings-select"
                   >
                     {installedModels.map((m) => (
                       <option key={m} value={m}>{m}</option>
@@ -159,10 +148,10 @@ export default function App() {
                   </select>
                 </div>
                 
-                <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Température</label>
-                    <span className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{temperature.toFixed(1)}</span>
+                <div className="settings-field-group">
+                  <div className="settings-slider-header">
+                    <label className="settings-label">Température</label>
+                    <span className="settings-val">{temperature.toFixed(1)}</span>
                   </div>
                   <input
                     type="range"
@@ -171,17 +160,16 @@ export default function App() {
                     step="0.1"
                     value={temperature}
                     onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
+                    className="settings-slider"
                   />
                 </div>
                 
-                <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label className="text-xs font-semibold text-heading" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-heading)' }}>Taille du Contexte</label>
+                <div className="settings-field-group">
+                  <label className="settings-label">Taille du Contexte</label>
                   <select
                     value={contextSize}
                     onChange={(e) => setContextSize(parseInt(e.target.value))}
-                    className="input-field text-xs"
-                    style={{ padding: '8px 12px', fontSize: '12px', borderRadius: '8px', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-card)' }}
+                    className="input-field settings-select"
                   >
                     <option value={4096}>4k (4096 tokens)</option>
                     <option value={8192}>8k (8192 tokens)</option>
@@ -197,15 +185,9 @@ export default function App() {
           </div>
 
           {/* Dynamic FastAPI status */}
-          <div className="hidden md:flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="w-2 h-2 rounded-full" style={{ 
-              width: '8px', 
-              height: '8px', 
-              borderRadius: '50%', 
-              backgroundColor: apiOnline ? 'var(--accent-emerald)' : 'var(--accent-ruby)',
-              boxShadow: apiOnline ? '0 0 8px var(--accent-emerald)' : '0 0 8px var(--accent-ruby)'
-            }}></span>
-            <span className="text-xs text-muted" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          <div className="hidden md:flex app-api-status">
+            <span className={`app-api-status-dot ${apiOnline ? 'app-api-status-online' : 'app-api-status-offline'}`}></span>
+            <span className="app-api-text">
               FastAPI: {apiOnline ? 'En ligne' : 'Hors ligne'}
             </span>
           </div>
@@ -215,75 +197,76 @@ export default function App() {
       {/* Main Content Layout: Balanced Desktop 3-Column Grid */}
       <main className="main-grid">
         {/* Column 1 : SQL Sandbox & Interactive DDL Visualizer */}
-        <section className="glass-panel p-5 flex flex-col h-[650px] panel-schema" style={{ display: 'flex', flexDirection: 'column', padding: '20px', height: '650px' }}>
-          <div className="flex flex-col gap-3 border-b border-subtle pb-3 mb-4" style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', marginBottom: '16px' }}>
-            <div className="flex items-center justify-between" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Database size={18} style={{ color: 'var(--accent-secondary)' }} />
-                <h2 className="text-md font-semibold m-0" style={{ fontSize: '15px', fontWeight: 600 }}>Laboratoire SQL</h2>
+        <section className="glass-panel sandbox-panel panel-schema">
+          <div className="sandbox-header">
+            <div className="sandbox-title-row">
+              <div className="sandbox-title-group">
+                <Database size={18} className="sandbox-icon" />
+                <h2 className="sandbox-title m-0">Laboratoire SQL</h2>
               </div>
               <button 
                 onClick={handleApplySandbox}
                 disabled={isSandboxLoading || !schemaSql.trim()}
-                className="btn-primary text-xs flex items-center gap-1.5"
-                style={{ padding: '6px 12px', fontSize: '11px', opacity: (isSandboxLoading || !schemaSql.trim()) ? 0.5 : 1 }}
+                className="btn-primary sandbox-apply-btn"
+                style={{ opacity: (isSandboxLoading || !schemaSql.trim()) ? 0.5 : 1 }}
               >
                 {isSandboxLoading ? <span className="animate-pulse">Génération...</span> : <><Play size={12} /> Appliquer</>}
               </button>
             </div>
             
             {/* Sandbox Visual tabs selection */}
-            <div className="flex bg-surface rounded-lg p-0.5" style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px' }}>
+            <div className="sandbox-tabs" role="tablist" aria-label="Onglets du laboratoire SQL">
               <button
                 onClick={() => setSandboxTab('schema')}
-                className={`p-1.5 rounded-md transition-all text-xs flex-1 flex items-center justify-center gap-1.5 ${sandboxTab === 'schema' ? 'bg-primary text-white font-semibold' : 'text-muted'}`}
-                style={{ fontSize: '11px', border: 'none', background: sandboxTab === 'schema' ? 'var(--accent-primary)' : 'transparent', color: sandboxTab === 'schema' ? '#fff' : 'var(--text-muted)', cursor: 'pointer' }}
+                className={`sandbox-tab-btn ${sandboxTab === 'schema' ? 'sandbox-tab-btn-active' : ''}`}
+                role="tab"
+                aria-selected={sandboxTab === 'schema'}
               >
                 <LayoutTemplate size={12} /> Schéma
               </button>
               <button
                 onClick={() => setSandboxTab('data')}
-                className={`p-1.5 rounded-md transition-all text-xs flex-1 flex items-center justify-center gap-1.5 ${sandboxTab === 'data' ? 'bg-primary text-white font-semibold' : 'text-muted'}`}
-                style={{ fontSize: '11px', border: 'none', background: sandboxTab === 'data' ? 'var(--accent-primary)' : 'transparent', color: sandboxTab === 'data' ? '#fff' : 'var(--text-muted)', cursor: 'pointer' }}
+                className={`sandbox-tab-btn ${sandboxTab === 'data' ? 'sandbox-tab-btn-active' : ''}`}
+                role="tab"
+                aria-selected={sandboxTab === 'data'}
               >
                 <Braces size={12} /> Données
               </button>
               <button
                 onClick={() => setSandboxTab('visual')}
-                className={`p-1.5 rounded-md transition-all text-xs flex-1 flex items-center justify-center gap-1.5 ${sandboxTab === 'visual' ? 'bg-primary text-white font-semibold' : 'text-muted'}`}
-                style={{ fontSize: '11px', border: 'none', background: sandboxTab === 'visual' ? 'var(--accent-primary)' : 'transparent', color: sandboxTab === 'visual' ? '#fff' : 'var(--text-muted)', cursor: 'pointer' }}
+                className={`sandbox-tab-btn ${sandboxTab === 'visual' ? 'sandbox-tab-btn-active' : ''}`}
+                role="tab"
+                aria-selected={sandboxTab === 'visual'}
               >
                 <Eye size={12} /> Visuel
               </button>
             </div>
           </div>
           
-          <div className="flex-1 min-h-0" style={{ flex: 1, minHeight: 0 }}>
+          <div className="schema-visual-panel">
             {sandboxTab === 'schema' && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px' }}>
+              <div className="sandbox-tab-content">
                 <textarea
                   value={schemaSql}
                   onChange={(e) => setSchemaSql(e.target.value)}
                   placeholder="Collez ici le code de création de vos tables (CREATE TABLE...)"
-                  className="input-field w-full font-mono text-xs"
-                  style={{ width: '100%', flex: 1, resize: 'none', fontSize: '11px', padding: '12px' }}
+                  className="input-field sandbox-textarea font-mono"
                 />
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', gap: '4px', alignItems: 'center', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.15)', lineHeight: 1.3 }}>
+                <div className="sandbox-warning">
                   <span>⚠️ <b>Sécurité :</b> Ces scripts DDL s'exécutent localement pour configurer votre sandbox. Par ailleurs, les requêtes générées par l'IA dans le Chat sont bridées en Lecture Seule absolue (SELECT).</span>
                 </div>
               </div>
             )}
             {sandboxTab === 'data' && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px' }}>
+              <div className="sandbox-tab-content">
                 <textarea
                   value={insertSql}
                   onChange={(e) => setInsertSql(e.target.value)}
                   placeholder="Optionnel : Collez ici vos insertions de données (INSERT INTO...)"
-                  className="input-field w-full font-mono text-xs"
-                  style={{ width: '100%', flex: 1, resize: 'none', fontSize: '11px', padding: '12px' }}
+                  className="input-field sandbox-textarea font-mono"
                 />
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', gap: '4px', alignItems: 'center', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.15)', lineHeight: 1.3 }}>
-                  <span>⚠️ <b>Sécurité :</b> L'exécution DML s'applique en écriture sur l'espace `user_sandbox`. Ne chargez que des jeux de données certifiés.</span>
+                <div className="sandbox-warning">
+                  <span>⚠️ <b>Sécurité :</b> L'exécution DML s'apply en écriture sur l'espace `user_sandbox`. Ne chargez que des jeux de données certifiés.</span>
                 </div>
               </div>
             )}
@@ -299,7 +282,7 @@ export default function App() {
         </section>
 
         {/* Column 2 : Chat Interface */}
-        <section className="panel-chat" style={{ height: '650px' }}>
+        <section className="panel-chat">
           <ChatInterface
             messages={messages}
             inputValue={inputValue}
@@ -314,48 +297,50 @@ export default function App() {
         </section>
 
         {/* Column 3 : Data Grid Explorer & Charts */}
-        <section className="glass-panel p-5 flex flex-col h-[650px] panel-data" style={{ display: 'flex', flexDirection: 'column', padding: '20px', height: '650px' }}>
+        <section className="glass-panel sandbox-panel panel-data">
           {/* Navigation Explorer Header */}
-          <div className="flex items-center justify-between border-b border-subtle pb-3 mb-4" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', marginBottom: '16px' }}>
-            <div className="flex items-center gap-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Database size={18} style={{ color: 'var(--accent-primary)' }} />
-              <h2 className="text-md font-semibold m-0" style={{ fontSize: '15px', fontWeight: 600 }}>Explorateur de Données</h2>
-            </div>
-            
-            {/* Visual View Selection tabs */}
-            <div className="flex gap-1 bg-surface rounded-lg p-0.5" style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px' }}>
-              <button
-                onClick={() => setActiveView('table')}
-                disabled={!activeMessageId}
-                className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${
-                  activeView === 'table' ? 'btn-primary' : 'btn-secondary'
-                }`}
-                style={{ padding: '6px 10px', fontSize: '11px', cursor: !activeMessageId ? 'not-allowed' : 'pointer', opacity: !activeMessageId ? 0.5 : 1 }}
-              >
-                <Table size={13} />
-                <span>Tableau</span>
-              </button>
-              <button
-                onClick={() => setActiveView('chart')}
-                disabled={!activeMessageId}
-                className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${
-                  activeView === 'chart' ? 'btn-primary' : 'btn-secondary'
-                }`}
-                style={{ padding: '6px 10px', fontSize: '11px', cursor: !activeMessageId ? 'not-allowed' : 'pointer', opacity: !activeMessageId ? 0.5 : 1 }}
-              >
-                <BarChart3 size={13} />
-                <span>Graphique</span>
-              </button>
+          <div className="sandbox-header">
+            <div className="sandbox-title-row">
+              <div className="sandbox-title-group">
+                <Database size={18} className="chat-bot-icon" />
+                <h2 className="sandbox-title m-0">Explorateur de Données</h2>
+              </div>
+              
+              {/* Visual View Selection tabs */}
+              <div className="sandbox-tabs" role="tablist" aria-label="Modes d'exploration des données">
+                <button
+                  onClick={() => setActiveView('table')}
+                  disabled={!activeMessageId}
+                  className={`sandbox-tab-btn ${activeView === 'table' ? 'sandbox-tab-btn-active' : ''}`}
+                  style={{ opacity: !activeMessageId ? 0.5 : 1 }}
+                  role="tab"
+                  aria-selected={activeView === 'table'}
+                >
+                  <Table size={13} />
+                  <span>Tableau</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('chart')}
+                  disabled={!activeMessageId}
+                  className={`sandbox-tab-btn ${activeView === 'chart' ? 'sandbox-tab-btn-active' : ''}`}
+                  style={{ opacity: !activeMessageId ? 0.5 : 1 }}
+                  role="tab"
+                  aria-selected={activeView === 'chart'}
+                >
+                  <BarChart3 size={13} />
+                  <span>Graphique</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Active Visualizer Body */}
           <div className="flex-1 min-h-0 chart-container">
             {!activeMessageId ? (
-              <div className="h-full flex flex-col items-center justify-center text-center text-muted" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', padding: '16px' }}>
-                <HelpCircle size={40} className="opacity-30 mb-3" style={{ marginBottom: '12px', opacity: 0.3 }} />
-                <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Aucune donnée active</h3>
-                <p className="text-xs max-w-xs" style={{ fontSize: '12px', maxWidth: '280px', margin: 0 }}>
+              <div className="data-table-empty">
+                <HelpCircle size={40} className="data-table-empty-icon" />
+                <h3 className="data-table-empty-title">Aucune donnée active</h3>
+                <p className="data-table-empty-desc">
                   Exécutez une requête via le chat et cliquez sur le bouton "Explorer les résultats" pour activer la visualisation et l'export !
                 </p>
               </div>
@@ -367,6 +352,15 @@ export default function App() {
           </div>
         </section>
       </main>
+
+      {/* Toast Notification Box */}
+      {toast && (
+        <div className="toast-container">
+          <div className={`toast toast-${toast.type}`}>
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

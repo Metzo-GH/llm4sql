@@ -90,21 +90,13 @@ class SemanticCache:
     def check(self, question: str, model: str, threshold: float = 0.85) -> Optional[Dict[str, Any]]:
         """
         Recherche une question sémantiquement similaire dans le cache.
-        
-        Args:
-            question (str): La question de l'utilisateur.
-            model (str): Le modèle LLM actif.
-            threshold (float): Le seuil de similarité requis (0.85 par défaut).
-            
-        Returns:
-            Optional[Dict[str, Any]]: Les résultats en cache s'il y a un hit, sinon None.
         """
         query_text = question.strip()
         if not query_text:
             return None
             
         with self._lock:
-            # 1. Recherche exacte immédiate (O(1) conceptuel, évite l'appel d'embedding)
+            # 1. Recherche exacte immédiate (sans appel d'embedding)
             for entry in self._cache:
                 if entry["question"].lower() == query_text.lower():
                     logger.info(f"Hit exact trouvé dans le cache pour: '{query_text}'")
@@ -114,42 +106,44 @@ class SemanticCache:
             if not self._cache:
                 return None
                 
-            # 2. Recherche sémantique via embeddings Ollama
-            query_vector = self._get_embedding(query_text, model)
+            # Snapshot de la liste pour les calculs hors verrou
+            cache_snapshot = list(self._cache)
+
+        # 2. Recherche sémantique via embeddings Ollama (HORS VERROU)
+        query_vector = self._get_embedding(query_text, model)
+        
+        best_score = -1.0
+        best_entry = None
+        
+        if query_vector is not None:
+            for entry in cache_snapshot:
+                cached_vector = entry.get("vector")
+                if cached_vector:
+                    score = self._cosine_similarity(query_vector, cached_vector)
+                    if score > best_score:
+                        best_score = score
+                        best_entry = entry
             
-            best_score = -1.0
-            best_entry = None
-            
-            if query_vector is not None:
-                for entry in self._cache:
-                    cached_vector = entry.get("vector")
-                    if cached_vector:
-                        score = self._cosine_similarity(query_vector, cached_vector)
-                        if score > best_score:
-                            best_score = score
-                            best_entry = entry
+            logger.info(f"Meilleur score de similarité cosinus: {best_score:.4f} (Seuil: {threshold})")
+            if best_score >= threshold and best_entry:
+                logger.info(f"Hit sémantique (Cosinus) pour: '{query_text}' -> '{best_entry['question']}'")
+                return best_entry["response"]
+        
+        # 3. Repli (Fallback) sur la similarité Jaccard (HORS VERROU)
+        best_jaccard = -1.0
+        best_jaccard_entry = None
+        
+        for entry in cache_snapshot:
+            score = self._jaccard_similarity(query_text, entry["question"])
+            if score > best_jaccard:
+                best_jaccard = score
+                best_jaccard_entry = entry
                 
-                logger.info(f"Meilleur score de similarité cosinus: {best_score:.4f} (Seuil: {threshold})")
-                if best_score >= threshold and best_entry:
-                    logger.info(f"Hit sémantique (Cosinus) pour: '{query_text}' -> '{best_entry['question']}'")
-                    return best_entry["response"]
+        logger.info(f"Meilleur score de similarité Jaccard: {best_jaccard:.4f} (Seuil: {threshold})")
+        if best_jaccard >= threshold and best_jaccard_entry:
+            logger.info(f"Hit sémantique (Jaccard) pour: '{query_text}' -> '{best_jaccard_entry['question']}'")
+            return best_jaccard_entry["response"]
             
-            # 3. Repli (Fallback) sur la similarité Jaccard si l'embedding a échoué
-            # ou si aucun score n'a dépassé le seuil mais qu'on veut être résilient
-            best_jaccard = -1.0
-            best_jaccard_entry = None
-            
-            for entry in self._cache:
-                score = self._jaccard_similarity(query_text, entry["question"])
-                if score > best_jaccard:  # Si Jaccard trouve une forte corrélation
-                    best_jaccard = score
-                    best_jaccard_entry = entry
-                    
-            logger.info(f"Meilleur score de similarité Jaccard: {best_jaccard:.4f} (Seuil: {threshold})")
-            if best_jaccard >= threshold and best_jaccard_entry:
-                logger.info(f"Hit sémantique (Jaccard) pour: '{query_text}' -> '{best_jaccard_entry['question']}'")
-                return best_jaccard_entry["response"]
-                
         return None
 
     def set(
@@ -163,20 +157,12 @@ class SemanticCache:
     ) -> None:
         """
         Stocke une nouvelle réponse réussie dans le cache sémantique.
-        
-        Args:
-            question (str): Question posée par l'utilisateur.
-            model (str): Modèle utilisé pour générer la réponse.
-            sql_query (str): Requête SQL générée.
-            query_results (List[Dict[str, Any]]): Résultats de l'exécution SQL.
-            iteration_count (int): Nombre d'itérations.
-            tables (List[str]): Liste des tables interrogées.
         """
         query_text = question.strip()
         if not query_text or not sql_query:
             return
             
-        # Obtenir l'embedding pour le stockage futur
+        # Obtenir l'embedding pour le stockage futur (HORS VERROU)
         vector = self._get_embedding(query_text, model)
         
         response_data = {
@@ -191,6 +177,10 @@ class SemanticCache:
             # Éviter les doublons exacts dans le cache en mémoire
             self._cache = [e for e in self._cache if e["question"].lower() != query_text.lower()]
             
+            # Limiter le cache à 100 entrées maximum pour éviter les fuites mémoire
+            if len(self._cache) >= 100:
+                self._cache.pop(0)
+                
             self._cache.append({
                 "question": query_text,
                 "vector": vector,

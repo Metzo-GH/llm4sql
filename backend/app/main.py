@@ -4,11 +4,17 @@ from typing import List, Dict, Any, Optional
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-
 from app.core.config import settings
 from app.services.agent import run_agent, get_database_schema_context
-
+from app.schemas import (
+    ChatRequest,
+    ChatResponse,
+    SchemaResponse,
+    SandboxInitRequest,
+    SandboxInitResponse,
+    VisualizeRequest,
+    VisualizeResponse
+)
 # Initialiser l'application FastAPI
 app = FastAPI(
     title="LLM4SQL API",
@@ -16,87 +22,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configuration du middleware CORS (Cross-Origin Resource Sharing)
-# Permet au frontend React (Vite) de communiquer de manière sécurisée en local
+# Configuration du middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Port par défaut de Vite
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
-
-
-# =====================================================================
-# 1. Modèles de requêtes et de réponses (Pydantic v2)
-# =====================================================================
-
-class ChatRequest(BaseModel):
-    """
-    Modèle de validation pour la requête de discussion SQL.
-    """
-    question: str = Field(
-        ..., 
-        description="La question en français formulée par l'utilisateur.",
-        examples=["Donne-moi la liste des ouvrages dessinés par Christophe Blain."]
-    )
-    custom_schema: Optional[str] = Field(
-        None,
-        description="Schéma de base de données fourni par l'utilisateur (optionnel)."
-    )
-    simulate_only: bool = Field(
-        False,
-        description="Si vrai, l'agent générera le SQL mais ne l'exécutera pas."
-    )
-    model: Optional[str] = Field(None, description="Modèle Ollama à utiliser (optionnel).")
-    temperature: Optional[float] = Field(None, description="Température de génération (optionnelle).")
-    context_size: Optional[int] = Field(None, description="Taille du contexte Ollama (optionnelle).")
-
-
-class ChatResponse(BaseModel):
-    """
-    Modèle de validation pour la réponse de discussion SQL.
-    """
-    question: str = Field(..., description="La question initiale de l'utilisateur.")
-    sql_query: Optional[str] = Field(None, description="La requête SQL PostgreSQL SELECT générée.")
-    error_message: Optional[str] = Field(None, description="Message d'erreur SQL ou de sécurité si échec.")
-    query_results: Optional[List[Dict[str, Any]]] = Field(None, description="Résultats de l'exécution SQL (dictionnaire JSON).")
-    iteration_count: int = Field(..., description="Le nombre d'itérations d'auto-correction réalisées.")
-    steps: List[Dict[str, Any]] = Field(default=[], description="Trace des étapes d'exécution de l'agent.")
-    cache_hit: bool = Field(default=False, description="Indique si la réponse provient du cache sémantique.")
-    tables: List[str] = Field(default=[], description="Liste des tables impliquées dans la requête.")
-
-
-class SchemaResponse(BaseModel):
-    """
-    Modèle de validation pour le schéma de base de données.
-    """
-    schema_context: str = Field(..., description="Le schéma complet des tables et colonnes formaté en texte.")
-
-
-class SandboxInitRequest(BaseModel):
-    """
-    Modèle pour l'initialisation du bac à sable (Sandbox).
-    """
-    schema_sql: str = Field(..., description="Le code SQL CREATE TABLE de l'utilisateur.")
-    insert_sql: Optional[str] = Field(None, description="Le code SQL INSERT INTO optionnel.")
-
-
-class SandboxInitResponse(BaseModel):
-    """
-    Modèle de réponse pour l'initialisation du bac à sable.
-    """
-    success: bool = Field(..., description="Indique si l'initialisation a réussi.")
-    message: str = Field(..., description="Message de confirmation ou d'erreur.")
-
-
-class VisualizeRequest(BaseModel):
-    schema_sql: str = Field(..., description="Le code SQL CREATE TABLE.")
-
-class VisualizeResponse(BaseModel):
-    mermaid_code: str = Field(..., description="Le code du diagramme ER Mermaid.")
-
-
 # =====================================================================
 # 2. Endpoints de l'API (REST API Endpoints)
 # =====================================================================
@@ -205,8 +138,11 @@ async def init_sandbox(request: SandboxInitRequest) -> SandboxInitResponse:
             success=True, 
             message="Sandbox initialisée avec succès ! Vous pouvez maintenant interroger votre base."
         )
-    except Exception as e:
+    except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"[Sandbox Init Error] {str(e)}")
+        raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de l'initialisation de la sandbox.")
 
 
 @app.post("/api/sandbox/visualize", response_model=VisualizeResponse)
@@ -257,7 +193,8 @@ Schéma SQL :
             
         return VisualizeResponse(mermaid_code=code.strip())
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[Visualize Error] {str(e)}")
+        raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de la génération du diagramme ER.")
 
 
 @app.get("/api/schema", response_model=SchemaResponse)
@@ -274,9 +211,10 @@ async def get_schema() -> SchemaResponse:
         schema = get_database_schema_context()
         return SchemaResponse(schema_context=schema)
     except Exception as e:
+        print(f"[Schema Error] {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la récupération du schéma : {str(e)}"
+            detail="Une erreur interne est survenue lors de la récupération du schéma."
         )
 
 
@@ -337,7 +275,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
         print("="*60 + "\n")
         raise HTTPException(
             status_code=500,
-            detail=f"Une erreur interne est survenue lors de l'exécution de l'agent : {str(e)}"
+            detail="Une erreur interne est survenue lors de l'exécution de l'agent."
         )
 
 
@@ -398,7 +336,8 @@ async def chat_stream(request: ChatRequest):
                 }
             })
         except Exception as e:
-            event_callback({"type": "error", "data": str(e)})
+            print(f"[Chat Stream Error] {str(e)}")
+            event_callback({"type": "error", "data": "Une erreur interne est survenue lors de l'exécution de l'agent."})
         finally:
             event_callback_var.reset(token)
             # Indiquer à la boucle asynchrone la fin de l'exécution

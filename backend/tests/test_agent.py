@@ -10,10 +10,10 @@ def reset_agent_globals():
     Réinitialise les variables globales de l'agent (cache de schéma et instance LLM)
     avant chaque test pour éviter les effets de bord entre les tests mockés et réels.
     """
-    import app.services.agent as agent_module
-    agent_module._SCHEMA_CACHE = None
-    if hasattr(agent_module, "_llm_cache"):
-        agent_module._llm_cache.clear()
+    from app.services.agent.schema import invalidate_schema_cache
+    from app.services.agent.llm_provider import _llm_cache
+    invalidate_schema_cache()
+    _llm_cache.clear()
 
 
 def test_extract_sql_query_markdown_sql():
@@ -76,7 +76,7 @@ def test_get_dynamic_schema_context_specific():
     assert "idp" in context
 
 
-@patch("app.services.agent.ChatOllama")
+@patch("app.services.agent.llm_provider.ChatOllama")
 def test_node_select_tables_success(mock_chat_ollama):
     """
     Vérifie que le nœud de sélection des tables appelle le LLM et extrait les tables correctement.
@@ -108,7 +108,7 @@ def test_node_select_tables_success(mock_chat_ollama):
     assert result["steps"][0]["node"] == "select_tables"
 
 
-@patch("app.services.agent.ChatOllama")
+@patch("app.services.agent.llm_provider.ChatOllama")
 def test_node_generate_sql_success(mock_chat_ollama):
     """
     Vérifie que le nœud de génération SQL appelle correctement le LLM et renvoie la requête SQL.

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import mermaid from 'mermaid';
+import DOMPurify from 'dompurify';
 import { Table, Search, Link2, Key, HelpCircle } from 'lucide-react';
 
 interface SchemaVisualizerProps {
@@ -159,28 +160,30 @@ function parseSqlSchema(sql: string): TableInfo[] {
 }
 
 /**
- * Gets a CSS color theme class based on the SQL data type of the column.
+ * Gets a CSS class name based on the SQL data type of the column.
  * 
  * @param type - The string name of the SQL type.
- * @returns CSS styles object for the badge.
+ * @returns CSS class name for the badge.
  */
-function getTypeBadgeStyle(type: string): React.CSSProperties {
+function getTypeBadgeClass(type: string): string {
   const t = type.toLowerCase();
   if (t.includes('int') || t.includes('num') || t.includes('decimal') || t.includes('double') || t.includes('real')) {
-    return { backgroundColor: 'hsla(160, 95%, 40%, 0.12)', color: 'hsl(160, 95%, 65%)', border: '1px solid hsla(160, 95%, 40%, 0.25)' };
+    return 'schema-visual-column-type-int';
   }
   if (t.includes('char') || t.includes('text') || t.includes('uuid')) {
-    return { backgroundColor: 'hsla(35, 95%, 55%, 0.12)', color: 'hsl(35, 95%, 75%)', border: '1px solid hsla(35, 95%, 55%, 0.25)' };
+    return 'schema-visual-column-type-text';
   }
   if (t.includes('date') || t.includes('time')) {
-    return { backgroundColor: 'hsla(15, 95%, 50%, 0.12)', color: 'hsl(15, 95%, 70%)', border: '1px solid hsla(15, 95%, 50%, 0.25)' };
+    return 'schema-visual-column-type-date';
   }
-  return { backgroundColor: 'hsla(215, 25%, 35%, 0.12)', color: 'var(--text-muted)', border: '1px solid hsla(215, 25%, 35%, 0.25)' };
+  return 'schema-visual-column-type-other';
 }
 
 /**
  * SchemaVisualizer Component that offers both a 100% robust interactive Card Explorer
  * and a fixed Mermaid ER Diagram renderer.
+ * 
+ * @param props - Component properties containing schema configurations
  */
 export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ 
   mermaidCode, 
@@ -194,7 +197,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
   // Parse tables dynamically from SQL schema
-  const parsedTables = parseSqlSchema(schemaSql);
+  const parsedTables = useMemo(() => parseSqlSchema(schemaSql), [schemaSql]);
 
   // Mermaid Diagram Renderer with robust unique random DOM ID allocation
   useEffect(() => {
@@ -213,16 +216,16 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
         
         mermaid.render(uniqueId, mermaidCode).then((result) => {
           if (containerRef.current) {
-            containerRef.current.innerHTML = result.svg;
+            containerRef.current.innerHTML = DOMPurify.sanitize(result.svg);
           }
         }).catch((e) => {
           console.error("Erreur de rendu Mermaid :", e);
           if (containerRef.current) {
             containerRef.current.innerHTML = `
               <div class="flex flex-col items-center justify-center h-full p-6 text-center text-muted">
-                <div style="color: var(--accent-ruby); font-weight: 600; font-size: 13px; margin-bottom: 8px;">Erreur de rendu du diagramme</div>
+                <div class="text-ruby font-semibold text-sm mb-2" style="color: var(--accent-ruby)">Erreur de rendu du diagramme</div>
                 <p class="text-xs max-w-xs mb-3">Le format du code ER diagramme renvoyé par le LLM contient des erreurs de syntaxe.</p>
-                <pre style="padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 10px; text-align: left; max-width: 100%; overflow-x: auto; color: var(--text-muted)">
+                <pre class="p-2.5 rounded bg-black/50 border border-subtle text-xs font-mono text-left overflow-auto max-w-full text-muted">
                   <code>${e.message || String(e)}</code>
                 </pre>
                 <div class="text-xs mt-3 font-medium" style="color: var(--accent-emerald);">💡 Basculez sur la "Vue Cartes" ci-dessus, elle fonctionne parfaitement !</div>
@@ -236,42 +239,46 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
     }
   }, [mermaidCode, viewMode]);
 
+  // Filter tables/columns based on search query
+  const filteredTables = useMemo(() => {
+    return parsedTables.filter(t => 
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.columns.some(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [parsedTables, searchTerm]);
+
   // Handle fallback if no DDL is provided
   if (!schemaSql.trim()) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted text-center p-6" style={{ height: '100%' }}>
-        <HelpCircle size={40} className="opacity-30 mb-3" style={{ marginBottom: '12px', opacity: 0.3 }} />
-        <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Bac à sable vide</h3>
-        <p className="text-xs max-w-xs" style={{ fontSize: '12px', maxWidth: '280px', margin: 0 }}>
-          Collez votre script <span className="font-semibold text-primary" style={{ color: 'var(--accent-primary)' }}>CREATE TABLE</span> dans l'onglet Schéma et cliquez sur "Appliquer" pour le visualiser !
+      <div className="schema-visual-empty">
+        <HelpCircle size={40} className="schema-visual-empty-icon" />
+        <h3 className="schema-visual-empty-title">Bac à sable vide</h3>
+        <p className="schema-visual-empty-desc">
+          Collez votre script <span className="schema-visual-empty-highlight">CREATE TABLE</span> dans l'onglet Schéma et cliquez sur "Appliquer" pour le visualiser !
         </p>
       </div>
     );
   }
 
-  // Filter tables/columns based on search query
-  const filteredTables = parsedTables.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.columns.some(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
   return (
-    <div className="flex flex-col h-full gap-3" style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+    <div className="schema-visual-wrapper">
       {/* Sub-Header Toolbar with Toggle and Search */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-subtle pb-2 mb-2" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+      <div className="schema-visual-toolbar">
         {/* Toggle Mode button */}
-        <div className="flex bg-surface rounded-lg p-0.5" style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-card)', padding: '2px', borderRadius: '8px' }}>
+        <div className="schema-visual-toggle" role="tablist" aria-label="Modes de visualisation du schéma">
           <button
             onClick={() => setViewMode('cards')}
-            className={`px-3 py-1 rounded-md text-xs transition-all ${viewMode === 'cards' ? 'bg-primary text-white font-semibold' : 'text-muted'}`}
-            style={{ border: 'none', background: viewMode === 'cards' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'cards' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '6px 12px' }}
+            className={`schema-visual-toggle-btn ${viewMode === 'cards' ? 'schema-visual-toggle-btn-active' : ''}`}
+            role="tab"
+            aria-selected={viewMode === 'cards'}
           >
             Vue Cartes 🎴
           </button>
           <button
             onClick={() => setViewMode('mermaid')}
-            className={`px-3 py-1 rounded-md text-xs transition-all ${viewMode === 'mermaid' ? 'bg-primary text-white font-semibold' : 'text-muted'}`}
-            style={{ border: 'none', background: viewMode === 'mermaid' ? 'var(--accent-primary)' : 'transparent', color: viewMode === 'mermaid' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', padding: '6px 12px' }}
+            className={`schema-visual-toggle-btn ${viewMode === 'mermaid' ? 'schema-visual-toggle-btn-active' : ''}`}
+            role="tab"
+            aria-selected={viewMode === 'mermaid'}
           >
             Diagramme 📊
           </button>
@@ -279,35 +286,26 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
 
         {/* Live Filter Search (Only in Cards View) */}
         {viewMode === 'cards' && (
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={12} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
+          <div className="schema-visual-search">
+            <Search size={12} className="schema-visual-search-icon" />
             <input
               type="text"
               placeholder="Filtrer colonnes / tables..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field text-xs"
-              style={{ padding: '4px 8px 4px 26px', fontSize: '11px', width: '160px', background: 'var(--bg-card)' }}
+              className="input-field schema-visual-search-input"
+              aria-label="Filtrer les colonnes et tables"
             />
           </div>
         )}
       </div>
 
       {/* Main visual panel */}
-      <div className="flex-1 min-h-0" style={{ flex: 1, minHeight: 0 }}>
+      <div className="schema-visual-panel">
         {viewMode === 'cards' ? (
-          <div 
-            className="w-full h-full overflow-y-auto pr-1" 
-            style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
-              gap: '12px', 
-              maxHeight: '100%',
-              overflowY: 'auto'
-            }}
-          >
+          <div className="schema-visual-cards-grid">
             {filteredTables.length === 0 ? (
-              <div className="col-span-full text-center text-xs text-muted py-6" style={{ gridColumn: '1 / -1' }}>
+              <div className="schema-visual-no-match">
                 Aucune table ou colonne ne correspond à votre filtre.
               </div>
             ) : (
@@ -325,108 +323,82 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
                   c => c.isFk && c.refTable?.toLowerCase() === table.name.toLowerCase()
                 );
 
-                const activeBorderColor = isSelected 
-                  ? 'var(--accent-primary)' 
-                  : (isLinked || hasSelectedLink) 
-                    ? 'var(--accent-secondary)' 
-                    : 'var(--border-subtle)';
+                let cardClass = "schema-visual-card glass-panel";
+                if (isSelected) {
+                  cardClass += " schema-visual-card-active";
+                } else if (isLinked || hasSelectedLink) {
+                  cardClass += " schema-visual-card-linked";
+                }
+
+                const handleKeyDown = (e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedTable(isSelected ? null : table.name);
+                  }
+                };
 
                 return (
                   <div
                     key={table.name}
                     onClick={() => setSelectedTable(isSelected ? null : table.name)}
-                    className="glass-panel transition-all duration-300"
-                    style={{
-                      borderRadius: '12px',
-                      padding: '12px',
-                      cursor: 'pointer',
-                      border: `1.5px solid ${activeBorderColor}`,
-                      background: isSelected 
-                        ? 'hsla(265, 95%, 65%, 0.05)' 
-                        : (isLinked || hasSelectedLink)
-                          ? 'hsla(195, 95%, 45%, 0.04)'
-                          : 'var(--bg-card)',
-                      boxShadow: isSelected 
-                        ? '0 0 15px -3px hsla(265, 95%, 65%, 0.2)' 
-                        : 'none',
-                      transform: isSelected ? 'scale(1.02)' : 'none'
-                    }}
+                    onKeyDown={handleKeyDown}
+                    className={cardClass}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    aria-label={`Table ${table.name}, contient ${table.columns.length} colonnes. Appuyez pour voir les liaisons.`}
                   >
                     {/* Table Card Header */}
-                    <div className="flex items-center justify-between mb-2.5" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <div className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Table size={14} style={{ color: isSelected ? 'var(--accent-primary)' : 'var(--text-muted)' }} />
-                        <span className="font-semibold text-xs text-heading" style={{ fontWeight: 700, fontSize: '12px' }}>
+                    <div className="schema-visual-card-header">
+                      <div className="schema-visual-card-title-group">
+                        <Table size={14} />
+                        <span className="schema-visual-card-title">
                           {table.name}
                         </span>
                       </div>
-                      <span 
-                        className="text-[9px] px-1.5 py-0.5 rounded-full" 
-                        style={{ background: 'var(--border-subtle)', color: 'var(--text-muted)' }}
-                      >
+                      <span className="schema-visual-card-badge">
                         {table.columns.length} col
                       </span>
                     </div>
 
                     {/* Columns List */}
-                    <div className="flex flex-col gap-1.5" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="schema-visual-columns-list">
                       {table.columns.map((col) => {
                         const isMatch = searchTerm && (
                           col.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           table.name.toLowerCase().includes(searchTerm.toLowerCase())
                         );
 
+                        const colNameClass = col.isPk 
+                          ? 'schema-visual-column-name schema-visual-column-name-pk'
+                          : col.isFk
+                            ? 'schema-visual-column-name schema-visual-column-name-fk'
+                            : 'schema-visual-column-name';
+
                         return (
                           <div 
                             key={col.name} 
-                            className="flex items-center justify-between py-1 px-1.5 rounded transition-colors"
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'space-between',
-                              background: isMatch ? 'rgba(234, 179, 8, 0.08)' : 'transparent',
-                              borderRadius: '4px'
-                            }}
+                            className={`schema-visual-column-row ${isMatch ? 'schema-visual-column-row-match' : ''}`}
                           >
                             {/* Column Name + PK/FK Badges */}
-                            <div className="flex items-center gap-1" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <div className="schema-visual-column-name-group">
                               {col.isPk && (
-                                <span title="Clé Primaire" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                  <Key 
-                                    size={10} 
-                                    style={{ color: 'hsl(265, 95%, 70%)', filter: 'drop-shadow(0 0 3px hsla(265, 95%, 70%, 0.4))' }} 
-                                  />
+                                <span title="Clé Primaire" className="schema-visual-column-icon">
+                                  <Key size={10} className="schema-key-pk" />
                                 </span>
                               )}
                               {col.isFk && (
-                                <span title={`Clé Étrangère référençant ${col.refTable}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                  <Link2 
-                                    size={10} 
-                                    style={{ color: 'hsl(195, 95%, 65%)' }} 
-                                  />
+                                <span title={`Clé Étrangère référençant ${col.refTable}`} className="schema-visual-column-icon">
+                                  <Link2 size={10} className="schema-key-fk" />
                                 </span>
                               )}
-                              <span 
-                                className="text-xs" 
-                                style={{ 
-                                  fontWeight: (col.isPk || col.isFk) ? 600 : 400,
-                                  color: col.isPk 
-                                    ? 'hsl(265, 95%, 85%)' 
-                                    : col.isFk 
-                                      ? 'hsl(195, 95%, 80%)' 
-                                      : 'var(--text-main)',
-                                  fontSize: '11px'
-                                }}
-                              >
+                              <span className={colNameClass}>
                                 {col.name}
                               </span>
                             </div>
 
                             {/* Column SQL Type Badge */}
-                            <span 
-                              className="text-[9px] font-mono px-1.5 py-0.5 rounded uppercase" 
-                              style={getTypeBadgeStyle(col.type)}
-                            >
+                            <span className={`schema-visual-column-type ${getTypeBadgeClass(col.type)}`}>
                               {col.type.replace(/\(\w+\)/, '')}
                             </span>
                           </div>
@@ -439,24 +411,23 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
             )}
           </div>
         ) : isVisualizing ? (
-          <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted p-4 bg-surface-solid rounded-lg border border-subtle" style={{ height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3" style={{ borderBottomColor: 'var(--accent-primary)', width: '32px', height: '32px', borderLeftWidth: '2px', borderRightWidth: '2px', borderTopWidth: '2px', borderBottomWidth: '2px', borderRadius: '50%', borderStyle: 'solid', borderColor: 'transparent' }} />
-            <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Génération en cours</h3>
-            <p className="text-xs max-w-xs" style={{ fontSize: '12px', maxWidth: '280px', margin: 0 }}>
+          <div className="schema-visual-mermaid-generating">
+            <div className="schema-visual-mermaid-spinner" />
+            <h3 className="schema-visual-empty-title">Génération en cours</h3>
+            <p className="schema-visual-empty-desc">
               Le LLM local traduit votre schéma SQL en diagramme ER. Cela peut prendre quelques dizaines de secondes...
             </p>
           </div>
         ) : !mermaidCode ? (
-          <div className="w-full h-full flex flex-col items-center justify-center text-center text-muted p-4 bg-surface-solid rounded-lg border border-subtle" style={{ height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
-            <HelpCircle size={36} className="opacity-40 mb-3" style={{ marginBottom: '12px', opacity: 0.4, color: 'var(--accent-primary)' }} />
-            <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Diagramme non généré</h3>
-            <p className="text-xs max-w-xs mb-4" style={{ fontSize: '12px', maxWidth: '280px', margin: '0 0 16px 0' }}>
+          <div className="schema-visual-mermaid-empty">
+            <HelpCircle size={36} className="schema-visual-mermaid-empty-icon" />
+            <h3 className="schema-visual-empty-title">Diagramme non généré</h3>
+            <p className="schema-visual-empty-desc">
               Pour économiser vos ressources locales, le diagramme n'est plus généré automatiquement au démarrage de la base.
             </p>
             <button
               onClick={onGenerateDiagram}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-              style={{ fontSize: '12px', cursor: 'pointer' }}
+              className="btn-primary schema-visual-mermaid-btn"
             >
               Générer le diagramme avec l'IA 🪄
             </button>
@@ -464,8 +435,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
         ) : (
           <div 
             ref={containerRef} 
-            className="w-full h-full overflow-auto flex items-center justify-center p-4 bg-surface-solid rounded-lg border border-subtle"
-            style={{ height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+            className="schema-visual-mermaid-container"
           />
         )}
       </div>

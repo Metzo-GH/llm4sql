@@ -1,14 +1,7 @@
-import { useState, useEffect } from 'react';
-import type { Message } from '../components/ChatInterface';
+import { useState, useEffect, useCallback } from 'react';
+import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
 
-const API_BASE_URL = 'http://localhost:8500';
-
-export interface ContextUsage {
-  promptTokens: number;
-  evalTokens?: number;
-  contextSize: number;
-  estimated: boolean;
-}
+import { API_BASE_URL } from '../config/api';
 
 /**
  * Custom React hook orchestrating chat messaging flows, agentic LLM API calls,
@@ -40,7 +33,7 @@ export function useChat() {
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
 
   const [apiOnline, setApiOnline] = useState(false);
-  const [loadedModelStatus, setLoadedModelStatus] = useState<any>(null);
+  const [loadedModelStatus, setLoadedModelStatus] = useState<LoadedModelStatus | null>(null);
   const [installedModels, setInstalledModels] = useState<string[]>(['qwen3.5:4b', 'qwen3.5:9b', 'deepseek-r1:1.5b', 'deepseek-r1:8b']);
 
   useEffect(() => {
@@ -90,8 +83,16 @@ export function useChat() {
     checkStatus();
     fetchModels();
 
-    const statusInterval = setInterval(checkStatus, 5000);
-    const modelsInterval = setInterval(fetchModels, 15000);
+    const statusInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkStatus();
+      }
+    }, 5000);
+    const modelsInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchModels();
+      }
+    }, 15000);
 
     return () => {
       clearInterval(statusInterval);
@@ -105,7 +106,7 @@ export function useChat() {
    * 
    * @param e - React Form Event
    */
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
 
@@ -304,17 +305,17 @@ export function useChat() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [inputValue, isLoading, model, temperature, contextSize]);
 
   /**
    * Sets the current active query message to inspect.
    * 
    * @param messageId - Selected assistant message ID
    */
-  const handleSelectMessageData = (messageId: string) => {
+  const handleSelectMessageData = useCallback((messageId: string) => {
     setActiveMessageId(messageId);
     setActiveView('table');
-  };
+  }, []);
 
   return {
     messages,

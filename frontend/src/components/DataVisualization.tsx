@@ -18,9 +18,38 @@ interface DataVisualizationProps {
   data: Record<string, any>[];
 }
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: any;
+  xAxisKey: string;
+  yAxisKey: string;
+}
+
+/**
+ * Tooltip customisé avec le thème sombre Glassmorphism HSL
+ * 
+ * @param props - Tooltip properties from Recharts
+ */
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, xAxisKey, yAxisKey }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="custom-tooltip-box">
+        <p className="custom-tooltip-label">{String(xAxisKey).toUpperCase()} : {label}</p>
+        <p className="custom-tooltip-val">
+          {String(yAxisKey)} : {payload[0].value}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 /**
  * Composant de visualisation dynamique. Il analyse les colonnes de données pour
  * proposer de tracer automatiquement des graphiques Bar, Line ou Area interactifs.
+ * 
+ * @param props - Component properties containing results dataset
  */
 export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) => {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
@@ -73,17 +102,19 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
   // S'il n'y a pas assez de colonnes à tracer, on avertit l'utilisateur
   if (numericCols.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center text-muted" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-        <BarChart3 size={40} className="opacity-40 mb-3" style={{ marginBottom: '12px', opacity: 0.4 }} />
-        <h3 className="text-sm font-semibold text-heading mb-1" style={{ color: 'var(--text-heading)', fontWeight: 600 }}>Visualisation indisponible</h3>
-        <p className="text-xs max-w-xs" style={{ fontSize: '12px', maxWidth: '280px', margin: 0 }}>
+      <div className="data-vis-empty">
+        <BarChart3 size={40} className="data-vis-empty-icon" />
+        <h3 className="data-vis-empty-title">Visualisation indisponible</h3>
+        <p className="data-vis-empty-desc">
           Les données retournées ne contiennent aucune colonne numérique permettant de tracer un graphique.
         </p>
       </div>
     );
   }
 
-  // Rendu du composant Recharts approprié
+  /**
+   * Rendu du composant Recharts approprié
+   */
   const renderChart = () => {
     // Adapter les données pour s'assurer que les valeurs de l'axe Y sont bien converties en nombres réels
     const chartData = data.map(row => ({
@@ -96,30 +127,6 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
       margin: { top: 10, right: 10, left: -10, bottom: 0 }
     };
 
-    // Tooltip customisé avec le thème sombre Glassmorphism HSL
-    const CustomTooltip = ({ active, payload, label }: any) => {
-      if (active && payload && payload.length) {
-        return (
-          <div 
-            style={{
-              background: 'hsl(225, 25%, 10%)',
-              border: '1px solid var(--border-active)',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
-              backdropFilter: 'blur(8px)'
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{String(xAxisKey).toUpperCase()} : {label}</p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--accent-secondary)', fontWeight: 700 }}>
-              {String(yAxisKey)} : {payload[0].value}
-            </p>
-          </div>
-        );
-      }
-      return null;
-    };
-
     switch (chartType) {
       case 'line':
         return (
@@ -127,7 +134,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
             <XAxis dataKey={xAxisKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} />
             <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip xAxisKey={xAxisKey} yAxisKey={yAxisKey} />} />
             <Line 
               type="monotone" 
               dataKey={yAxisKey} 
@@ -150,7 +157,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
             <XAxis dataKey={xAxisKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} />
             <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip xAxisKey={xAxisKey} yAxisKey={yAxisKey} />} />
             <Area 
               type="monotone" 
               dataKey={yAxisKey} 
@@ -174,7 +181,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
             <XAxis dataKey={xAxisKey} stroke="var(--text-muted)" fontSize={11} tickLine={false} />
             <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip xAxisKey={xAxisKey} yAxisKey={yAxisKey} />} />
             <Bar 
               dataKey={yAxisKey} 
               fill="url(#barGlow)" 
@@ -187,15 +194,14 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
   };
 
   return (
-    <div className="flex flex-col h-full gap-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+    <div className="data-vis-wrapper">
       {/* Barre de commandes du Graphique */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-subtle pb-3" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+      <div className="data-vis-toolbar">
         {/* Toggle type de graphe */}
-        <div className="flex gap-1" style={{ display: 'flex', gap: '4px' }}>
+        <div className="data-vis-chart-toggles">
           <button
             onClick={() => setChartType('bar')}
             className={`p-2 rounded-md transition-all ${chartType === 'bar' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '8px' }}
             title="Histogramme"
           >
             <BarChart3 size={15} />
@@ -203,7 +209,6 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
           <button
             onClick={() => setChartType('line')}
             className={`p-2 rounded-md transition-all ${chartType === 'line' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '8px' }}
             title="Courbe"
           >
             <LineIcon size={15} />
@@ -211,7 +216,6 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
           <button
             onClick={() => setChartType('area')}
             className={`p-2 rounded-md transition-all ${chartType === 'area' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '8px' }}
             title="Aire Remplie"
           >
             <AreaIcon size={15} />
@@ -219,14 +223,13 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
         </div>
 
         {/* Sélecteurs d'axes */}
-        <div className="flex flex-wrap items-center gap-3" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
-          <div className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Axe X :</span>
+        <div className="data-vis-selectors">
+          <div className="data-vis-axis-group">
+            <span className="data-vis-axis-label">Axe X :</span>
             <select
               value={xAxisKey}
               onChange={(e) => setXAxisKey(e.target.value)}
-              className="input-field"
-              style={{ padding: '6px 12px', fontSize: '12px', width: 'auto', background: 'hsl(225, 25%, 10%)' }}
+              className="input-field data-vis-axis-select"
             >
               {textualCols.concat(numericCols).map((col) => (
                 <option key={col} value={col}>
@@ -236,13 +239,12 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="text-xs text-muted" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Valeurs Y :</span>
+          <div className="data-vis-axis-group">
+            <span className="data-vis-axis-label">Valeurs Y :</span>
             <select
               value={yAxisKey}
               onChange={(e) => setYAxisKey(e.target.value)}
-              className="input-field"
-              style={{ padding: '6px 12px', fontSize: '12px', width: 'auto', background: 'hsl(225, 25%, 10%)' }}
+              className="input-field data-vis-axis-select"
             >
               {numericCols.map((col) => (
                 <option key={col} value={col}>
@@ -255,7 +257,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
       </div>
 
       {/* Rendu graphique interactif */}
-      <div className="flex-1 min-h-[350px] w-full" style={{ flex: 1, minHeight: '350px', width: '100%', padding: '8px 0' }}>
+      <div className="data-vis-chart-body">
         <ResponsiveContainer width="100%" height="100%">
           {renderChart()}
         </ResponsiveContainer>

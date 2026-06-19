@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from app.core.config import settings
 from app.core.security import validate_sql_query
-from app.database.connection import get_db_connection
+from app.database.pool import get_db_conn
 
 # Initialiser l'instance FastMCP pour notre serveur Model Context Protocol
 mcp = FastMCP("LLM4SQL-Secure-Postgres")
@@ -29,21 +29,13 @@ def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[st
     Raises:
         RuntimeError: En cas d'erreur de base de données.
     """
-    conn = None
-    cur = None
     try:
-        conn = get_db_connection(readonly=True)
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SET search_path TO user_sandbox, public;")
-            cur.execute(query, params)
-            return cur.fetchall()
+        with get_db_conn(readonly=True) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, params)
+                return cur.fetchall()
     except Exception as e:
         raise RuntimeError(f"Erreur d'accès aux métadonnées : {str(e)}")
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 @mcp.tool()
@@ -126,39 +118,31 @@ def execute_query(sql: str) -> str:
         return json.dumps({"security_error": message}, indent=2)
         
     # 2. Exécution de la requête
-    conn = None
-    cur = None
     try:
-        conn = get_db_connection(readonly=True)
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SET search_path TO user_sandbox, public;")
-            cur.execute(sql)
-            results = cur.fetchall()
-            
-            # Traiter les valeurs temporelles et décimales pour qu'elles soient sérialisables en JSON
-            for row in results:
-                for key, val in row.items():
-                    if hasattr(val, 'isoformat'):
-                        row[key] = val.isoformat()
-                    elif isinstance(val, Decimal):
-                        row[key] = float(val)
-                        
-            return json.dumps({
-                "success": True,
-                "row_count": len(results),
-                "data": results
-            }, indent=2)
-            
+        with get_db_conn(readonly=True) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(sql)
+                results = cur.fetchall()
+                
+                # Traiter les valeurs temporelles et décimales pour qu'elles soient sérialisables en JSON
+                for row in results:
+                    for key, val in row.items():
+                        if hasattr(val, 'isoformat'):
+                            row[key] = val.isoformat()
+                        elif isinstance(val, Decimal):
+                            row[key] = float(val)
+                            
+                return json.dumps({
+                    "success": True,
+                    "row_count": len(results),
+                    "data": results
+                }, indent=2)
+                
     except Exception as e:
         return json.dumps({
             "success": False,
             "db_error": str(e)
         }, indent=2)
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 if __name__ == "__main__":

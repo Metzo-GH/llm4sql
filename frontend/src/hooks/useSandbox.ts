@@ -1,12 +1,19 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
-const API_BASE_URL = 'http://localhost:8500';
+import { API_BASE_URL } from '../config/api';
+
+interface UseSandboxOptions {
+  onShowToast?: (message: string, type: 'success' | 'error') => void;
+}
 
 /**
  * Custom React hook managing the SQL Sandbox DDL/DML lifecycle and visualizer tabs.
  * Encapsulates script states, loading indicators, and isolated database schemas initialization.
+ * 
+ * @param options - Hook configuration options (e.g. callback to show UI Toasts)
  */
-export function useSandbox() {
+export function useSandbox(options?: UseSandboxOptions) {
+  const { onShowToast } = options || {};
   const [sandboxTab, setSandboxTab] = useState<'schema' | 'data' | 'visual'>('schema');
   const [schemaSql, setSchemaSql] = useState('');
   const [insertSql, setInsertSql] = useState('');
@@ -18,7 +25,7 @@ export function useSandbox() {
    * Wipes and recreates the user_sandbox schema in PostgreSQL, applies user tables and inserts.
    * This operation is local, instant and does not call the LLM.
    */
-  const handleApplySandbox = async () => {
+  const handleApplySandbox = useCallback(async () => {
     if (!schemaSql.trim()) return;
     setIsSandboxLoading(true);
     setMermaidCode(''); // Reset visual state
@@ -34,19 +41,19 @@ export function useSandbox() {
       if (!resInit.ok) throw new Error("Erreur lors de l'initialisation du Sandbox");
 
       setSandboxTab('visual'); // Auto-switch to the interactive cards visualizer
-      alert("✅ Base de données initialisée instantanément ! Vous pouvez maintenant interroger votre base.");
+      onShowToast?.("Base de données initialisée instantanément ! Vous pouvez maintenant interroger votre base.", "success");
     } catch (e) {
       console.error(e);
-      alert("❌ Une erreur s'est produite lors de la configuration du Sandbox.");
+      onShowToast?.("Une erreur s'est produite lors de la configuration du Sandbox.", "error");
     } finally {
       setIsSandboxLoading(false);
     }
-  };
+  }, [schemaSql, insertSql, onShowToast]);
 
   /**
    * Calls the LLM visualizer API to translate DDL SQL into Mermaid code.
    */
-  const handleGenerateDiagram = async () => {
+  const handleGenerateDiagram = useCallback(async () => {
     if (!schemaSql.trim() || isVisualizing) return;
     setIsVisualizing(true);
 
@@ -63,11 +70,11 @@ export function useSandbox() {
       setMermaidCode(dataVis.mermaid_code);
     } catch (e) {
       console.error(e);
-      alert("❌ Impossible de générer le diagramme avec l'IA locale.");
+      onShowToast?.("Impossible de générer le diagramme avec l'IA locale.", "error");
     } finally {
       setIsVisualizing(false);
     }
-  };
+  }, [schemaSql, isVisualizing, onShowToast]);
 
   return {
     sandboxTab,
