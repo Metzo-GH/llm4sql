@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Bot, Terminal, Send } from 'lucide-react';
+import { Bot, Terminal, Send, Square } from 'lucide-react';
 import type { Message, ContextUsage } from '../types/chat';
 import { ChatMessage } from './chat/ChatMessage';
 
@@ -13,6 +13,8 @@ interface ChatInterfaceProps {
   activeMessageDataId: string | null;
   liveLogs: string[];
   contextUsage: ContextUsage | null;
+  onStopRequest?: () => void;
+  onEditMessage?: (messageId: string, newContent: string) => void;
 }
 
 /**
@@ -31,6 +33,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   activeMessageDataId,
   liveLogs,
   contextUsage,
+  onStopRequest,
+  onEditMessage,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const terminalBodyRef = useRef<HTMLDivElement>(null);
@@ -117,6 +121,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               activeMessageDataId={activeMessageDataId}
               onSelectMessageData={onSelectMessageData}
               liveLogs={liveLogs}
+              onEditMessage={onEditMessage}
             />
           ))
         )}
@@ -193,17 +198,31 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isLoading}
-            placeholder="Posez votre question (ex: 'les ouvrages sortis en 2021')"
+            placeholder={isLoading ? "Génération en cours..." : "Posez votre question (ex: 'les ouvrages sortis en 2021')"}
             className="input-field chat-input-field"
             aria-label="Votre question de recherche SQL en langage naturel"
           />
-          <button
-            type="submit"
-            disabled={isLoading || !inputValue.trim()}
-            className="btn-primary chat-send-btn"
-          >
-            <Send size={16} />
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={onStopRequest}
+              className="btn-primary chat-send-btn chat-stop-btn"
+              title="Arrêter la génération"
+              aria-label="Arrêter la génération"
+            >
+              <Square size={14} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!inputValue.trim()}
+              className="btn-primary chat-send-btn"
+              title="Envoyer le message"
+              aria-label="Envoyer le message"
+            >
+              <Send size={14} />
+            </button>
+          )}
         </div>
       </form>
     </div>

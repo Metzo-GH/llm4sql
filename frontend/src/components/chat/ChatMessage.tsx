@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Bot, User, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Bot, User, AlertTriangle, RefreshCw, Pencil } from 'lucide-react';
 import type { Message } from '../../types/chat';
 import { parseThinking } from '../../utils/thinkingParser';
 import { parseLiveLogsToSteps } from '../../utils/logParser';
@@ -10,6 +10,7 @@ interface ChatMessageProps {
   activeMessageDataId: string | null;
   onSelectMessageData: (messageId: string) => void;
   liveLogs?: string[];
+  onEditMessage?: (messageId: string, newContent: string) => void;
 }
 
 /**
@@ -24,11 +25,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   activeMessageDataId,
   onSelectMessageData,
   liveLogs = [],
+  onEditMessage,
 }) => {
   const isUser = msg.sender === 'user';
   const [isThinkingOpen, setIsThinkingOpen] = useState(true);
   const thinkingRef = useRef<HTMLDivElement>(null);
   
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(msg.content);
+
+  // Sync editText if msg.content changes
+  useEffect(() => {
+    setEditText(msg.content);
+  }, [msg.content]);
+
   const thinking = useMemo(() => {
     return msg.thinking || parseThinking(msg.content).thinking;
   }, [msg.thinking, msg.content]);
@@ -82,7 +92,54 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         {/* Text content with reasoning support (<think> tag parsing) */}
         {(() => {
           if (isUser) {
-            return <div className="message-text-content">{msg.content}</div>;
+            if (isEditing) {
+              return (
+                <div className="message-edit-container">
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="input-field message-edit-textarea"
+                  />
+                  <div className="message-edit-actions">
+                    <button
+                      onClick={() => {
+                        if (onEditMessage && editText.trim()) {
+                          onEditMessage(msg.id, editText.trim());
+                        }
+                        setIsEditing(false);
+                      }}
+                      className="btn-primary message-edit-save-btn"
+                    >
+                      Enregistrer
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditText(msg.content);
+                      }}
+                      className="btn-secondary message-edit-cancel-btn"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="message-text-content-wrapper">
+                <div className="message-text-content">{msg.content}</div>
+                {!isLoading && onEditMessage && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="message-edit-trigger-btn"
+                    title="Modifier le prompt"
+                    aria-label="Modifier le prompt"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                )}
+              </div>
+            );
           }
           const thinkingText = msg.thinking || parseThinking(msg.content).thinking;
           const rawAnswer = msg.thinking

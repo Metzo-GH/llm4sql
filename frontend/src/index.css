@@ -1989,3 +1989,87 @@ textarea:focus-visible {
   border: 1px solid var(--border-subtle);
 }
 
+/* 11. Prompt Editing & Request Cancellation (Stop Button) */
+.message-text-content-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.message-edit-trigger-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.message-wrapper:hover .message-edit-trigger-btn {
+  opacity: 0.6;
+}
+
+.message-edit-trigger-btn:hover {
+  color: var(--accent-primary);
+  background-color: rgba(255, 255, 255, 0.05);
+  opacity: 1 !important;
+}
+
+.message-edit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 280px;
+}
+
+.message-edit-textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background-color: var(--bg-card);
+  color: var(--text-main);
+}
+
+.message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.message-edit-save-btn {
+  font-size: 11px;
+  padding: 6px 12px;
+}
+
+.message-edit-cancel-btn {
+  font-size: 11px;
+  padding: 6px 12px;
+}
+
+.chat-stop-btn {
+  background: linear-gradient(135deg, var(--accent-ruby), hsl(346, 80%, 50%));
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.4);
+}
+
+.chat-stop-btn:hover {
+  background: linear-gradient(135deg, hsl(346, 80%, 50%), hsl(346, 90%, 45%));
+  box-shadow: 0 0 20px -3px rgba(239, 68, 68, 0.6);
+}
+
+

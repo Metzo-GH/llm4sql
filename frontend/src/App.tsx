@@ -55,6 +55,8 @@ export default function App() {
     activeView,
     setActiveView,
     handleSendMessage,
+    handleStopRequest,
+    handleEditMessage,
     handleSelectMessageData,
     model,
     setModel,
@@ -289,6 +291,8 @@ export default function App() {
             setInputValue={setInputValue}
             isLoading={isLoading}
             onSendMessage={handleSendMessage}
+            onStopRequest={handleStopRequest}
+            onEditMessage={handleEditMessage}
             onSelectMessageData={handleSelectMessageData}
             activeMessageDataId={activeMessageId}
             liveLogs={liveLogs}

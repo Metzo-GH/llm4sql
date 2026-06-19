@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
 
 import { API_BASE_URL } from '../config/api';
@@ -35,6 +35,9 @@ export function useChat() {
   const [apiOnline, setApiOnline] = useState(false);
   const [loadedModelStatus, setLoadedModelStatus] = useState<LoadedModelStatus | null>(null);
   const [installedModels, setInstalledModels] = useState<string[]>(['qwen3.5:4b', 'qwen3.5:9b', 'deepseek-r1:1.5b', 'deepseek-r1:8b']);
+
+  // Ref to hold the current AbortController for stopping running requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -101,52 +104,50 @@ export function useChat() {
   }, []);
 
   /**
-   * Submits the user's natural language question, processes agentic API calls,
-   * detects SQL errors, and triggers auto-correction cycles.
-   * 
-   * @param e - React Form Event
+   * Internal common method to submit a query to the LangGraph backend SSE endpoint,
+   * handle token streaming, errors, telemetry logs, and support cancellation.
    */
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
-
-    const userQuestion = inputValue.trim();
-    setInputValue('');
+  const executeMessageRequest = useCallback(async (promptText: string, truncateIndex?: number) => {
     setIsLoading(true);
     setLiveLogs([]);
     setContextUsage(null);
 
-    // 1. Register the user's message
     const userMsgId = `user-${Date.now()}`;
     const userMessage: Message = {
       id: userMsgId,
       sender: 'user',
-      content: userQuestion,
+      content: promptText,
     };
-    setMessages((prev) => [...prev, userMessage]);
 
-    // Create a temporary streaming message for the assistant
     const assistantMsgId = `assistant-${Date.now()}`;
     const initialAssistantMessage: Message = {
       id: assistantMsgId,
       sender: 'assistant',
-      content: '', // Accumulated raw LLM tokens (including <think> tag)
+      content: '',
     };
-    setMessages((prev) => [...prev, initialAssistantMessage]);
+
+    // Calculate final messages history state (truncating if editing a previous prompt)
+    setMessages((prev) => {
+      const history = truncateIndex !== undefined ? prev.slice(0, truncateIndex) : prev;
+      return [...history, userMessage, initialAssistantMessage];
+    });
 
     try {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const payload = { 
-        question: userQuestion,
+        question: promptText,
         model,
         temperature,
         context_size: contextSize
       };
 
-      // 2. Fetch from the SSE FastAPI endpoint
       const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -289,8 +290,22 @@ export function useChat() {
         }
       }
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Force the assistant's bubble to indicate cancellation
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMsgId
+              ? {
+                  ...msg,
+                  content: "🛑 Génération interrompue par l'utilisateur.",
+                }
+              : msg
+          )
+        );
+        return;
+      }
       console.error(error);
-      const errorMsg = error?.message || "Impossible de joindre l'API locale LLM4SQL. Assurez-vous que le serveur FastAPI tourne sur le port 8500.";
+      const errorMsg = error?.message || "Impossible de joindre l'API locale LLM4SQL. Assurez-vous que le serveur FastAPI tourne sur le port 8000.";
       
       setMessages((prev) =>
         prev.map((msg) =>
@@ -304,8 +319,55 @@ export function useChat() {
       );
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
-  }, [inputValue, isLoading, model, temperature, contextSize]);
+  }, [model, temperature, contextSize]);
+
+  /**
+   * Submits the user's natural language question.
+   * 
+   * @param e - React Form Event
+   */
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || isLoading) return;
+
+    const userQuestion = inputValue.trim();
+    setInputValue('');
+    await executeMessageRequest(userQuestion);
+  }, [inputValue, isLoading, executeMessageRequest]);
+
+  /**
+   * Stops/aborts the current API request.
+   */
+  const handleStopRequest = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
+  /**
+   * Modifies a previous user message, deletes all subsequent messages,
+   * and resubmits it for a new generation.
+   * 
+   * @param messageId - Target message ID
+   * @param newContent - Updated prompt text
+   */
+  const handleEditMessage = useCallback(async (messageId: string, newContent: string) => {
+    if (!newContent.trim() || isLoading) return;
+
+    setMessages((prev) => {
+      const msgIndex = prev.findIndex((m) => m.id === messageId);
+      if (msgIndex === -1) return prev;
+      
+      // Execute the request asynchronously on the next frame to allow the setMessages state to resolve
+      setTimeout(() => {
+        executeMessageRequest(newContent.trim(), msgIndex);
+      }, 0);
+
+      return prev;
+    });
+  }, [isLoading, executeMessageRequest]);
 
   /**
    * Sets the current active query message to inspect.
@@ -328,6 +390,8 @@ export function useChat() {
     activeView,
     setActiveView,
     handleSendMessage,
+    handleStopRequest,
+    handleEditMessage,
     handleSelectMessageData,
     model,
     setModel,
