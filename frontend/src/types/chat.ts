@@ -53,3 +53,7 @@ export interface LoadedModelStatus {
   processor: string;
   context_length: number;
 }
+
+export interface SqlResultRow {
+  [column: string]: string | number | boolean | null;
+}

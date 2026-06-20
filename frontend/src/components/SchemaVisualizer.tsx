@@ -185,7 +185,7 @@ function getTypeBadgeClass(type: string): string {
  * 
  * @param props - Component properties containing schema configurations
  */
-export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({ 
+export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({ 
   mermaidCode, 
   schemaSql = "", 
   onGenerateDiagram, 
@@ -221,7 +221,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
         }).catch((e) => {
           console.error("Erreur de rendu Mermaid :", e);
           if (containerRef.current) {
-            containerRef.current.innerHTML = `
+            containerRef.current.innerHTML = DOMPurify.sanitize(`
               <div class="flex flex-col items-center justify-center h-full p-6 text-center text-muted">
                 <div class="text-ruby font-semibold text-sm mb-2" style="color: var(--accent-ruby)">Erreur de rendu du diagramme</div>
                 <p class="text-xs max-w-xs mb-3">Le format du code ER diagramme renvoyé par le LLM contient des erreurs de syntaxe.</p>
@@ -230,7 +230,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
                 </pre>
                 <div class="text-xs mt-3 font-medium" style="color: var(--accent-emerald);">💡 Basculez sur la "Vue Cartes" ci-dessus, elle fonctionne parfaitement !</div>
               </div>
-            `;
+            `);
           }
         });
       } catch (err) {
@@ -441,4 +441,4 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
+import type { Message, ContextUsage, LoadedModelStatus, SqlResultRow } from '../types/chat';
 
 import { API_BASE_URL } from '../config/api';
 
@@ -13,7 +13,7 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   
   // Cache of SQL query datasets, indexed by the assistant's message ID
-  const [resultsStore, setResultsStore] = useState<Record<string, Record<string, any>[]>>({});
+  const [resultsStore, setResultsStore] = useState<Record<string, SqlResultRow[]>>({});
   
   // The active message ID chosen in the explorer panel
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);

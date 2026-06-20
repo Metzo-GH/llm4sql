@@ -1,4 +1,4 @@
-from app.database.connection import get_db_connection
+from app.database.pool import get_db_connection
 
 
 def seed_database() -> None:

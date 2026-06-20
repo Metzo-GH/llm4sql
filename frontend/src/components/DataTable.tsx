@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Download, Search, ChevronLeft, ChevronRight, Table } from 'lucide-react';
+import type { SqlResultRow } from '../types/chat';
 
 interface DataTableProps {
-  data: Record<string, any>[];
+  data: SqlResultRow[];
   sqlQuery?: string;
 }
 
@@ -17,6 +18,18 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
 
+  const columns = useMemo(() => Object.keys((data && data[0]) || {}), [data]);
+
+  // Filtrer les données en fonction du terme de recherche
+  const filteredData = useMemo(() => {
+    if (!data) return [];
+    return data.filter((row) =>
+      columns.some((col) =>
+        String(row[col] ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    );
+  }, [data, columns, searchTerm]);
+
   if (!data || data.length === 0) {
     return (
       <div className="data-table-empty">
@@ -25,17 +38,6 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
       </div>
     );
   }
-
-  const columns = useMemo(() => Object.keys(data[0] || {}), [data]);
-
-  // Filtrer les données en fonction du terme de recherche
-  const filteredData = useMemo(() => {
-    return data.filter((row) =>
-      columns.some((col) =>
-        String(row[col] ?? '').toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [data, columns, searchTerm]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);

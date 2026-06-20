@@ -13,9 +13,10 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { BarChart3, LineChart as LineIcon, AreaChart as AreaIcon } from 'lucide-react';
+import type { SqlResultRow } from '../types/chat';
 
 interface DataVisualizationProps {
-  data: Record<string, any>[];
+  data: SqlResultRow[];
 }
 
 interface CustomTooltipProps {
@@ -51,7 +52,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, x
  * 
  * @param props - Component properties containing results dataset
  */
-export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) => {
+export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({ data }) => {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
   const [xAxisKey, setXAxisKey] = useState('');
   const [yAxisKey, setYAxisKey] = useState('');
@@ -264,4 +265,4 @@ export const DataVisualization: React.FC<DataVisualizationProps> = ({ data }) =>
       </div>
     </div>
   );
-};
+});

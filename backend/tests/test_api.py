@@ -32,7 +32,7 @@ def test_api_get_schema_success():
     assert "personne" in data["schema_context"].lower()
 
 
-@patch("app.main.run_agent")
+@patch("app.routers.chat.run_agent")
 def test_api_chat_success(mock_run_agent):
     """
     Vérifie que l'endpoint de chat retourne la bonne structure de réponse validée par Pydantic.
