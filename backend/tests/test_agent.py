@@ -8,8 +8,8 @@ from app.services.agent import (
     run_agent,
     AgentState
 )
-from app.services.agent.graph import (
-    should_continue_react,
+from app.services.agent.routing import should_continue_react
+from app.services.agent.nodes import (
     node_execute_tools,
     node_clean_and_finalize
 )
@@ -186,7 +186,7 @@ def test_get_last_validated_query():
     Vérifie que get_last_validated_query extrait correctement la dernière requête SQL validée.
     """
     from langchain_core.messages import AIMessage, ToolMessage
-    from app.services.agent.graph import get_last_validated_query
+    from app.services.agent.nodes import get_last_validated_query
     
     messages = [
         AIMessage(

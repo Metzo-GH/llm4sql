@@ -1,9 +1,84 @@
 import React from 'react';
-import type { Message } from '../../types/chat';
+import type { Message, ToolCall } from '../../types/chat';
+import { getEffectiveContextLimit } from '../../utils/context';
 
 interface PerformanceMetricsProps {
   msg: Message;
 }
+
+interface ContextUsageIndicatorProps {
+  promptTokens: number;
+  contextSize?: number;
+}
+
+/**
+ * Composant de visualisation de l'utilisation du contexte du modèle.
+ * Calcule le pourcentage consommé par rapport à la limite effective et affiche une barre de progression.
+ * 
+ * @param props - Propriétés contenant le nombre de tokens de prompt et la taille de contexte configurée.
+ */
+const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({ promptTokens, contextSize }) => {
+  const limit = getEffectiveContextLimit(contextSize);
+  const percent = Math.min(100, Math.round((promptTokens / limit) * 100));
+  
+  return (
+    <div className="message-context-row mt-1">
+      <div className="message-context-meta text-[10px]">
+        <span>Utilisation Contexte : {promptTokens} / {limit} t</span>
+        <span className={percent > 85 ? 'message-context-pct-alert' : 'message-context-pct-normal'}>
+          {percent}%
+        </span>
+      </div>
+      <div className="message-context-progress h-1.5">
+        <div
+          className="message-context-fill"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+interface ToolUsageInfoProps {
+  node: string;
+  toolCall?: ToolCall;
+  success?: boolean;
+  error?: string;
+}
+
+/**
+ * Affiche les détails de l'appel d'un outil avec son nom, ses arguments formatés
+ * et le statut de son exécution.
+ * 
+ * @param props - Propriétés contenant le nom du nœud d'outil, les arguments du tool call et son statut.
+ */
+const ToolUsageInfo: React.FC<ToolUsageInfoProps> = ({ node, toolCall, success, error }) => {
+  const toolName = node.replace('tool_', '');
+  let toolArgs = '';
+  if (toolName === 'mcp_search_value') {
+    toolArgs = `terme = "${toolCall?.args?.term || ''}"`;
+  } else if (toolName === 'mcp_get_schema') {
+    toolArgs = `table_name = "${toolCall?.args?.table_name || ''}"`;
+  } else if (toolName === 'mcp_get_sample_data') {
+    toolArgs = `table_name = "${toolCall?.args?.table_name || ''}"`;
+  } else if (toolName === 'mcp_dry_run_query') {
+    toolArgs = `sql = "${toolCall?.args?.sql?.substring(0, 40) || ''}..."`;
+  } else {
+    toolArgs = JSON.stringify(toolCall?.args || {});
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="font-mono text-[10px] text-muted">{toolName}({toolArgs})</div>
+      <div className="text-xs">
+        Statut :{' '}
+        <span className={success ? 'text-accent-emerald font-semibold' : 'text-accent-ruby font-semibold'}>
+          {success ? 'Réussi' : `Échec : ${error}`}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Visualizes LLM execution speeds, tokens, context utilization ratios,
@@ -58,10 +133,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = React.memo(
                     {isLlm && `🧠 Réflexion (Itération #${step.iteration || (idx + 1)}) (${step.model || 'LLM'})`}
                     {isCache && `⚡ Cache Sémantique`}
                     {isSelectTables && `🎴 Sélection des Tables`}
-                    {isTool && (() => {
-                      const toolName = step.node.replace('tool_', '');
-                      return `🛠️ Outil : ${toolName}`;
-                    })()}
+                    {isTool && `🛠️ Outil : ${step.node.replace('tool_', '')}`}
                     {isExec && `🗄️ Exécution Physique BDD`}
                     {isLimit && `🚨 Limite de Sécurité`}
                   </span>
@@ -88,26 +160,12 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = React.memo(
                         </div>
                       </div>
                       
-                      {step.prompt_tokens ? (() => {
-                        const limit = step.context_size && step.context_size > 0 ? step.context_size : 2048;
-                        const percent = Math.min(100, Math.round((step.prompt_tokens / limit) * 100));
-                        return (
-                          <div className="message-context-row mt-1">
-                            <div className="message-context-meta text-[10px]">
-                              <span>Utilisation Contexte : {step.prompt_tokens} / {limit} t</span>
-                              <span className={percent > 85 ? 'message-context-pct-alert' : 'message-context-pct-normal'}>
-                                {percent}%
-                              </span>
-                            </div>
-                            <div className="message-context-progress h-1.5">
-                              <div
-                                className="message-context-fill"
-                                style={{ width: `${percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })() : null}
+                      {step.prompt_tokens ? (
+                        <ContextUsageIndicator
+                          promptTokens={step.prompt_tokens}
+                          contextSize={step.context_size}
+                        />
+                      ) : null}
                     </div>
                   )}
 
@@ -126,33 +184,14 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = React.memo(
                     </div>
                   )}
 
-                  {isTool && (() => {
-                    const toolName = step.node.replace('tool_', '');
-                    let toolArgs = '';
-                    if (toolName === 'mcp_search_value') {
-                      toolArgs = `terme = "${step.tool_call?.args?.term || ''}"`;
-                    } else if (toolName === 'mcp_get_schema') {
-                      toolArgs = `table_name = "${step.tool_call?.args?.table_name || ''}"`;
-                    } else if (toolName === 'mcp_get_sample_data') {
-                      toolArgs = `table_name = "${step.tool_call?.args?.table_name || ''}"`;
-                    } else if (toolName === 'mcp_dry_run_query') {
-                      toolArgs = `sql = "${step.tool_call?.args?.sql?.substring(0, 40) || ''}..."`;
-                    } else {
-                      toolArgs = JSON.stringify(step.tool_call?.args || {});
-                    }
-
-                    return (
-                      <div className="flex flex-col gap-1">
-                        <div className="font-mono text-[10px] text-muted">{toolName}({toolArgs})</div>
-                        <div className="text-xs">
-                          Statut :{' '}
-                          <span className={step.success ? 'text-accent-emerald font-semibold' : 'text-accent-ruby font-semibold'}>
-                            {step.success ? 'Réussi' : `Échec : ${step.error}`}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  {isTool && (
+                    <ToolUsageInfo
+                      node={step.node}
+                      toolCall={step.tool_call}
+                      success={step.success}
+                      error={step.error}
+                    />
+                  )}
 
                   {isExec && (
                     <div className="flex flex-col gap-1">

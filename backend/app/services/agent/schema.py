@@ -2,9 +2,13 @@ import json
 from typing import Optional, List
 from app.database.pool import get_db_conn
 from app.mcp.mcp_server import get_schema
+from app.database.queries import GET_ALL_FOREIGN_KEYS_QUERY
+
+import threading
 
 # Cache du schéma en mémoire
 _SCHEMA_CACHE: Optional[str] = None
+_schema_lock = threading.Lock()
 
 
 def invalidate_schema_cache() -> None:
@@ -12,7 +16,8 @@ def invalidate_schema_cache() -> None:
     Invalide le cache du schéma de base de données pour forcer sa reconstruction.
     """
     global _SCHEMA_CACHE
-    _SCHEMA_CACHE = None
+    with _schema_lock:
+        _SCHEMA_CACHE = None
 
 
 def get_database_schema_context() -> str:
@@ -25,8 +30,9 @@ def get_database_schema_context() -> str:
         str: Description structurée du schéma et des relations de la base de données.
     """
     global _SCHEMA_CACHE
-    if _SCHEMA_CACHE is not None:
-        return _SCHEMA_CACHE
+    with _schema_lock:
+        if _SCHEMA_CACHE is not None:
+            return _SCHEMA_CACHE
 
     query = """
         SELECT 
@@ -42,24 +48,7 @@ def get_database_schema_context() -> str:
             table_name, 
             ordinal_position;
     """
-    fk_query = """
-        SELECT
-            kcu.table_name AS foreign_table,
-            kcu.column_name AS foreign_column,
-            ccu.table_name AS primary_table,
-            ccu.column_name AS primary_column
-        FROM
-            information_schema.table_constraints AS tc
-            JOIN information_schema.key_column_usage AS kcu
-              ON tc.constraint_name = kcu.constraint_name
-              AND tc.table_schema = kcu.table_schema
-            JOIN information_schema.constraint_column_usage AS ccu
-              ON ccu.constraint_name = tc.constraint_name
-              AND ccu.table_schema = tc.table_schema
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND tc.table_schema IN ('user_sandbox', 'public')
-        ORDER BY foreign_table, foreign_column;
-    """
+
     try:
         with get_db_conn(readonly=True) as conn:
             with conn.cursor() as cur:
@@ -82,7 +71,7 @@ def get_database_schema_context() -> str:
                     schema_blocks.append(f"Table '{t_name}' :\n{columns_text}")
                 
                 # 2. Charger les relations (clés étrangères)
-                cur.execute(fk_query)
+                cur.execute(GET_ALL_FOREIGN_KEYS_QUERY)
                 fk_rows = cur.fetchall()
                 
                 relations_block = []
@@ -93,11 +82,12 @@ def get_database_schema_context() -> str:
                         relations_block.append(f"  - Table '{f_table}' colonne '{f_col}' référence '{p_table}({p_col})'")
                 
                 # Assembler le tout
-                final_context = "\n\n".join(schema_blocks)
+                schema_str = "\n\n".join(schema_blocks)
                 if relations_block:
-                    final_context += "\n\n" + "\n".join(relations_block)
-                    
-                _SCHEMA_CACHE = final_context
+                    schema_str += "\n\n" + "\n".join(relations_block)
+                
+                with _schema_lock:
+                    _SCHEMA_CACHE = schema_str
                 return _SCHEMA_CACHE
     except Exception as e:
         return f"Erreur lors de la récupération du schéma : {str(e)}"

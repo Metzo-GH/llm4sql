@@ -1,9 +1,12 @@
 import threading
 import httpx
+import logging
 from collections import OrderedDict
 from typing import Optional
 from langchain_ollama import ChatOllama
 from app.core.config import settings
+
+logger = logging.getLogger("llm4sql.agent.llm_provider")
 
 _llm_lock = threading.Lock()
 _llm_cache = OrderedDict()
@@ -36,7 +39,7 @@ def get_model_context_length(model_name: str, force_refresh: bool = False) -> in
                             _model_context_lengths[model_name] = ctx_len
                             return ctx_len
     except Exception as e:
-        print(f"[Ollama API] Erreur /api/ps pour context_length: {e}")
+        logger.warning(f"[Ollama API] Erreur /api/ps pour context_length: {e}")
 
     # 2. Repli sur /api/show
     try:
@@ -54,7 +57,7 @@ def get_model_context_length(model_name: str, force_refresh: bool = False) -> in
                         _model_context_lengths[model_name] = val
                         return val
     except Exception as e:
-        print(f"[Ollama API] Impossible de récupérer le context_length via show de {model_name}: {e}")
+        logger.warning(f"[Ollama API] Impossible de récupérer le context_length via show de {model_name}: {e}")
         
     return 2048
 

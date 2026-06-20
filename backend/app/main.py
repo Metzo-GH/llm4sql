@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,16 +6,22 @@ from app.core.config import settings
 from app.database.pool import init_db_pool, close_db_pool
 from app.routers import chat, schema, sandbox, monitoring
 
+from app.core.limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+logger = logging.getLogger("llm4sql.api")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Gestionnaire de cycle de vie de l'application FastAPI.
     Initialise le pool de connexions PostgreSQL au démarrage et le ferme proprement à l'extinction.
     """
-    print("[FastAPI Startup] Initialisation du pool de connexion PostgreSQL...")
+    logger.info("[FastAPI Startup] Initialisation du pool de connexion PostgreSQL...")
     init_db_pool()
     yield
-    print("[FastAPI Shutdown] Fermeture du pool de connexion PostgreSQL...")
+    logger.info("[FastAPI Shutdown] Fermeture du pool de connexion PostgreSQL...")
     close_db_pool()
 
 
@@ -24,6 +31,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configuration du middleware CORS
 app.add_middleware(

@@ -12,8 +12,8 @@ class SandboxInitRequest(BaseModel):
     """
     Modèle pour l'initialisation du bac à sable (Sandbox).
     """
-    schema_sql: str = Field(..., description="Le code SQL CREATE TABLE de l'utilisateur.")
-    insert_sql: Optional[str] = Field(None, description="Le code SQL INSERT INTO optionnel.")
+    schema_sql: str = Field(..., max_length=100000, description="Le code SQL CREATE TABLE de l'utilisateur.")
+    insert_sql: Optional[str] = Field(None, max_length=500000, description="Le code SQL INSERT INTO optionnel.")
 
 
 class SandboxInitResponse(BaseModel):
@@ -25,7 +25,7 @@ class SandboxInitResponse(BaseModel):
 
 
 class VisualizeRequest(BaseModel):
-    schema_sql: str = Field(..., description="Le code SQL CREATE TABLE.")
+    schema_sql: str = Field(..., max_length=100000, description="Le code SQL CREATE TABLE.")
 
 
 class VisualizeResponse(BaseModel):

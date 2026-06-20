@@ -1,7 +1,7 @@
 import re
 import sqlglot
 from sqlglot import exp
-from typing import Tuple, Set
+from typing import Tuple, Set, Optional
 
 
 # =====================================================================
@@ -32,6 +32,20 @@ FORBIDDEN_PG_FUNCTIONS: Set[str] = {
 
 ALLOWED_SANDBOX_DDL_TYPES: Set[str] = {"Create", "Insert"}
 """Types de nœuds AST autorisés dans le sandbox DDL/DML (en plus de SELECT)."""
+
+
+def _is_dangerous_function(node: exp.Expression) -> Tuple[bool, Optional[str]]:
+    """
+    Vérifie si un nœud AST correspond à une fonction PostgreSQL interdite.
+    
+    Returns:
+        Tuple[bool, Optional[str]]: (est_interdit, nom_de_la_fonction)
+    """
+    if isinstance(node, exp.Func):
+        func_name = node.name.lower() if isinstance(node, exp.Anonymous) else type(node).__name__.lower()
+        if func_name in FORBIDDEN_PG_FUNCTIONS:
+            return True, func_name
+    return False, None
 
 
 def validate_sql_query(sql: str) -> Tuple[bool, str]:
@@ -74,10 +88,9 @@ def validate_sql_query(sql: str) -> Tuple[bool, str]:
         if node_class in FORBIDDEN_SQL_TYPES:
             return False, f"Sécurité : L'opération '{node_class}' est interdite sur cette base de données en lecture seule."
             
-        if isinstance(node, exp.Func):
-            func_name = node.name.lower() if isinstance(node, exp.Anonymous) else type(node).__name__.lower()
-            if func_name in FORBIDDEN_PG_FUNCTIONS:
-                return False, f"Sécurité : L'appel à la fonction système '{func_name}' est interdit."
+        is_danger, func_name = _is_dangerous_function(node)
+        if is_danger and func_name:
+            return False, f"Sécurité : L'appel à la fonction système '{func_name}' est interdit."
         
     if not isinstance(statement, allowed_types):
         return False, f"Sécurité : L'instruction principale de type '{type(statement).__name__}' n'est pas autorisée. Seuls les SELECT sont permis."
@@ -148,9 +161,8 @@ def validate_sandbox_sql(sql: str) -> Tuple[bool, str]:
             return False, f"Sécurité : L'instruction de type '{stmt_type}' n'est pas autorisée. Seuls CREATE TABLE et INSERT INTO sont permis."
 
         for node in statement.walk():
-            if isinstance(node, exp.Func):
-                func_name = node.name.lower() if isinstance(node, exp.Anonymous) else type(node).__name__.lower()
-                if func_name in FORBIDDEN_PG_FUNCTIONS:
-                    return False, f"Sécurité : L'appel à la fonction système '{func_name}' est interdit dans le bac à sable."
+            is_danger, func_name = _is_dangerous_function(node)
+            if is_danger and func_name:
+                return False, f"Sécurité : L'appel à la fonction système '{func_name}' est interdit dans le bac à sable."
 
     return True, "Script sandbox validé avec succès."

@@ -1,4 +1,3 @@
-import psycopg2
 from psycopg2.extras import RealDictCursor
 from mcp.server.fastmcp import FastMCP
 import json
@@ -8,6 +7,18 @@ from decimal import Decimal
 from app.core.config import settings
 from app.core.security import validate_sql_query
 from app.database.pool import get_db_conn
+from app.database.queries import GET_TABLE_FOREIGN_KEYS_QUERY
+
+def _serialize_row(row: dict) -> dict:
+    """
+    Formate les valeurs d'une ligne pour être sérialisables en JSON (dates, Decimals).
+    """
+    for key, val in row.items():
+        if hasattr(val, 'isoformat'):
+            row[key] = val.isoformat()
+        elif isinstance(val, Decimal):
+            row[key] = float(val)
+    return row
 
 # Initialiser l'instance FastMCP pour notre serveur Model Context Protocol
 mcp = FastMCP("LLM4SQL-Secure-Postgres")
@@ -79,23 +90,7 @@ def get_schema(table_name: str) -> str:
           AND table_name = %s
         ORDER BY ordinal_position;
     """
-    fk_query = """
-        SELECT
-            kcu.column_name AS local_column,
-            ccu.table_name AS foreign_table,
-            ccu.column_name AS foreign_column
-        FROM
-            information_schema.table_constraints AS tc
-            JOIN information_schema.key_column_usage AS kcu
-              ON tc.constraint_name = kcu.constraint_name
-              AND tc.table_schema = kcu.table_schema
-            JOIN information_schema.constraint_column_usage AS ccu
-              ON ccu.constraint_name = tc.constraint_name
-              AND ccu.table_schema = tc.table_schema
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND tc.table_name = %s
-          AND tc.table_schema IN ('user_sandbox', 'public');
-    """
+
     try:
         columns = _execute_readonly_db_query(query, (table_name,))
         if not columns:
@@ -109,7 +104,7 @@ def get_schema(table_name: str) -> str:
                 "nullable": col["is_nullable"] == "YES"
             })
             
-        relations = _execute_readonly_db_query(fk_query, (table_name,))
+        relations = _execute_readonly_db_query(GET_TABLE_FOREIGN_KEYS_QUERY, (table_name,))
         relations_info = []
         for rel in relations:
             relations_info.append({
@@ -206,11 +201,7 @@ def get_sample_data(table_name: str, limit: int = 3) -> str:
                 cur.execute(query, (limit,))
                 results = cur.fetchall()
                 for row in results:
-                    for key, val in row.items():
-                        if hasattr(val, 'isoformat'):
-                            row[key] = val.isoformat()
-                        elif isinstance(val, Decimal):
-                            row[key] = float(val)
+                    _serialize_row(row)
                 return json.dumps({"table": table_name, "sample_data": results}, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -270,11 +261,7 @@ def execute_query(sql: str) -> str:
                 
                 # Traiter les valeurs temporelles et décimales pour qu'elles soient sérialisables en JSON
                 for row in results:
-                    for key, val in row.items():
-                        if hasattr(val, 'isoformat'):
-                            row[key] = val.isoformat()
-                        elif isinstance(val, Decimal):
-                            row[key] = float(val)
+                    _serialize_row(row)
                             
                 return json.dumps({
                     "success": True,

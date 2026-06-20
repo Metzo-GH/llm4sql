@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Bot, User, AlertTriangle, RefreshCw, Pencil } from 'lucide-react';
-import type { Message } from '../../types/chat';
+import type { Message, ParsedStep } from '../../types/chat';
 import { parseThinking } from '../../utils/thinkingParser';
 import { parseLiveLogsToSteps } from '../../utils/logParser';
 import { SqlCodeBlock } from './SqlCodeBlock';
@@ -17,6 +17,145 @@ interface ChatMessageProps {
   onEditMessage?: (messageId: string, newContent: string) => void;
 }
 
+interface UserMessageContentProps {
+  msg: Message;
+  isLoading: boolean;
+  onEditMessage?: (messageId: string, newContent: string) => void;
+}
+
+/**
+ * Renders the content of a user message.
+ * Provides edit functionality directly inline without polluting parent state.
+ * 
+ * @param props - Component properties including the message object and the edit handler.
+ */
+const UserMessageContent: React.FC<UserMessageContentProps> = ({ msg, isLoading, onEditMessage }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(msg.content);
+
+  useEffect(() => {
+    setEditText(msg.content);
+  }, [msg.content]);
+
+  if (isEditing) {
+    return (
+      <div className="message-edit-container">
+        <textarea
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          className="input-field message-edit-textarea"
+        />
+        <div className="message-edit-actions">
+          <button
+            onClick={() => {
+              if (onEditMessage && editText.trim()) {
+                onEditMessage(msg.id, editText.trim());
+              }
+              setIsEditing(false);
+            }}
+            className="btn-primary message-edit-save-btn"
+          >
+            Enregistrer
+          </button>
+          <button
+            onClick={() => {
+              setIsEditing(false);
+              setEditText(msg.content);
+            }}
+            className="btn-secondary message-edit-cancel-btn"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="message-text-content-wrapper">
+      <div className="message-text-content">{msg.content}</div>
+      {!isLoading && onEditMessage && (
+        <button
+          onClick={() => setIsEditing(true)}
+          className="message-edit-trigger-btn"
+          title="Modifier le prompt"
+          aria-label="Modifier le prompt"
+        >
+          <Pencil size={11} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+interface AssistantMessageContentProps {
+  msg: Message;
+  isLoading: boolean;
+  parsedSteps: ParsedStep[];
+}
+
+/**
+ * Renders the content of an assistant (bot/agent) message.
+ * Manages thinking state visibility and parses reasoning tags.
+ * 
+ * @param props - Component properties including the message object, loading state, and steps trace.
+ */
+const AssistantMessageContent: React.FC<AssistantMessageContentProps> = ({
+  msg,
+  isLoading,
+  parsedSteps,
+}) => {
+  const [isThinkingOpen, setIsThinkingOpen] = useState(true);
+
+  // Close thinking block by default when loading completes
+  useEffect(() => {
+    if (!isLoading) {
+      setIsThinkingOpen(false);
+    }
+  }, [isLoading]);
+
+  const thinkingText = msg.thinking || parseThinking(msg.content).thinking;
+  const rawAnswer = msg.thinking
+    ? msg.content.includes('<think>')
+      ? parseThinking(msg.content).answer
+      : msg.content
+    : parseThinking(msg.content).answer;
+
+  // Clean display to avoid duplicate code block visuals (rendered in standard pre elements below)
+  const cleanedAnswer = rawAnswer.replace(/```sql[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').trim();
+
+  return (
+    <>
+      {/* Agent execution checklist (streaming) */}
+      {isLoading && parsedSteps.length > 0 && (
+        <StepsTracker steps={parsedSteps} />
+      )}
+
+      {/* Model Thinking accordion */}
+      {thinkingText && (
+        <ThinkingAccordion
+          thinkingText={thinkingText}
+          isThinkingOpen={isThinkingOpen}
+          onToggle={setIsThinkingOpen}
+          isLoading={isLoading}
+          modelName={msg.steps?.[0]?.model}
+        />
+      )}
+
+      {cleanedAnswer ? (
+        <div className="message-text-content">{cleanedAnswer}</div>
+      ) : !thinkingText && msg.content ? (
+        <div className="message-text-content">{msg.content}</div>
+      ) : isLoading && !msg.sqlQuery && !thinkingText ? (
+        <div className="message-loading-placeholder italic">
+          <div className="message-loading-dot animate-ping"></div>
+          <span>Calcul de la réponse...</span>
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 /**
  * Individual Chat Message component rendering bubble, avatar, LLM thinking accordion,
  * steps progress list, cache hit indicators, and performance telemetry reports.
@@ -31,22 +170,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
   onEditMessage,
 }) => {
   const isUser = msg.sender === 'user';
-  const [isThinkingOpen, setIsThinkingOpen] = useState(true);
-  
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(msg.content);
-
-  // Sync editText if msg.content changes
-  useEffect(() => {
-    setEditText(msg.content);
-  }, [msg.content]);
-
-  // Close thinking block by default when loading completes
-  useEffect(() => {
-    if (!isLoading) {
-      setIsThinkingOpen(false);
-    }
-  }, [isLoading]);
 
   const parsedSteps = useMemo(() => {
     return !isUser && isLoading ? parseLiveLogsToSteps(liveLogs) : [];
@@ -81,99 +204,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
         )}
 
         {/* Text content with reasoning support (<think> tag parsing) */}
-        {(() => {
-          if (isUser) {
-            if (isEditing) {
-              return (
-                <div className="message-edit-container">
-                  <textarea
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="input-field message-edit-textarea"
-                  />
-                  <div className="message-edit-actions">
-                    <button
-                      onClick={() => {
-                        if (onEditMessage && editText.trim()) {
-                          onEditMessage(msg.id, editText.trim());
-                        }
-                        setIsEditing(false);
-                      }}
-                      className="btn-primary message-edit-save-btn"
-                    >
-                      Enregistrer
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditText(msg.content);
-                      }}
-                      className="btn-secondary message-edit-cancel-btn"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <div className="message-text-content-wrapper">
-                <div className="message-text-content">{msg.content}</div>
-                {!isLoading && onEditMessage && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="message-edit-trigger-btn"
-                    title="Modifier le prompt"
-                    aria-label="Modifier le prompt"
-                  >
-                    <Pencil size={11} />
-                  </button>
-                )}
-              </div>
-            );
-          }
-
-          const thinkingText = msg.thinking || parseThinking(msg.content).thinking;
-          const rawAnswer = msg.thinking
-            ? msg.content.includes('<think>')
-              ? parseThinking(msg.content).answer
-              : msg.content
-            : parseThinking(msg.content).answer;
-
-          // Clean display to avoid duplicate code block visuals (rendered in standard pre elements below)
-          const cleanedAnswer = rawAnswer.replace(/```sql[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').trim();
-
-          return (
-            <>
-              {/* Agent execution checklist (streaming) */}
-              {isLoading && parsedSteps.length > 0 && (
-                <StepsTracker steps={parsedSteps} />
-              )}
-
-              {/* Model Thinking accordion */}
-              {thinkingText && (
-                <ThinkingAccordion
-                  thinkingText={thinkingText}
-                  isThinkingOpen={isThinkingOpen}
-                  onToggle={setIsThinkingOpen}
-                  isLoading={isLoading}
-                  modelName={msg.steps?.[0]?.model}
-                />
-              )}
-
-              {cleanedAnswer ? (
-                <div className="message-text-content">{cleanedAnswer}</div>
-              ) : !thinkingText && msg.content ? (
-                <div className="message-text-content">{msg.content}</div>
-              ) : isLoading && !msg.sqlQuery && !thinkingText ? (
-                <div className="message-loading-placeholder italic">
-                  <div className="message-loading-dot animate-ping"></div>
-                  <span>Calcul de la réponse...</span>
-                </div>
-              ) : null}
-            </>
-          );
-        })()}
+        {isUser ? (
+          <UserMessageContent
+            msg={msg}
+            isLoading={isLoading}
+            onEditMessage={onEditMessage}
+          />
+        ) : (
+          <AssistantMessageContent
+            msg={msg}
+            isLoading={isLoading}
+            parsedSteps={parsedSteps}
+          />
+        )}
 
         {/* Generated SQL query block */}
         {msg.sqlQuery && (

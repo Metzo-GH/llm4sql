@@ -1,6 +1,10 @@
+import asyncio
+import logging
 from fastapi import APIRouter, HTTPException
 from app.schemas import SchemaResponse
 from app.services.agent import get_database_schema_context
+
+logger = logging.getLogger("llm4sql.schema")
 
 router = APIRouter(prefix="/api/schema", tags=["Schema"])
 
@@ -16,10 +20,10 @@ async def get_schema() -> SchemaResponse:
         SchemaResponse: Le schéma de base de données formaté.
     """
     try:
-        schema = get_database_schema_context()
+        schema = await asyncio.to_thread(get_database_schema_context)
         return SchemaResponse(schema_context=schema)
     except Exception as e:
-        print(f"[Schema Error] {str(e)}")
+        logger.error(f"[Schema Error] {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Une erreur interne est survenue lors de la récupération du schéma."

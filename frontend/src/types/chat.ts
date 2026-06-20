@@ -1,3 +1,9 @@
+export interface ToolCall {
+  name: string;
+  args?: Record<string, any>;
+  id?: string;
+}
+
 export interface AgentStep {
   node: string;
   message?: string;
@@ -12,7 +18,7 @@ export interface AgentStep {
   row_count?: number;
   error?: string;
   model?: string;
-  tool_call?: any;
+  tool_call?: ToolCall;
   tool_result?: string;
   iteration_count?: number;
 }

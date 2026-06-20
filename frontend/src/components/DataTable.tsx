@@ -104,11 +104,13 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
             }}
             placeholder="Filtrer les résultats locaux..."
             className="input-field data-table-search-input"
+            aria-label="Filtrer les résultats locaux"
           />
         </div>
         <button
           onClick={exportToCSV}
           className="btn-primary data-table-export-btn"
+          aria-label="Exporter les données au format CSV"
         >
           <Download size={15} />
           <span>Exporter (CSV)</span>
@@ -170,6 +172,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
               className="btn-secondary data-table-pagination-btn"
+              aria-label="Page précédente"
             >
               <ChevronLeft size={14} />
             </button>
@@ -180,6 +183,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               className="btn-secondary data-table-pagination-btn"
+              aria-label="Page suivante"
             >
               <ChevronRight size={14} />
             </button>

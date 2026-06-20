@@ -69,7 +69,7 @@ export function useChat() {
         } else {
           setApiOnline(false);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         setApiOnline(false);
       }
 
@@ -85,7 +85,7 @@ export function useChat() {
         } else {
           setLoadedModelStatus(null);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         setLoadedModelStatus(null);
       }
     };
@@ -99,7 +99,7 @@ export function useChat() {
             setInstalledModels(data.models);
           }
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Erreur lors de la récupération des modèles Ollama:", err);
       }
     };
@@ -203,7 +203,10 @@ export function useChat() {
             const event = JSON.parse(rawJson);
 
             if (event.type === 'log') {
-              setLiveLogs((prev) => [...prev, event.data]);
+              setLiveLogs((prev) => {
+                const next = [...prev, event.data];
+                return next.length > 200 ? next.slice(-200) : next;
+              });
             } else if (event.type === 'context_usage') {
               setContextUsage({
                 promptTokens: event.data.prompt_tokens,
@@ -292,13 +295,13 @@ export function useChat() {
             } else if (event.type === 'error') {
               throw new Error(event.data);
             }
-          } catch (err) {
+          } catch (err: unknown) {
             console.error('Error parsing SSE event:', err);
           }
         }
       }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
         // Force the assistant's bubble to indicate cancellation
         setMessages((prev) =>
           prev.map((msg) =>
@@ -313,7 +316,7 @@ export function useChat() {
         return;
       }
       console.error(error);
-      const errorMsg = error?.message || "Impossible de joindre l'API locale LLM4SQL. Assurez-vous que le serveur FastAPI tourne sur le port 8000.";
+      const errorMsg = (error instanceof Error ? error.message : null) || "Impossible de joindre l'API locale LLM4SQL. Assurez-vous que le serveur FastAPI tourne sur le port 8000.";
       
       setMessages((prev) =>
         prev.map((msg) =>

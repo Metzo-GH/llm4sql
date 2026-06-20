@@ -6,4 +6,5 @@ from app.services.agent.schema import (
     invalidate_schema_cache
 )
 from app.services.agent.sql_utils import extract_sql_query, extract_tables_from_sql, clean_sql_query
-from app.services.agent.graph import run_agent, create_agent_graph, agent_app, should_continue
+from app.services.agent.graph import run_agent, create_agent_graph, agent_app
+from app.services.agent.routing import should_continue

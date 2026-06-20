@@ -1,9 +1,11 @@
 import asyncio
 import re
-from fastapi import APIRouter, HTTPException
-from langchain_core.messages import SystemMessage
-from app.services.agent import get_llm
+import logging
+from fastapi import APIRouter, HTTPException, Request
 from app.database.pool import init_user_sandbox
+from app.core.limiter import limiter
+
+logger = logging.getLogger("llm4sql.sandbox")
 from app.schemas import (
     SandboxInitRequest,
     SandboxInitResponse,
@@ -15,7 +17,8 @@ router = APIRouter(prefix="/api/sandbox", tags=["Sandbox"])
 
 
 @router.post("/init", response_model=SandboxInitResponse)
-async def init_sandbox(request: SandboxInitRequest) -> SandboxInitResponse:
+@limiter.limit("20/minute")
+async def init_sandbox(request: Request, sandbox_request: SandboxInitRequest) -> SandboxInitResponse:
     """
     Initialise un environnement isolé (sandbox) avec le schéma et les données fournis.
     """
@@ -23,8 +26,8 @@ async def init_sandbox(request: SandboxInitRequest) -> SandboxInitResponse:
         # Exécuter l'initialisation synchrone de la sandbox dans un thread pool pour éviter de bloquer l'event-loop
         await asyncio.to_thread(
             init_user_sandbox,
-            schema_sql=request.schema_sql,
-            insert_sql=request.insert_sql
+            schema_sql=sandbox_request.schema_sql,
+            insert_sql=sandbox_request.insert_sql
         )
         
         # Mettre à jour le cache mémoire du schéma pour LangGraph
@@ -38,7 +41,7 @@ async def init_sandbox(request: SandboxInitRequest) -> SandboxInitResponse:
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"[Sandbox Init Error] {str(e)}")
+        logger.error(f"[Sandbox Init Error] {str(e)}")
         raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de l'initialisation de la sandbox.")
 
 
@@ -219,13 +222,14 @@ def sql_ddl_to_mermaid(ddl_text: str) -> str:
 
 
 @router.post("/visualize", response_model=VisualizeResponse)
-async def visualize_schema(request: VisualizeRequest) -> VisualizeResponse:
+@limiter.limit("20/minute")
+async def visualize_schema(request: Request, visualize_request: VisualizeRequest) -> VisualizeResponse:
     """
     Convertit un schéma SQL DDL brut en diagramme Mermaid.js de manière déterministe.
     """
     try:
-        code = sql_ddl_to_mermaid(request.schema_sql)
+        code = sql_ddl_to_mermaid(visualize_request.schema_sql)
         return VisualizeResponse(mermaid_code=code)
     except Exception as e:
-        print(f"[Visualize Error] {str(e)}")
+        logger.error(f"[Visualize Error] {str(e)}")
         raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de la génération du diagramme ER.")

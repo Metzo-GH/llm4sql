@@ -7,18 +7,20 @@ class ChatRequest(BaseModel):
     """
     question: str = Field(
         ..., 
+        max_length=1000,
         description="La question en français formulée par l'utilisateur.",
         examples=["Donne-moi la liste des ouvrages dessinés par Christophe Blain."]
     )
     custom_schema: Optional[str] = Field(
         None,
+        max_length=100000,
         description="Schéma de base de données fourni par l'utilisateur (optionnel)."
     )
     simulate_only: bool = Field(
         False,
         description="Si vrai, l'agent générera le SQL mais ne l'exécutera pas."
     )
-    model: Optional[str] = Field(None, description="Modèle Ollama à utiliser (optionnel).")
+    model: Optional[str] = Field(None, max_length=100, description="Modèle Ollama à utiliser (optionnel).")
     temperature: Optional[float] = Field(None, description="Température de génération (optionnelle).")
     context_size: Optional[int] = Field(None, description="Taille du contexte Ollama (optionnelle).")
 

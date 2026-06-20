@@ -1,7 +1,10 @@
 import httpx
+import logging
 from typing import Dict, Any
 from fastapi import APIRouter
 from app.core.config import settings
+
+logger = logging.getLogger("llm4sql.monitoring")
 
 router = APIRouter(tags=["Monitoring & Ollama"])
 
@@ -34,7 +37,7 @@ async def get_ollama_models() -> Dict[str, Any]:
                 models = [m["name"] for m in data.get("models", [])]
                 return {"models": models, "online": True}
     except Exception as e:
-        print(f"[Ollama API Error] Impossible de joindre Ollama: {str(e)}")
+        logger.error(f"[Ollama API Error] Impossible de joindre Ollama: {str(e)}")
     
     # Fallback si Ollama est injoignable
     return {
@@ -84,5 +87,5 @@ async def get_ollama_status() -> Dict[str, Any]:
                     })
                 return {"online": True, "models": loaded_models}
     except Exception as e:
-        print(f"[Ollama Status Error] Impossible d'interroger le statut Ollama: {str(e)}")
+        logger.error(f"[Ollama Status Error] Impossible d'interroger le statut Ollama: {str(e)}")
     return {"online": False, "models": []}

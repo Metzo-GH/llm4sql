@@ -19,10 +19,16 @@ interface DataVisualizationProps {
   data: SqlResultRow[];
 }
 
+interface TooltipPayloadItem {
+  value: string | number;
+  name: string;
+  payload: Record<string, any>;
+}
+
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: any[];
-  label?: any;
+  payload?: TooltipPayloadItem[];
+  label?: string | number;
   xAxisKey: string;
   yAxisKey: string;
 }
@@ -204,6 +210,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             onClick={() => setChartType('bar')}
             className={`p-2 rounded-md transition-all ${chartType === 'bar' ? 'btn-primary' : 'btn-secondary'}`}
             title="Histogramme"
+            aria-label="Histogramme"
           >
             <BarChart3 size={15} />
           </button>
@@ -211,6 +218,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             onClick={() => setChartType('line')}
             className={`p-2 rounded-md transition-all ${chartType === 'line' ? 'btn-primary' : 'btn-secondary'}`}
             title="Courbe"
+            aria-label="Courbe"
           >
             <LineIcon size={15} />
           </button>
@@ -218,6 +226,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             onClick={() => setChartType('area')}
             className={`p-2 rounded-md transition-all ${chartType === 'area' ? 'btn-primary' : 'btn-secondary'}`}
             title="Aire Remplie"
+            aria-label="Aire Remplie"
           >
             <AreaIcon size={15} />
           </button>
@@ -231,6 +240,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
               value={xAxisKey}
               onChange={(e) => setXAxisKey(e.target.value)}
               className="input-field data-vis-axis-select"
+              aria-label="Sélectionner la colonne pour l'axe X"
             >
               {textualCols.concat(numericCols).map((col) => (
                 <option key={col} value={col}>
@@ -246,6 +256,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
               value={yAxisKey}
               onChange={(e) => setYAxisKey(e.target.value)}
               className="input-field data-vis-axis-select"
+              aria-label="Sélectionner la colonne pour les valeurs de l'axe Y"
             >
               {numericCols.map((col) => (
                 <option key={col} value={col}>

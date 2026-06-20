@@ -1,53 +1,59 @@
 import asyncio
 import time
 import json
+import logging
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from app.schemas import ChatRequest, ChatResponse
+from app.core.limiter import limiter
+
+logger = logging.getLogger("llm4sql.chat")
 
 router = APIRouter(prefix="/api/chat", tags=["Chat & Agent"])
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
+@limiter.limit("20/minute")
+async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
     """
     Traduit une question en langage naturel en SQL, l'exécute de manière sécurisée,
     et applique une boucle de self-healing automatique en cas d'erreur.
     
     Args:
-        request (ChatRequest): La requête contenant la question de l'utilisateur.
+        request (Request): L'objet requête FastAPI.
+        chat_request (ChatRequest): La requête contenant la question de l'utilisateur.
         
     Returns:
         ChatResponse: L'état final de la génération, de l'exécution et des résultats.
     """
-    if not request.question.strip():
+    if not chat_request.question.strip():
         raise HTTPException(
             status_code=400,
             detail="La question fournie ne peut pas être vide."
         )
         
-    print("\n" + "="*60)
-    print(f"[API IN] REQUÊTE REÇUE : '{request.question}'")
-    print("="*60)
+    logger.info("="*60)
+    logger.info(f"[API IN] REQUÊTE REÇUE : '{chat_request.question}'")
+    logger.info("="*60)
     start_time = time.time()
         
     try:
         # Exécuter le graphe de l'agent synchrone dans un thread séparé de manière non-bloquante via asyncio.to_thread
         final_state = await asyncio.to_thread(
             run_agent,
-            question=request.question,
-            custom_schema=request.custom_schema,
-            simulate_only=request.simulate_only,
-            model=request.model,
-            temperature=request.temperature,
-            context_size=request.context_size
+            question=chat_request.question,
+            custom_schema=chat_request.custom_schema,
+            simulate_only=chat_request.simulate_only,
+            model=chat_request.model,
+            temperature=chat_request.temperature,
+            context_size=chat_request.context_size
         )
         
         total_time = time.time() - start_time
-        print("\n" + "="*60)
-        print(f"[API OUT] RÉPONSE PRÊTE en {total_time:.2f}s (Itérations: {final_state['iteration_count']})")
-        print("="*60 + "\n")
+        logger.info("="*60)
+        logger.info(f"[API OUT] RÉPONSE PRÊTE en {total_time:.2f}s (Itérations: {final_state['iteration_count']})")
+        logger.info("="*60)
         
         return ChatResponse(
             question=final_state["question"],
@@ -61,9 +67,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
     except Exception as e:
         total_time = time.time() - start_time
-        print("\n" + "="*60)
-        print(f"[API ERR] ERREUR INTERNE en {total_time:.2f}s : {str(e)}")
-        print("="*60 + "\n")
+        logger.error("="*60)
+        logger.error(f"[API ERR] ERREUR INTERNE en {total_time:.2f}s : {str(e)}")
+        logger.error("="*60)
         raise HTTPException(
             status_code=500,
             detail="Une erreur interne est survenue lors de l'exécution de l'agent."
@@ -71,20 +77,21 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatRequest):
+@limiter.limit("20/minute")
+async def chat_stream(request: Request, chat_request: ChatRequest):
     """
     Traduit une question en langage naturel en SQL sous forme de flux Server-Sent Events (SSE)
     permettant de suivre la réflexion et les étapes pas-à-pas en temps réel.
     """
-    if not request.question.strip():
+    if not chat_request.question.strip():
         raise HTTPException(
             status_code=400,
             detail="La question fournie ne peut pas être vide."
         )
 
-    print("\n" + "="*60)
-    print(f"[API IN] REQUÊTE STREAMING REÇUE : '{request.question}'")
-    print("="*60)
+    logger.info("="*60)
+    logger.info(f"[API IN] REQUÊTE STREAMING REÇUE : '{chat_request.question}'")
+    logger.info("="*60)
     
     async_queue = asyncio.Queue()
     loop = asyncio.get_running_loop()
@@ -98,15 +105,15 @@ async def chat_stream(request: ChatRequest):
         # Configurer le callback d'événement dans le ContextVar pour ce thread
         token = event_callback_var.set(event_callback)
         try:
-            event_callback({"type": "log", "data": f"[API IN] REQUÊTE REÇUE : '{request.question}'"})
+            event_callback({"type": "log", "data": f"[API IN] REQUÊTE REÇUE : '{chat_request.question}'"})
             
             final_state = run_agent(
-                question=request.question,
-                custom_schema=request.custom_schema,
-                simulate_only=request.simulate_only,
-                model=request.model,
-                temperature=request.temperature,
-                context_size=request.context_size
+                question=chat_request.question,
+                custom_schema=chat_request.custom_schema,
+                simulate_only=chat_request.simulate_only,
+                model=chat_request.model,
+                temperature=chat_request.temperature,
+                context_size=chat_request.context_size
             )
             
             # Envoyer le résultat final consolidé
@@ -124,7 +131,7 @@ async def chat_stream(request: ChatRequest):
                 }
             })
         except Exception as e:
-            print(f"[Chat Stream Error] {str(e)}")
+            logger.error(f"[Chat Stream Error] {str(e)}")
             event_callback({"type": "error", "data": "Une erreur interne est survenue lors de l'exécution de l'agent."})
         finally:
             event_callback_var.reset(token)
@@ -142,7 +149,7 @@ async def chat_stream(request: ChatRequest):
                     break
                 yield f"data: {json.dumps(event)}\n\n"
         except asyncio.CancelledError:
-            print("  [API OUT] Le flux de streaming a été annulé par l'utilisateur.")
+            logger.info("  [API OUT] Le flux de streaming a été annulé par l'utilisateur.")
         finally:
             await agent_task
 

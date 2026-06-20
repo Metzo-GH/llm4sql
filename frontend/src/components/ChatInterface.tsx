@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Bot, Terminal, Send, Square } from 'lucide-react';
 import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
 import { ChatMessage } from './chat/ChatMessage';
+import { getEffectiveContextLimit } from '../utils/context';
 
 interface ChatInterfaceProps {
   messages: Message[];
@@ -42,6 +43,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const terminalBodyRef = useRef<HTMLDivElement>(null);
   const [isTerminalOpen, setIsTerminalOpen] = React.useState(false);
 
+  const effectiveLimit = React.useMemo(() => {
+    if (!contextUsage) return 2048;
+    return getEffectiveContextLimit(contextUsage.contextSize, loadedModelStatus?.context_length);
+  }, [contextUsage, loadedModelStatus]);
+
+  const contextPct = React.useMemo(() => {
+    if (!contextUsage) return 0;
+    return Math.round((contextUsage.promptTokens / effectiveLimit) * 100);
+  }, [contextUsage, effectiveLimit]);
+
   // Faire défiler automatiquement vers le bas à chaque nouveau message
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -72,34 +83,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {/* Real-time Context Visualizer */}
           {contextUsage && (
             <div className="hidden sm:flex chat-context-usage">
-              {(() => {
-                const limit = contextUsage.contextSize && contextUsage.contextSize > 0 
-                  ? contextUsage.contextSize 
-                  : (loadedModelStatus && loadedModelStatus.context_length > 0 
-                      ? loadedModelStatus.context_length 
-                      : 2048);
-                const pct = Math.round((contextUsage.promptTokens / limit) * 100);
-                const isDefault = !contextUsage.contextSize || contextUsage.contextSize === 0;
-                return (
-                  <>
-                    <span className="chat-context-text">
-                      {contextUsage.promptTokens}/{limit} t {isDefault ? '(Défaut)' : ''}
-                    </span>
-                    <div 
-                      className="chat-context-bar"
-                      title={`Utilisation du contexte : ${pct}% ${isDefault ? '(Défaut Ollama)' : ''}`}
-                    >
-                      <div 
-                        className="chat-context-fill"
-                        style={{
-                          width: `${Math.min(100, pct)}%`,
-                          background: 'linear-gradient(90deg, var(--accent-emerald) 0%, var(--accent-primary) 100%)'
-                        }}
-                      />
-                    </div>
-                  </>
-                );
-              })()}
+              <span className="chat-context-text">
+                {contextUsage.promptTokens}/{effectiveLimit} t {(!contextUsage.contextSize || contextUsage.contextSize === 0) ? '(Défaut)' : ''}
+              </span>
+              <div 
+                className="chat-context-bar"
+                title={`Utilisation du contexte : ${contextPct}% ${(!contextUsage.contextSize || contextUsage.contextSize === 0) ? '(Défaut Ollama)' : ''}`}
+              >
+                <div 
+                  className="chat-context-fill"
+                  style={{
+                    width: `${Math.min(100, contextPct)}%`,
+                    background: 'linear-gradient(90deg, var(--accent-emerald) 0%, var(--accent-primary) 100%)'
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -162,11 +160,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             {contextUsage && (
               <div className="terminal-title-group text-xs">
                 <span className="terminal-context-text">
-                  Contexte : {contextUsage.promptTokens} / {contextUsage.contextSize && contextUsage.contextSize > 0 
-                    ? contextUsage.contextSize 
-                    : (loadedModelStatus && loadedModelStatus.context_length > 0 
-                        ? loadedModelStatus.context_length 
-                        : 2048)} t {(!contextUsage.contextSize || contextUsage.contextSize === 0) && '(Défaut Ollama)'}
+                  Contexte : {contextUsage.promptTokens} / {effectiveLimit} t {(!contextUsage.contextSize || contextUsage.contextSize === 0) && '(Défaut Ollama)'}
                 </span>
               </div>
             )}

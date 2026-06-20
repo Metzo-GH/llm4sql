@@ -1,11 +1,25 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { ChatInterface } from './components/ChatInterface';
-import { DataTable } from './components/DataTable';
-import { DataVisualization } from './components/DataVisualization';
-import { SchemaVisualizer } from './components/SchemaVisualizer';
 import { useSandbox } from './hooks/useSandbox';
 import { useChat } from './hooks/useChat';
-import { Database, Table, BarChart3, HelpCircle, Terminal, Play, LayoutTemplate, Braces, Eye, Settings } from 'lucide-react';
+import { Terminal } from 'lucide-react';
+import { SettingsDropdown } from './components/settings/SettingsDropdown';
+
+// Importation paresseuse des panneaux lourds pour le code splitting (performance)
+const SandboxPanel = lazy(() => import('./components/sandbox/SandboxPanel').then(module => ({ default: module.SandboxPanel })));
+const DataExplorerPanel = lazy(() => import('./components/explorer/DataExplorerPanel').then(module => ({ default: module.DataExplorerPanel })));
+
+/**
+ * Composant de chargement squelette pour les panneaux chargés à la demande.
+ */
+const LoadingPanel = () => (
+  <div className="glass-panel sandbox-panel flex items-center justify-center p-6 text-center">
+    <div className="flex flex-col items-center gap-2">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <span className="text-xs text-muted">Chargement du module...</span>
+    </div>
+  </div>
+);
 
 /**
  * Main Application orchestrator. Acts as a visual container, aligning the 3-column
@@ -122,70 +136,18 @@ export default function App() {
             </div>
           ) : null}
 
-          {/* Settings button with dropdown wrapper */}
-          <div className="settings-dropdown-wrapper">
-            <button
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className={`settings-btn ${isSettingsOpen ? 'settings-btn-active' : ''}`}
-              title="Paramètres de l'Agent"
-              aria-label="Paramètres de l'Agent"
-              aria-haspopup="true"
-              aria-expanded={isSettingsOpen}
-            >
-              <Settings size={18} />
-            </button>
-
-            {isSettingsOpen && (
-              <div className="glass-panel settings-dropdown animate-fade-in">
-                <div className="settings-field-group">
-                  <label className="settings-label">Modèle Ollama</label>
-                  <select
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    className="input-field settings-select"
-                  >
-                    {installedModels.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="settings-field-group">
-                  <div className="settings-slider-header">
-                    <label className="settings-label">Température</label>
-                    <span className="settings-val">{temperature.toFixed(1)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1.0"
-                    step="0.1"
-                    value={temperature}
-                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className="settings-slider"
-                  />
-                </div>
-                
-                <div className="settings-field-group">
-                  <label className="settings-label">Taille du Contexte</label>
-                  <select
-                    value={contextSize}
-                    onChange={(e) => setContextSize(parseInt(e.target.value))}
-                    className="input-field settings-select"
-                  >
-                    <option value={0}>Défaut Ollama</option>
-                    <option value={4096}>4k (4096 tokens)</option>
-                    <option value={8192}>8k (8192 tokens)</option>
-                    <option value={16384}>16k (16384 tokens)</option>
-                    <option value={32768}>32k (32768 tokens)</option>
-                    <option value={65536}>64k (65536 tokens)</option>
-                    <option value={131072}>128k (131072 tokens)</option>
-                    <option value={262144}>256k (262144 tokens)</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Settings Dropdown Component (SOLID - SRP) */}
+          <SettingsDropdown
+            model={model}
+            setModel={setModel}
+            temperature={temperature}
+            setTemperature={setTemperature}
+            contextSize={contextSize}
+            setContextSize={setContextSize}
+            installedModels={installedModels}
+            isSettingsOpen={isSettingsOpen}
+            setIsSettingsOpen={setIsSettingsOpen}
+          />
 
           {/* Dynamic FastAPI status */}
           <div className="hidden md:flex app-api-status">
@@ -199,90 +161,22 @@ export default function App() {
 
       {/* Main Content Layout: Balanced Desktop 3-Column Grid */}
       <main className="main-grid">
-        {/* Column 1 : SQL Sandbox & Interactive DDL Visualizer */}
-        <section className="glass-panel sandbox-panel panel-schema">
-          <div className="sandbox-header">
-            <div className="sandbox-title-row">
-              <div className="sandbox-title-group">
-                <Database size={18} className="sandbox-icon" />
-                <h2 className="sandbox-title m-0">Laboratoire SQL</h2>
-              </div>
-              <button 
-                onClick={handleApplySandbox}
-                disabled={isSandboxLoading || !schemaSql.trim()}
-                className="btn-primary sandbox-apply-btn"
-                style={{ opacity: (isSandboxLoading || !schemaSql.trim()) ? 0.5 : 1 }}
-              >
-                {isSandboxLoading ? <span className="animate-pulse">Génération...</span> : <><Play size={12} /> Appliquer</>}
-              </button>
-            </div>
-            
-            {/* Sandbox Visual tabs selection */}
-            <div className="sandbox-tabs" role="tablist" aria-label="Onglets du laboratoire SQL">
-              <button
-                onClick={() => setSandboxTab('schema')}
-                className={`sandbox-tab-btn ${sandboxTab === 'schema' ? 'sandbox-tab-btn-active' : ''}`}
-                role="tab"
-                aria-selected={sandboxTab === 'schema'}
-              >
-                <LayoutTemplate size={12} /> Schéma
-              </button>
-              <button
-                onClick={() => setSandboxTab('data')}
-                className={`sandbox-tab-btn ${sandboxTab === 'data' ? 'sandbox-tab-btn-active' : ''}`}
-                role="tab"
-                aria-selected={sandboxTab === 'data'}
-              >
-                <Braces size={12} /> Données
-              </button>
-              <button
-                onClick={() => setSandboxTab('visual')}
-                className={`sandbox-tab-btn ${sandboxTab === 'visual' ? 'sandbox-tab-btn-active' : ''}`}
-                role="tab"
-                aria-selected={sandboxTab === 'visual'}
-              >
-                <Eye size={12} /> Visuel
-              </button>
-            </div>
-          </div>
-          
-          <div className="schema-visual-panel">
-            {sandboxTab === 'schema' && (
-              <div className="sandbox-tab-content">
-                <textarea
-                  value={schemaSql}
-                  onChange={(e) => setSchemaSql(e.target.value)}
-                  placeholder="Collez ici le code de création de vos tables (CREATE TABLE...)"
-                  className="input-field sandbox-textarea font-mono"
-                />
-                <div className="sandbox-warning">
-                  <span>⚠️ <b>Sécurité :</b> Ces scripts DDL s'exécutent localement pour configurer votre sandbox. Par ailleurs, les requêtes générées par l'IA dans le Chat sont bridées en Lecture Seule absolue (SELECT).</span>
-                </div>
-              </div>
-            )}
-            {sandboxTab === 'data' && (
-              <div className="sandbox-tab-content">
-                <textarea
-                  value={insertSql}
-                  onChange={(e) => setInsertSql(e.target.value)}
-                  placeholder="Optionnel : Collez ici vos insertions de données (INSERT INTO...)"
-                  className="input-field sandbox-textarea font-mono"
-                />
-                <div className="sandbox-warning">
-                  <span>⚠️ <b>Sécurité :</b> L'exécution DML s'apply en écriture sur l'espace `user_sandbox`. Ne chargez que des jeux de données certifiés.</span>
-                </div>
-              </div>
-            )}
-            {sandboxTab === 'visual' && (
-              <SchemaVisualizer 
-                mermaidCode={mermaidCode} 
-                schemaSql={schemaSql} 
-                onGenerateDiagram={handleGenerateDiagram}
-                isVisualizing={isVisualizing}
-              />
-            )}
-          </div>
-        </section>
+        {/* Column 1 : SQL Sandbox & Interactive DDL Visualizer (Lazy Loaded) */}
+        <Suspense fallback={<LoadingPanel />}>
+          <SandboxPanel
+            sandboxTab={sandboxTab}
+            setSandboxTab={setSandboxTab}
+            schemaSql={schemaSql}
+            setSchemaSql={setSchemaSql}
+            insertSql={insertSql}
+            setInsertSql={setInsertSql}
+            mermaidCode={mermaidCode}
+            isSandboxLoading={isSandboxLoading}
+            isVisualizing={isVisualizing}
+            handleApplySandbox={handleApplySandbox}
+            handleGenerateDiagram={handleGenerateDiagram}
+          />
+        </Suspense>
 
         {/* Column 2 : Chat Interface */}
         <section className="panel-chat">
@@ -302,61 +196,16 @@ export default function App() {
           />
         </section>
 
-        {/* Column 3 : Data Grid Explorer & Charts */}
-        <section className="glass-panel sandbox-panel panel-data">
-          {/* Navigation Explorer Header */}
-          <div className="sandbox-header">
-            <div className="sandbox-title-row">
-              <div className="sandbox-title-group">
-                <Database size={18} className="chat-bot-icon" />
-                <h2 className="sandbox-title m-0">Explorateur de Données</h2>
-              </div>
-              
-              {/* Visual View Selection tabs */}
-              <div className="sandbox-tabs" role="tablist" aria-label="Modes d'exploration des données">
-                <button
-                  onClick={() => setActiveView('table')}
-                  disabled={!activeMessageId}
-                  className={`sandbox-tab-btn ${activeView === 'table' ? 'sandbox-tab-btn-active' : ''}`}
-                  style={{ opacity: !activeMessageId ? 0.5 : 1 }}
-                  role="tab"
-                  aria-selected={activeView === 'table'}
-                >
-                  <Table size={13} />
-                  <span>Tableau</span>
-                </button>
-                <button
-                  onClick={() => setActiveView('chart')}
-                  disabled={!activeMessageId}
-                  className={`sandbox-tab-btn ${activeView === 'chart' ? 'sandbox-tab-btn-active' : ''}`}
-                  style={{ opacity: !activeMessageId ? 0.5 : 1 }}
-                  role="tab"
-                  aria-selected={activeView === 'chart'}
-                >
-                  <BarChart3 size={13} />
-                  <span>Graphique</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Visualizer Body */}
-          <div className="flex-1 min-h-0 chart-container">
-            {!activeMessageId ? (
-              <div className="data-table-empty">
-                <HelpCircle size={40} className="data-table-empty-icon" />
-                <h3 className="data-table-empty-title">Aucune donnée active</h3>
-                <p className="data-table-empty-desc">
-                  Exécutez une requête via le chat et cliquez sur le bouton "Explorer les résultats" pour activer la visualisation et l'export !
-                </p>
-              </div>
-            ) : activeView === 'table' ? (
-              <DataTable data={activeData} sqlQuery={activeSQL} />
-            ) : (
-              <DataVisualization data={activeData} />
-            )}
-          </div>
-        </section>
+        {/* Column 3 : Data Grid Explorer & Charts (Lazy Loaded) */}
+        <Suspense fallback={<LoadingPanel />}>
+          <DataExplorerPanel
+            activeMessageId={activeMessageId}
+            activeView={activeView}
+            setActiveView={setActiveView}
+            activeData={activeData}
+            activeSQL={activeSQL}
+          />
+        </Suspense>
       </main>
 
       {/* Toast Notification Box */}
