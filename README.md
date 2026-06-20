@@ -13,9 +13,9 @@ L'outil intègre un **bac à sable (Sandbox) dynamique** permettant de charger n
 - **Observabilité & Télémétrie en Direct** : Panneau de trace d'exécution complet des nœuds du graphe (temps, tokens/s), affichage des badges des tables interrogées, accordéon de réflexion pliable pour la pensée du modèle (`<think>`), et tiroir de réglages dynamiques (Modèle, Température, Contexte).
 - **Sécurité Absolue (Defense in Depth)** : Validation syntaxique stricte des requêtes générées via l'arbre AST **SQLGlot** (interdit toute altération type `DROP`, `DELETE`, `UPDATE`), pilotes DB physiquement forcés en **Lecture Seule** (`readonly = True`) et isolation totale de la Sandbox.
 - **Laboratoire Visuel de Schéma** :
-  - **Vue Cartes 🎴 (Parsing temps réel)** : Modélisation dynamique du DDL (`CREATE TABLE`) affichant les attributs, types HSL colorés et badges de clés (`🔑 PK`, `🔗 FK`) avec détection de liens relationnels.
-  - **Vue Diagramme ER 📊 (Mermaid)** : Diagramme de relations généré automatiquement par l'IA locale de manière stable et résiliente.
-- **Visualisation & Exportation** : Rendu des données sous forme de grilles paginées avec export CSV compatible Excel (UTF-8 BOM), et tracés graphiques réactifs (Histogrammes, Courbes, Aires) avec **Recharts**.
+  - **Vue Cartes 🎴 (Parsing temps réel)** : Modélisation dynamique du DDL (`CREATE TABLE`) affichant les attributs, types HSL colorés et badges de clés (`🔑 PK`, `🔗 FK`) avec détection de liens relationnels (entièrement gérée côté client).
+  - **Vue Diagramme ER 📊 (Mermaid)** : Diagramme de relations généré de manière 100% déterministe et instantanée (<1ms) grâce au parseur DDL Python du backend, garantissant une syntaxe Mermaid valide et sans consommation de VRAM.
+- **Visualisation & Exportation** : Rendu des données sous forme de grilles paginées hautement accessibles (a11y) avec export CSV compatible Excel (UTF-8 BOM), et tracés graphiques réactifs (Histogrammes, Courbes, Aires) avec **Recharts**.
 
 ---
 

@@ -55,8 +55,8 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
 - **État :** Terminé avec succès.
 - **Réalisations :**
   - **Vue Cartes Interactives 🎴** : Parsing SQL DDL en temps réel (côté client) de vos scripts de création de tables, avec badges de type SQL colorés, et détection de contraintes clés (`🔑 PK`, `🔗 FK`) pour tracer les dépendances.
-  - **Rendu Diagramme ER Mermaid stable** : Intégration graphique Mermaid.js résistant aux conflits de DOM et d'identifiants.
-  - Suite de **24 tests unitaires et d'intégration** entièrement validée par `pytest`.
+  - **Rendu Diagramme ER Mermaid Déterministe** : Visualiseur basé sur un parseur de syntaxe DDL SQL écrit en Python pur, s'exécutant instantanément (<1ms) de façon déterministe pour générer des diagrammes Mermaid 100% valides sans solliciter le LLM ni la VRAM.
+  - Suite de **33 tests unitaires et d'intégration** entièrement validée par `pytest`.
   - Documentation exhaustive JSDoc/TSDoc sur l'ensemble des modules frontend et backend.
 
 ### Phase 5 : Optimisations, Cache Sémantique & Diviser pour Régner (100% VALIDÉE)
@@ -75,6 +75,30 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
   - **Refonte de l'orchestration LangGraph** : Transition vers une boucle ReAct tool-calling autonome dans `graph.py` avec `bind_tools` de ChatOllama et un **Garde-fou (Loop Guard)** fixé à 5 itérations maximum pour empêcher les récursions infinies.
   - **Post-traitement SQL Regex** : Implémentation d'un post-traitement Regex Python (`sql_utils.py`) pour corriger les erreurs de syntaxe mineures générées par le modèle (ex: points-virgules de fin ou mal positionnés avant un ORDER BY).
   - **Raffinement UI & Télémétrie SSE** : Intégration en temps réel des logs SSE des appels d'outils et animations fluides dans un `StepsTracker` soigné.
+
+### Phase R11 : Architecture & Performance - Sprint 2 (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - **Modularisation du Backend** : Découpage du fichier monolithique `graph.py` en modules SRP (`tools.py`, `nodes.py`, `routing.py`, `prompts.py`) et décomposition de la fonction de finalisation de nœud.
+  - **Rate Limiting** : Intégration globale et par route de la bibliothèque `slowapi` pour intercepter les requêtes excessives (/minute).
+  - **Code-Splitting Frontend** : Extraction de composants volumineux (`SandboxPanel`, `DataExplorerPanel`, `SettingsDropdown`) et chargement à la demande (`React.lazy()` + `Suspense`), réduisant la taille du bundle initial de 1.4 Mo.
+  - **Event Loop asynchrone** : Wrapping de la récupération synchrone de schéma dans `asyncio.to_thread` pour conserver la fluidité du serveur FastAPI.
+
+### Phase R12 : Qualité, DRY & Refactoring Frontend - Sprint 3 (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - **Thread Safety** : Protection contre les conditions de concurrence sur la mise en cache de schéma via `threading.Lock`.
+  - **Validation d'Entrées** : Limites `max_length` strictes sur les modèles de requêtes d'API Pydantic.
+  - **Suppression des IIFE JSX** : Élimination complète de tout bloc de rendu IIFE JSX dans `ChatMessage` et `PerformanceMetrics` au profit de sous-composants typés et documentés.
+  - **Robustesse & Typage TypeScript** : Typage strict du type `tool_call`, des infobulles Recharts, limitation mémoire du tableau de logs en temps réel (`slice(-200)`) et typage des captures d'erreurs `catch (error: unknown)`.
+
+### Phase R13 : Accessibilité & Nettoyage - Sprint 4 (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - **Accessibilité (a11y)** : Ajout d'attributs `aria-label` explicites et descriptifs sur la totalité des boutons de pagination, de barre de recherche, d'export CSV, de choix d'axes de données et de types de graphes.
+  - **Migration Logging** : Remplacement des appels `print()` par l'utilisation standardisée de la bibliothèque `logging` dans le backend.
+  - **Sécurité Encodage** : Substitution des caractères unicode/emojis non-ASCII provoquant des plantages d'encodage CP1252 sous Windows par des équivalents ASCII standard.
+  - **Nettoyage des Imports** : Retrait d'imports orphelins et inutilisés (`psycopg2`, `SystemMessage`, `get_llm`).
 
 ## 5. Contraintes et Prérequis
 

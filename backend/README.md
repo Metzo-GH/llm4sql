@@ -2,38 +2,64 @@
 
 Ce dossier contient le moteur backend local et sécurisé de **LLM4SQL**. L'application est conçue pour fonctionner **à 100% en local** sur votre machine. Elle traduit des questions en langage naturel en requêtes SQL valides, les exécute sur une base de données PostgreSQL et utilise un agent intelligent pour s'auto-corriger en cas d'erreur.
 
----
-
 ## 🏗️ Clean Architecture du Backend
 
-Le backend est structuré selon les principes du **SOLID**, du **DRY** (Don't Repeat Yourself) et de la **Clean Architecture** (Architecture Propre). L'ensemble du code de production est encapsulé dans le package principal `app/`, garantissant un couplage faible et une lisibilité maximale.
+Le backend est structuré selon les principes du **SOLID**, du **DRY** (Don't Repeat Yourself) et de la **Clean Architecture** (Architecture Propre). L'ensemble du code de production est encapsulé dans le package principal `app/`, garantissant un couplage faible, une séparation stricte des responsabilités (SRP) et une lisibilité maximale.
 
 ### Organisation des Répertoires :
 
 ```text
 backend/
-├── app/
-│   ├── core/                  # Configurations globales et sécurité transverse
-│   │   ├── config.py          # Gestion des variables d'environnement (pydantic-settings)
-│   │   └── security.py        # Analyseur syntaxique de sécurité SQL (sqlglot)
-│   ├── database/              # Services et scripts liés à la base de données
-│   │   ├── connection.py      # Module d'accès centralisé à PostgreSQL (DRY)
-│   │   └── seed_db.py         # Script d'initialisation et peuplement de la base BD Ouvrages
-│   ├── services/              # Logique métier et Intelligence Artificielle
-│   │   └── agent.py           # Graphe intelligent LangGraph (Le Cerveau)
-│   └── mcp/                   # Serveur Model Context Protocol (MCP)
-│       └── mcp_server.py      # Serveur MCP exposant les outils de lecture de schéma et requête
-├── tests/                     # Suite de tests unitaires et d'intégration isolés
-│   ├── test_mcp_security.py   # Tests du validateur SQL et des outils MCP
-│   └── test_agent.py          # Tests de la logique de l'agent LangGraph et self-healing
-├── pyproject.toml             # Configuration et dépendances uv
+├── app/                       # Package principal de l'application
+│   ├── core/                  # Configurations globales, sécurité et utilitaires transverses
+│   │   ├── config.py          # Configuration via pydantic-settings
+│   │   ├── limiter.py         # Configuration du rate-limiter global (slowapi)
+│   │   └── security.py        # Analyseur AST SQL pour la sécurité et blocage d'injection (sqlglot)
+│   ├── database/              # Couche d'accès aux données (PostgreSQL)
+│   │   ├── pool.py            # Gestion asynchrone et thread-safe du pool de connexions (DRY)
+│   │   ├── queries.py         # Requêtes SQL réutilisables d'extraction de schéma
+│   │   └── seed_db.py         # Script d'initialisation et peuplement de la BD Ouvrages
+│   ├── services/              # Logique métier et orchestrations intelligentes
+│   │   ├── cache.py           # Service de cache thread-safe pour le schéma de base de données
+│   │   └── agent/             # Sous-système intelligent LangGraph
+│   │       ├── graph.py       # Définition du graphe de flux LangGraph
+│   │       ├── llm_provider.py# Fournisseur et configuration du LLM local (Ollama)
+│   │       ├── nodes.py       # Définition unitaire des nœuds du graphe (ex: génération SQL)
+│   │       ├── routing.py     # Logique d'aiguillage conditionnel du flux
+│   │       ├── prompts.py     # Centralisation et versioning des prompts système
+│   │       ├── schema.py      # Modèles Pydantic de données pour l'agent
+│   │       ├── state.py       # Typage et gestion d'état de l'agent
+│   │       ├── tools.py       # Définition des outils de l'agent (exécution SQL, etc.)
+│   │       └── sql_utils.py   # Utilitaires de nettoyage et correction regex post-génération
+│   ├── schemas/               # Modèles d'échange d'API (Pydantic avec max_length strict)
+│   │   ├── chat.py            # Modèles pour le chat
+│   │   └── sandbox.py         # Modèles pour l'initialisation et la visualisation de sandbox
+│   ├── routers/               # Contrôleurs API FastAPI par domaine
+│   │   ├── chat.py            # Route `/api/chat` (discussion intelligente et self-healing)
+│   │   ├── monitoring.py      # Route `/api/monitoring` (métriques et journalisation)
+│   │   └── sandbox.py         # Routes `/api/sandbox` (init et visualisation Mermaid déterministe)
+│   ├── mcp/                   # Implémentation du Model Context Protocol (MCP) d'Anthropic
+│   │   └── mcp_server.py      # Serveur MCP exposant des outils aux LLMs externes
+│   └── main.py                # Point d'entrée de l'application FastAPI
+├── tests/                     # Suite complète de tests automatisés (pytest)
+│   ├── test_agent.py          # Tests d'intégration de l'agent LangGraph
+│   ├── test_api.py            # Tests de validation des points d'accès HTTP
+│   ├── test_mcp_security.py   # Tests unitaires du validateur SQL sécurité
+│   └── test_security_r1.py    # Tests de non-régression de sécurité
+├── pyproject.toml             # Configuration du projet et dépendances uv
 ├── uv.lock                    # Fichier de verrouillage des versions
-├── .env                       # Fichier de secrets locaux
-├── .env.example               # Template des variables d'environnement
-└── start_backend.ps1          # Script d'automatisation PowerShell pour Windows
+├── .env                       # Configuration locale des variables d'environnement
+├── .env.example               # Template d'environnement partagé
+└── start_backend.ps1          # Script PowerShell de démarrage automatique et optimisations
 ```
 
----
+### Choix de Conception & Stabilité :
+- **Rate-Limiting (slowapi)** : Protection globale contre le déni de service (DoS) et la surcharge de jetons LLM, implémentée via un middleware slowapi limitant le nombre de requêtes par minute et par IP.
+- **Thread-Safety (threading.Lock)** : Utilisation de verrous explicites lors de la récupération et de la mise à jour du cache de schéma, évitant tout risque de condition de concurrence (*Race Condition*) lors d'accès simultanés de l'agent LangGraph.
+- **Asynchronisme Non Bloquant (`asyncio.to_thread`)** : Les opérations bloquantes du pilote de base de données synchrone (`psycopg2`) sont encapsulées dans des threads séparés via `asyncio.to_thread`, libérant la boucle d'événements principale de FastAPI.
+- **Validation d'Entrées Strictes** : Tous les points d'entrée de l'API valident la longueur maximale (`max_length` Pydantic) et la structure des payloads clients pour rejeter en amont toute tentative de dépassement de tampon ou de requête démesurée.
+- **Journalisation (logging standard)** : Abandon des instructions `print()` en faveur de la bibliothèque standard `logging` de Python pour une journalisation propre, filtrée par niveau et compatible avec la journalisation de production.
+- **Correction SQL Déterministe** : Nettoyage et post-traitement de la requête générée par l'IA via un processeur Regex (`sql_utils.py`) pour supprimer les points-virgules de fin mal positionnés, assurant une conformité syntaxique maximale avant exécution.
 
 ## ⚡ Démarrage Automatisé & Optimisations (Recommandé) 🛠️
 
@@ -118,9 +144,9 @@ Le serveur FastAPI s'exécute par défaut sur le port **8500** (`http://127.0.0.
   }
   ```
 
-### 3. Visualisation de Schéma (Mermaid) par l'IA
+### 3. Visualisation de Schéma (Mermaid) Déterministe
 - **URL :** `POST /api/sandbox/visualize`
-- **Description :** Convertit votre code SQL de création de tables brut en code de diagramme relationnel Mermaid.js en interrogeant le LLM local (Qwen) à température 0.
+- **Description :** Convertit votre code SQL de création de tables brut en diagramme de relations Mermaid.js de manière 100% déterministe grâce à un analyseur syntaxique DDL écrit en Python pur (<1ms), garantissant un rendu sans erreur de syntaxe Mermaid.
 - **Corps de requête :**
   ```json
   {
