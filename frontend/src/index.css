@@ -2072,4 +2072,84 @@ textarea:focus-visible {
   box-shadow: 0 0 20px -3px rgba(239, 68, 68, 0.6);
 }
 
+/* =====================================================================
+   13. Mermaid ER Diagram Theme Overrides (Dark Mode Visibility)
+   ===================================================================== */
+.schema-visual-mermaid-container svg {
+  background-color: transparent !important;
+}
 
+.schema-visual-mermaid-container svg text,
+.schema-visual-mermaid-container svg span {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 11px !important;
+}
+
+/* Entity/Table Name Headers */
+.schema-visual-mermaid-container svg .er.entityBox {
+  fill: hsl(225, 25%, 16%) !important;
+  stroke: hsl(225, 25%, 26%) !important;
+  stroke-width: 1px !important;
+}
+
+.schema-visual-mermaid-container svg .er.entityLabel {
+  fill: var(--text-heading) !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+}
+
+/* Attributes / Columns */
+.schema-visual-mermaid-container svg .er.attributeBoxEven {
+  fill: hsl(225, 25%, 11%) !important;
+  stroke: hsl(225, 25%, 20%) !important;
+  stroke-width: 0.5px !important;
+}
+
+.schema-visual-mermaid-container svg .er.attributeBoxOdd {
+  fill: hsl(225, 25%, 9%) !important;
+  stroke: hsl(225, 25%, 20%) !important;
+  stroke-width: 0.5px !important;
+}
+
+/* Text inside attributes (Column name, type, key) */
+.schema-visual-mermaid-container svg text,
+.schema-visual-mermaid-container svg tspan,
+.schema-visual-mermaid-container svg text *,
+.schema-visual-mermaid-container svg tspan *,
+.schema-visual-mermaid-container svg foreignObject,
+.schema-visual-mermaid-container svg foreignObject * {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+  stroke: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Specific styling for PK and FK labels if they are text/tspan/HTML nodes */
+.schema-visual-mermaid-container svg text[class*="key"],
+.schema-visual-mermaid-container svg tspan[class*="key"],
+.schema-visual-mermaid-container svg text[class*="key"] *,
+.schema-visual-mermaid-container svg tspan[class*="key"] *,
+.schema-visual-mermaid-container svg foreignObject [class*="key"],
+.schema-visual-mermaid-container svg foreignObject [class*="key"] * {
+  fill: hsl(265, 95%, 75%) !important; /* PK light purple */
+  color: hsl(265, 95%, 75%) !important;
+  font-weight: bold !important;
+}
+
+/* Relationship lines and labels */
+.schema-visual-mermaid-container svg .er.relationshipLine {
+  stroke: hsl(225, 20%, 40%) !important;
+  stroke-width: 1.5px !important;
+}
+
+.schema-visual-mermaid-container svg .er.relationshipLabel {
+  fill: var(--text-muted) !important;
+  font-size: 10px !important;
+}
+
+.schema-visual-mermaid-container svg .er.relationshipLabelBox {
+  fill: hsl(225, 25%, 10%) !important;
+  stroke: hsl(225, 20%, 30%) !important;
+  stroke-width: 1px !important;
+}

@@ -201,13 +201,27 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
 
   // Mermaid Diagram Renderer with robust unique random DOM ID allocation
   useEffect(() => {
+    let active = true;
     if (viewMode === 'mermaid' && mermaidCode && containerRef.current) {
       try {
         containerRef.current.innerHTML = '<div class="h-full flex items-center justify-center text-xs animate-pulse text-muted">Génération du diagramme ER...</div>';
         
         mermaid.initialize({ 
           startOnLoad: false, 
-          theme: 'dark',
+          theme: 'base',
+          themeVariables: {
+            background: 'transparent',
+            primaryColor: '#1e293b',          // Table header background (Slate 800)
+            primaryTextColor: '#ffffff',      // Table header text
+            lineColor: '#94a3b8',             // Relationship lines (Slate 400)
+            textColor: '#ffffff',             // General text color
+            mainBkg: '#0f172a',               // Table body background (Slate 900)
+            nodeBorder: '#334155',            // Table border (Slate 700)
+            nodeTextColor: '#ffffff',         // Table text color
+            attributeTextColor: '#e2e8f0',    // Attribute text color (Slate 200)
+            attributeBackgroundColorEven: '#1e293b',
+            attributeBackgroundColorOdd: '#0f172a',
+          },
           fontFamily: 'Inter, sans-serif'
         });
         
@@ -215,12 +229,15 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
         const uniqueId = 'mermaid-' + Math.random().toString(36).substring(2, 9);
         
         mermaid.render(uniqueId, mermaidCode).then((result) => {
-          if (containerRef.current) {
-            containerRef.current.innerHTML = DOMPurify.sanitize(result.svg);
+          if (active && containerRef.current) {
+            containerRef.current.innerHTML = DOMPurify.sanitize(result.svg, {
+              ADD_TAGS: ['foreignObject'],
+              HTML_INTEGRATION_POINTS: { 'foreignobject': true }
+            });
           }
         }).catch((e) => {
           console.error("Erreur de rendu Mermaid :", e);
-          if (containerRef.current) {
+          if (active && containerRef.current) {
             containerRef.current.innerHTML = DOMPurify.sanitize(`
               <div class="flex flex-col items-center justify-center h-full p-6 text-center text-muted">
                 <div class="text-ruby font-semibold text-sm mb-2" style="color: var(--accent-ruby)">Erreur de rendu du diagramme</div>
@@ -237,6 +254,9 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
         console.error(err);
       }
     }
+    return () => {
+      active = false;
+    };
   }, [mermaidCode, viewMode]);
 
   // Filter tables/columns based on search query
@@ -303,7 +323,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
       {/* Main visual panel */}
       <div className="schema-visual-panel">
         {viewMode === 'cards' ? (
-          <div className="schema-visual-cards-grid">
+          <div key="cards-view" className="schema-visual-cards-grid">
             {filteredTables.length === 0 ? (
               <div className="schema-visual-no-match">
                 Aucune table ou colonne ne correspond à votre filtre.
@@ -411,7 +431,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
             )}
           </div>
         ) : isVisualizing ? (
-          <div className="schema-visual-mermaid-generating">
+          <div key="generating-view" className="schema-visual-mermaid-generating">
             <div className="schema-visual-mermaid-spinner" />
             <h3 className="schema-visual-empty-title">Génération en cours</h3>
             <p className="schema-visual-empty-desc">
@@ -419,7 +439,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
             </p>
           </div>
         ) : !mermaidCode ? (
-          <div className="schema-visual-mermaid-empty">
+          <div key="empty-view" className="schema-visual-mermaid-empty">
             <HelpCircle size={36} className="schema-visual-mermaid-empty-icon" />
             <h3 className="schema-visual-empty-title">Diagramme non généré</h3>
             <p className="schema-visual-empty-desc">
@@ -434,6 +454,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
           </div>
         ) : (
           <div 
+            key="mermaid-view"
             ref={containerRef} 
             className="schema-visual-mermaid-container"
           />

@@ -173,6 +173,7 @@ export default function App() {
                     onChange={(e) => setContextSize(parseInt(e.target.value))}
                     className="input-field settings-select"
                   >
+                    <option value={0}>Défaut Ollama</option>
                     <option value={4096}>4k (4096 tokens)</option>
                     <option value={8192}>8k (8192 tokens)</option>
                     <option value={16384}>16k (16384 tokens)</option>

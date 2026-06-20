@@ -58,7 +58,7 @@ Règles à respecter strictement :
     
     model_name = state.get("model") or settings.OLLAMA_MODEL
     temp = state.get("temperature") if state.get("temperature") is not None else 0.0
-    ctx_size = state.get("context_size") or 4096
+    ctx_size = state.get("context_size") if state.get("context_size") is not None else 0
 
     llm = get_llm(model=model_name, temperature=temp, context_size=ctx_size)
     response = llm.invoke(messages)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Message, ContextUsage, LoadedModelStatus, SqlResultRow } from '../types/chat';
+import { parseThinking } from '../utils/thinkingParser';
 
 import { API_BASE_URL } from '../config/api';
 
@@ -21,10 +22,30 @@ export function useChat() {
   // Visual explorer mode ('table' | 'chart')
   const [activeView, setActiveView] = useState<'table' | 'chart'>('table');
 
-  // Agent configuration states
-  const [model, setModel] = useState('qwen3.5:4b');
-  const [temperature, setTemperature] = useState(0.0);
-  const [contextSize, setContextSize] = useState(4096);
+  // Agent configuration states with localStorage persistence
+  const [model, setModel] = useState<string>(() => {
+    return localStorage.getItem('llm4sql_model') || 'qwen3.5:4b';
+  });
+  const [temperature, setTemperature] = useState<number>(() => {
+    const val = localStorage.getItem('llm4sql_temperature');
+    return val !== null ? parseFloat(val) : 0.0;
+  });
+  const [contextSize, setContextSize] = useState<number>(() => {
+    const val = localStorage.getItem('llm4sql_context_size');
+    return val !== null ? parseInt(val) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('llm4sql_model', model);
+  }, [model]);
+
+  useEffect(() => {
+    localStorage.setItem('llm4sql_temperature', temperature.toString());
+  }, [temperature]);
+
+  useEffect(() => {
+    localStorage.setItem('llm4sql_context_size', contextSize.toString());
+  }, [contextSize]);
 
   // Real-time telemetry log lines for the terminal visualizer
   const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -193,23 +214,8 @@ export function useChat() {
             } else if (event.type === 'token') {
               rawLLMText += event.data;
               
-              // Parse thinking vs SQL in real-time
-              const thinkStart = rawLLMText.indexOf('<think>');
-              const thinkEnd = rawLLMText.indexOf('</think>');
-              
-              let thinking = '';
-              let sql = '';
-              
-              if (thinkStart !== -1) {
-                if (thinkEnd !== -1) {
-                  thinking = rawLLMText.substring(thinkStart + 7, thinkEnd).trim();
-                  sql = rawLLMText.substring(thinkEnd + 8).trim();
-                } else {
-                  thinking = rawLLMText.substring(thinkStart + 7).trim();
-                }
-              } else {
-                sql = rawLLMText.trim();
-              }
+              // Parse thinking vs SQL in real-time using unified thinkingParser
+              const { thinking, answer: sql } = parseThinking(rawLLMText);
               
               // Clean codeblock markers from SQL while streaming
               let cleanedSql = sql;

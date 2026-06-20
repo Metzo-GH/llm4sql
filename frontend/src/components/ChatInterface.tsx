@@ -70,21 +70,30 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {/* Real-time Context Visualizer */}
           {contextUsage && (
             <div className="hidden sm:flex chat-context-usage">
-              <span className="chat-context-text">
-                {contextUsage.promptTokens}/{contextUsage.contextSize} t
-              </span>
-              <div 
-                className="chat-context-bar"
-                title={`Utilisation du contexte : ${Math.round((contextUsage.promptTokens / contextUsage.contextSize) * 100)}%`}
-              >
-                <div 
-                  className="chat-context-fill"
-                  style={{
-                    width: `${Math.min(100, Math.round((contextUsage.promptTokens / contextUsage.contextSize) * 100))}%`,
-                    background: 'linear-gradient(90deg, var(--accent-emerald) 0%, var(--accent-primary) 100%)'
-                  }}
-                />
-              </div>
+              {(() => {
+                const limit = contextUsage.contextSize && contextUsage.contextSize > 0 ? contextUsage.contextSize : 2048;
+                const pct = Math.round((contextUsage.promptTokens / limit) * 100);
+                const isDefault = !contextUsage.contextSize || contextUsage.contextSize === 0;
+                return (
+                  <>
+                    <span className="chat-context-text">
+                      {contextUsage.promptTokens}/{limit} t {isDefault ? '(Défaut)' : ''}
+                    </span>
+                    <div 
+                      className="chat-context-bar"
+                      title={`Utilisation du contexte : ${pct}% ${isDefault ? '(Défaut Ollama)' : ''}`}
+                    >
+                      <div 
+                        className="chat-context-fill"
+                        style={{
+                          width: `${Math.min(100, pct)}%`,
+                          background: 'linear-gradient(90deg, var(--accent-emerald) 0%, var(--accent-primary) 100%)'
+                        }}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -147,7 +156,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             {contextUsage && (
               <div className="terminal-title-group text-xs">
                 <span className="terminal-context-text">
-                  Contexte : {contextUsage.promptTokens} / {contextUsage.contextSize} t
+                  Contexte : {contextUsage.promptTokens} / {contextUsage.contextSize && contextUsage.contextSize > 0 
+                    ? contextUsage.contextSize 
+                    : 2048} t {(!contextUsage.contextSize || contextUsage.contextSize === 0) && '(Défaut Ollama)'}
                 </span>
               </div>
             )}

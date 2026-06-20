@@ -25,17 +25,17 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = React.memo(
             {msg.steps
               .filter((s) => s.node === 'generate_sql')
               .map((step, idx) => {
-                const percent =
-                  step.context_size && step.prompt_tokens
-                    ? Math.min(100, Math.round((step.prompt_tokens / step.context_size) * 100))
-                    : 0;
+                const limit = step.context_size && step.context_size > 0 ? step.context_size : 2048;
+                const percent = step.prompt_tokens
+                  ? Math.min(100, Math.round((step.prompt_tokens / limit) * 100))
+                  : 0;
                 return (
                   <div key={idx} className="message-attempt-metrics-card">
                     <div className="message-attempt-header">
                       Tentative #{step.iteration || (idx + 1)}
                     </div>
                     <div className="message-metrics-grid">
-                      <div className="message-metric-item">
+                       <div className="message-metric-item">
                         <span className="message-metric-label">Tokens Envoyés : </span>
                         <span className="message-metric-val">
                           {step.prompt_tokens} t
@@ -58,11 +58,11 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = React.memo(
                         <span className="message-metric-val">{step.elapsed} s</span>
                       </div>
 
-                      {step.context_size && step.prompt_tokens && (
+                      {step.prompt_tokens ? (
                         <div className="message-context-row">
                           <div className="message-context-meta">
                             <span>
-                              Utilisation Contexte : {step.prompt_tokens} / {step.context_size} tokens
+                              Utilisation Contexte : {step.prompt_tokens} / {limit} tokens {!step.context_size || step.context_size === 0 ? '(Défaut Ollama)' : ''}
                             </span>
                             <span className={percent > 85 ? 'message-context-pct-alert' : 'message-context-pct-normal'}>
                               {percent}%
@@ -77,7 +77,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = React.memo(
                             />
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 );

@@ -101,14 +101,20 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
         messages.append(HumanMessage(content=f"Question à traduire : {state['question']}"))
 
     temp = state.get("temperature") if state.get("temperature") is not None else 0.0
-    ctx_size = state.get("context_size") or 4096
+    ctx_size = state.get("context_size") if state.get("context_size") is not None else 0
+
+    # Résoudre la taille de contexte réelle si 0 (Défaut Ollama)
+    reported_ctx_size = ctx_size
+    if reported_ctx_size == 0:
+        from app.services.agent.llm_provider import get_model_context_length
+        reported_ctx_size = get_model_context_length(model_name)
 
     # Estimer le nombre de tokens du prompt
     prompt_content = system_prompt + "\n" + "\n".join(m.content for m in messages[1:])
     estimated_prompt_tokens = len(prompt_content) // 3
     send_agent_event("context_usage", {
         "prompt_tokens": estimated_prompt_tokens,
-        "context_size": ctx_size,
+        "context_size": reported_ctx_size,
         "estimated": True
     })
 
@@ -189,7 +195,7 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
     send_agent_event("context_usage", {
         "prompt_tokens": prompt_tokens,
         "eval_tokens": eval_tokens,
-        "context_size": ctx_size,
+        "context_size": reported_ctx_size,
         "estimated": False
     })
     
@@ -208,7 +214,7 @@ Analyse cette erreur et le schéma fourni, puis génère une requête SQL corrig
         "eval_tokens": eval_tokens,
         "tokens_per_second": tokens_per_sec,
         "model": model_name,
-        "context_size": ctx_size
+        "context_size": reported_ctx_size
     }
     
     return {
