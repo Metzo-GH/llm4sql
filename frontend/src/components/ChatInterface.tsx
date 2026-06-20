@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Bot, Terminal, Send, Square } from 'lucide-react';
-import type { Message, ContextUsage } from '../types/chat';
+import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
 import { ChatMessage } from './chat/ChatMessage';
 
 interface ChatInterfaceProps {
@@ -15,6 +15,7 @@ interface ChatInterfaceProps {
   contextUsage: ContextUsage | null;
   onStopRequest?: () => void;
   onEditMessage?: (messageId: string, newContent: string) => void;
+  loadedModelStatus?: LoadedModelStatus | null;
 }
 
 /**
@@ -35,6 +36,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   contextUsage,
   onStopRequest,
   onEditMessage,
+  loadedModelStatus,
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const terminalBodyRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {contextUsage && (
             <div className="hidden sm:flex chat-context-usage">
               {(() => {
-                const limit = contextUsage.contextSize && contextUsage.contextSize > 0 ? contextUsage.contextSize : 2048;
+                const limit = contextUsage.contextSize && contextUsage.contextSize > 0 
+                  ? contextUsage.contextSize 
+                  : (loadedModelStatus && loadedModelStatus.context_length > 0 
+                      ? loadedModelStatus.context_length 
+                      : 2048);
                 const pct = Math.round((contextUsage.promptTokens / limit) * 100);
                 const isDefault = !contextUsage.contextSize || contextUsage.contextSize === 0;
                 return (
@@ -158,7 +164,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <span className="terminal-context-text">
                   Contexte : {contextUsage.promptTokens} / {contextUsage.contextSize && contextUsage.contextSize > 0 
                     ? contextUsage.contextSize 
-                    : 2048} t {(!contextUsage.contextSize || contextUsage.contextSize === 0) && '(Défaut Ollama)'}
+                    : (loadedModelStatus && loadedModelStatus.context_length > 0 
+                        ? loadedModelStatus.context_length 
+                        : 2048)} t {(!contextUsage.contextSize || contextUsage.contextSize === 0) && '(Défaut Ollama)'}
                 </span>
               </div>
             )}

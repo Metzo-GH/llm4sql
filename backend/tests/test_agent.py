@@ -1,8 +1,27 @@
 import pytest
 import json
 from unittest.mock import MagicMock, patch
-from app.services.agent import extract_sql_query, get_database_schema_context, run_agent, node_generate_sql, node_execute_sql, should_continue, AgentState
+from app.services.agent import (
+    extract_sql_query,
+    clean_sql_query,
+    get_database_schema_context,
+    run_agent,
+    AgentState
+)
+from app.services.agent.graph import (
+    should_continue_react,
+    node_execute_tools,
+    node_clean_and_finalize
+)
 from langgraph.graph import END
+import urllib.request
+
+def _is_ollama_running():
+    try:
+        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=1)
+        return True
+    except Exception:
+        return False
 
 @pytest.fixture(autouse=True)
 def reset_agent_globals():
@@ -76,134 +95,61 @@ def test_get_dynamic_schema_context_specific():
     assert "idp" in context
 
 
-@patch("app.services.agent.llm_provider.ChatOllama")
-def test_node_select_tables_success(mock_chat_ollama):
+def test_clean_sql_query():
     """
-    Vérifie que le nœud de sélection des tables appelle le LLM et extrait les tables correctement.
+    Vérifie que clean_sql_query nettoie correctement les points-virgules mal placés.
     """
-    from app.services.agent import node_select_tables
+    assert clean_sql_query("SELECT * FROM ouvrage; ORDER BY titre;") == "SELECT * FROM ouvrage ORDER BY titre"
+    assert clean_sql_query("SELECT * FROM personne;;") == "SELECT * FROM personne"
+    assert clean_sql_query("  SELECT * FROM serie;  ") == "SELECT * FROM serie"
+
+
+def test_should_continue_react():
+    """
+    Vérifie les décisions de routage du graphe ReAct.
+    """
+    from langchain_core.messages import AIMessage
+    # Cas 1 : Appels d'outils détectés -> execute_tools
+    msg_tools = AIMessage(content="", tool_calls=[{"name": "mcp_search_value", "args": {"term": "test"}, "id": "1"}])
+    state_tools = {"messages": [msg_tools], "iteration_count": 0}
+    assert should_continue_react(state_tools) == "execute_tools"
+
+    # Cas 2 : Appels d'outils mais limite de garde-fou atteinte (30) -> force_loop_break
+    state_limit = {"messages": [msg_tools], "iteration_count": 30}
+    assert should_continue_react(state_limit) == "force_loop_break"
+
+    # Cas 3 : Pas d'appels d'outils -> clean_and_finalize
+    msg_text = AIMessage(content="```sql\nSELECT * FROM ouvrage;\n```")
+    state_text = {"messages": [msg_text], "iteration_count": 1}
+    assert should_continue_react(state_text) == "clean_and_finalize"
+
+
+@patch("app.mcp.mcp_server.execute_query")
+def test_node_clean_and_finalize_success(mock_execute):
+    """
+    Vérifie que le nœud de finalisation extrait, nettoie et exécute la requête SQL.
+    """
+    mock_execute.return_value = json.dumps({
+        "success": True,
+        "data": [{"ido": 1, "titre": "Test BD"}]
+    })
     
-    mock_response = MagicMock()
-    mock_response.content = '["ouvrage", "personne"]'
-    
-    mock_llm_instance = MagicMock()
-    mock_llm_instance.invoke.return_value = mock_response
-    mock_chat_ollama.return_value = mock_llm_instance
-    
-    state: AgentState = {
-        "question": "trouve les ouvrages dessinés par personne",
-        "sql_query": None,
-        "error_message": None,
-        "query_results": None,
-        "iteration_count": 0,
-        "schema_context": "",
-        "tables": []
+    from langchain_core.messages import AIMessage
+    state = {
+        "messages": [AIMessage(content="Voici le SQL :\n```sql\nSELECT * FROM ouvrage; ORDER BY ido;\n```")],
+        "iteration_count": 1,
+        "simulate_only": False
     }
     
-    result = node_select_tables(state)
-    assert "tables" in result
-    assert "ouvrage" in result["tables"]
-    assert "personne" in result["tables"]
-    assert len(result["tables"]) == 2
-    assert result["steps"][0]["node"] == "select_tables"
-
-
-@patch("app.services.agent.llm_provider.ChatOllama")
-def test_node_generate_sql_success(mock_chat_ollama):
-    """
-    Vérifie que le nœud de génération SQL appelle correctement le LLM et renvoie la requête SQL.
-    """
-    # Mocker la réponse du LLM
-    mock_response = MagicMock()
-    mock_response.content = "```sql\nSELECT * FROM serie;\n```"
-    
-    mock_llm_instance = MagicMock()
-    mock_llm_instance.invoke.return_value = mock_response
-    mock_chat_ollama.return_value = mock_llm_instance
-
-    # Définir un état initial
-    state: AgentState = {
-        "question": "liste des séries",
-        "sql_query": None,
-        "error_message": None,
-        "query_results": None,
-        "iteration_count": 0,
-        "schema_context": "Table 'serie' : ids, titre"
-    }
-
-    result = node_generate_sql(state)
-    assert result["sql_query"] == "SELECT * FROM serie;"
-    
-    # Vérifier que le LLM a bien été appelé
-    mock_chat_ollama.assert_called_once()
-
-
-def test_node_execute_sql_success():
-    """
-    Vérifie que le nœud d'exécution SQL exécute la requête avec succès.
-    """
-    state: AgentState = {
-        "question": "Combien de personnes dans la base ?",
-        "sql_query": "SELECT COUNT(*) as total FROM personne;",
-        "error_message": None,
-        "query_results": None,
-        "iteration_count": 0,
-        "schema_context": ""
-    }
-
-    result = node_execute_sql(state)
-    assert result["error_message"] is None
-    assert result["query_results"] is not None
-    assert len(result["query_results"]) == 1
-    assert "total" in result["query_results"][0]
-
-
-def test_node_execute_sql_failure():
-    """
-    Vérifie que le nœud d'exécution capture correctement les erreurs PostgreSQL.
-    """
-    state: AgentState = {
-        "question": "Test erreur",
-        "sql_query": "SELECT colonne_inexistante FROM personne;",
-        "error_message": None,
-        "query_results": None,
-        "iteration_count": 0,
-        "schema_context": ""
-    }
-
-    result = node_execute_sql(state)
-    assert result["error_message"] is not None
-    assert "db_error" in result["error_message"] or "does not exist" in result["error_message"]
-    assert result["iteration_count"] == 1
-
-
-def test_should_continue():
-    """
-    Vérifie le routage conditionnel du graphe (Self-Healing).
-    """
-    # Cas 1 : Succès (pas d'erreur) -> END
-    state_success: AgentState = {
-        "question": "", "sql_query": "", "error_message": None, 
-        "query_results": [], "iteration_count": 1, "schema_context": ""
-    }
-    assert should_continue(state_success) == END
-
-    # Cas 2 : Erreur et essais restants -> generate_sql
-    state_retry: AgentState = {
-        "question": "", "sql_query": "", "error_message": "Erreur de jointure", 
-        "query_results": None, "iteration_count": 1, "schema_context": ""
-    }
-    assert should_continue(state_retry) == "generate_sql"
-
-    # Cas 3 : Erreur mais limite atteinte (3) -> END
-    state_limit: AgentState = {
-        "question": "", "sql_query": "", "error_message": "Erreur critique", 
-        "query_results": None, "iteration_count": 3, "schema_context": ""
-    }
-    assert should_continue(state_limit) == END
+    res = node_clean_and_finalize(state)
+    assert res["sql_query"] == "SELECT * FROM ouvrage ORDER BY ido"
+    assert res["query_results"] == [{"ido": 1, "titre": "Test BD"}]
+    assert res["error_message"] is None
+    assert res["steps"][0]["node"] == "clean_and_finalize"
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not _is_ollama_running(), reason="Ollama server is not running")
 async def test_integration_run_agent_real():
     """
     Test d'intégration complet qui interroge l'agent avec une question réelle.
@@ -222,5 +168,90 @@ async def test_integration_run_agent_real():
     
     # Doit retourner des ouvrages (nous avons inséré des données réelles de Blain lors du seed)
     assert len(final_state["query_results"]) > 0
-    titres = [row["titre"] for row in final_state["query_results"]]
-    assert "Héraclès" in titres or "Ulysse" in titres
+    # Rechercher de manière robuste la colonne titre (qui peut être aliasée ex: titre_ouvrage)
+    titres = []
+    for row in final_state["query_results"]:
+        titre_key = next((k for k in row.keys() if "titre" in k.lower()), None)
+        if titre_key:
+            titres.append(row[titre_key])
+        else:
+            # Repli sur toutes les valeurs textuelles de la ligne
+            titres.extend([str(v) for v in row.values() if isinstance(v, str)])
+            
+    assert any("Héraclès" in t or "Ulysse" in t for t in titres)
+
+
+def test_get_last_validated_query():
+    """
+    Vérifie que get_last_validated_query extrait correctement la dernière requête SQL validée.
+    """
+    from langchain_core.messages import AIMessage, ToolMessage
+    from app.services.agent.graph import get_last_validated_query
+    
+    messages = [
+        AIMessage(
+            content="",
+            tool_calls=[{"name": "mcp_dry_run_query", "args": {"sql": "SELECT * FROM bad;"}, "id": "call_1"}]
+        ),
+        ToolMessage(
+            content=json.dumps({"success": False, "db_error": "table not found"}),
+            name="mcp_dry_run_query",
+            tool_call_id="call_1"
+        ),
+        AIMessage(
+            content="",
+            tool_calls=[{"name": "mcp_dry_run_query", "args": {"sql": "SELECT * FROM good;"}, "id": "call_2"}]
+        ),
+        ToolMessage(
+            content=json.dumps({"success": True}),
+            name="mcp_dry_run_query",
+            tool_call_id="call_2"
+        ),
+        AIMessage(content="Voici le SQL final :\n```sql\nSELECT * FROM goood;\n```")
+    ]
+    
+    sql = get_last_validated_query(messages)
+    assert sql == "SELECT * FROM good;"
+
+
+@patch("app.mcp.mcp_server.execute_query")
+def test_node_clean_and_finalize_fallback(mock_execute):
+    """
+    Vérifie que node_clean_and_finalize retombe sur la dernière requête validée en cas d'erreur de la finale.
+    """
+    from langchain_core.messages import AIMessage, ToolMessage
+    
+    # Mock de l'exécution : la première (broken) échoue, la seconde (fallback) réussit
+    def side_effect(sql):
+        if "goood" in sql:
+            return json.dumps({"success": False, "db_error": "table 'goood' does not exist"})
+        elif "good" in sql:
+            return json.dumps({"success": True, "data": [{"id": 1, "name": "Success"}]})
+        return json.dumps({"success": False, "db_error": "unknown"})
+        
+    mock_execute.side_effect = side_effect
+    
+    messages = [
+        AIMessage(
+            content="",
+            tool_calls=[{"name": "mcp_dry_run_query", "args": {"sql": "SELECT * FROM good;"}, "id": "call_2"}]
+        ),
+        ToolMessage(
+            content=json.dumps({"success": True}),
+            name="mcp_dry_run_query",
+            tool_call_id="call_2"
+        ),
+        AIMessage(content="Voici le SQL final :\n```sql\nSELECT * FROM goood;\n```")
+    ]
+    
+    state = {
+        "messages": messages,
+        "iteration_count": 2,
+        "simulate_only": False
+    }
+    
+    res = node_clean_and_finalize(state)
+    assert res["sql_query"] == "SELECT * FROM good"
+    assert res["query_results"] == [{"id": 1, "name": "Success"}]
+    assert res["error_message"] is None
+    assert res["steps"][0].get("fallback_applied") is True

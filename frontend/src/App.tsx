@@ -298,6 +298,7 @@ export default function App() {
             activeMessageDataId={activeMessageId}
             liveLogs={liveLogs}
             contextUsage={contextUsage}
+            loadedModelStatus={loadedModelStatus}
           />
         </section>
 

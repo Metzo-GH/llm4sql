@@ -204,7 +204,7 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
     let active = true;
     if (viewMode === 'mermaid' && mermaidCode && containerRef.current) {
       try {
-        containerRef.current.innerHTML = '<div class="h-full flex items-center justify-center text-xs animate-pulse text-muted">Génération du diagramme ER...</div>';
+        containerRef.current.innerHTML = DOMPurify.sanitize('<div class="h-full flex items-center justify-center text-xs animate-pulse text-muted">Génération du diagramme ER...</div>');
         
         mermaid.initialize({ 
           startOnLoad: false, 

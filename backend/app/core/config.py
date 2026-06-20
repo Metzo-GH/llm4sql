@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     DB_HOST: str = "127.0.0.1"
     DB_PORT: int = 5433
     DB_NAME: str = "llm4sql_db"
-    DB_USER: str = "llm4sql_user"
-    DB_PASSWORD: str = "llm4sql_password"
+    DB_USER: str
+    DB_PASSWORD: str
 
     # Paramètres Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"

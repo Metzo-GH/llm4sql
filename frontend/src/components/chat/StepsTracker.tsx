@@ -51,7 +51,7 @@ export const StepsTracker: React.FC<StepsTrackerProps> = React.memo(({ steps }) 
         return (
           <div
             key={step.id}
-            className="message-step-row"
+            className={`message-step-row ${step.status === 'loading' ? 'message-step-row-loading' : ''}`}
             style={{
               opacity: step.status === 'pending' ? 0.4 : 1,
             }}

@@ -1,5 +1,5 @@
 export interface AgentStep {
-  node: 'semantic_cache' | 'select_tables' | 'generate_sql' | 'execute_sql';
+  node: string;
   message?: string;
   selected_tables?: string[];
   elapsed?: number | string;
@@ -12,6 +12,9 @@ export interface AgentStep {
   row_count?: number;
   error?: string;
   model?: string;
+  tool_call?: any;
+  tool_result?: string;
+  iteration_count?: number;
 }
 
 export interface Message {

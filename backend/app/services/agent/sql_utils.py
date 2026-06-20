@@ -28,6 +28,31 @@ def extract_sql_query(text: str) -> str:
     return clean_text.strip()
 
 
+def clean_sql_query(sql: str) -> str:
+    """
+    Nettoie et standardise la requête SQL pour éliminer les erreurs syntaxiques mineures générées par le LLM.
+    """
+    if not sql:
+        return ""
+        
+    cleaned = sql.strip()
+    
+    # 1. Remplacer les points-virgules mal placés avant les clauses clés (GROUP BY, ORDER BY, LIMIT, HAVING, WHERE)
+    cleaned = re.sub(r';\s*(ORDER\s+BY)\b', r' \1', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r';\s*(GROUP\s+BY)\b', r' \1', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r';\s*(LIMIT)\b', r' \1', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r';\s*(HAVING)\b', r' \1', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r';\s*(WHERE)\b', r' \1', cleaned, flags=re.IGNORECASE)
+    
+    # 2. Remplacer les points-virgules finaux multiples par un seul
+    cleaned = re.sub(r';\s*;+$', ';', cleaned)
+    
+    # 3. Retirer les points-virgules finaux pour uniformiser
+    cleaned = re.sub(r';+$', '', cleaned).strip()
+    
+    return cleaned
+
+
 def extract_tables_from_sql(sql: str) -> List[str]:
     """
     Extrait la liste des tables impliquées dans une requête SQL via sqlglot.

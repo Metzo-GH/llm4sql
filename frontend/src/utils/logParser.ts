@@ -1,130 +1,191 @@
 import type { ParsedStep } from '../types/chat';
 
 /**
- * Extracts structured steps from the stream of backend logs.
+ * Extracts structured steps dynamically from the stream of backend logs.
+ * Renders a detailed, step-by-step chronological progress checklist.
  * 
  * @param logs - Array of raw log strings from the backend.
  * @returns Array of ParsedStep objects indicating the progression of the LangGraph agent.
  */
 export function parseLiveLogsToSteps(logs: string[]): ParsedStep[] {
-  const steps: ParsedStep[] = [
-    { id: 'init', label: 'Lancement du moteur LangGraph', status: 'pending' },
-    { id: 'tables', label: 'Sélection des tables requises', status: 'pending' },
-    { id: 'sql', label: 'Génération de la requête SQL', status: 'pending' },
-    { id: 'execution', label: 'Exécution sur PostgreSQL', status: 'pending' },
-  ];
+  const steps: ParsedStep[] = [];
 
   if (logs.length === 0) {
-    return steps;
+    return [
+      { id: 'init', label: "Démarrage du workflow...", status: 'loading' }
+    ];
   }
 
-  // 1. Init Step
-  const hasInit = logs.some(log => log.includes('[DEBUT AGENT]') || log.includes('[CACHE HIT]'));
-  if (hasInit) {
-    steps[0].status = 'success';
-    const cacheHit = logs.some(log => log.includes('[CACHE HIT]'));
-    if (cacheHit) {
-      steps[0].detail = 'Récupéré du cache sémantique local';
-      steps[0].elapsed = '0ms';
-      steps[1].status = 'success';
-      steps[1].detail = 'Tables chargées du cache';
-      steps[2].status = 'success';
-      steps[2].detail = 'SQL chargé du cache';
-      steps[3].status = 'success';
-      steps[3].detail = 'Résultats chargés du cache';
-      return steps;
-    } else {
-      steps[0].detail = 'Moteur LangGraph démarré';
-    }
-  } else {
-    steps[0].status = 'loading';
-    steps[0].detail = 'Démarrage du workflow...';
+  // 1. Check for Cache Hit
+  const hasCacheHit = logs.some(log => log.includes('[CACHE HIT]'));
+  if (hasCacheHit) {
+    return [
+      { id: 'init', label: "Initialisation de l'agent", status: 'success', detail: 'Récupéré du cache sémantique local' },
+      { id: 'cache', label: "Calcul de la réponse instantané (0ms)", status: 'success', detail: 'Résultats du cache chargés' }
+    ];
   }
 
-  // 2. Tables selection step
-  const selectTablesStartIndex = logs.findIndex(log => log.includes('[ETAPE 0 - SELECTION TABLES]'));
-  if (selectTablesStartIndex !== -1) {
-    if (steps[0].status === 'loading') {
-      steps[0].status = 'success';
-      steps[0].detail = 'Moteur LangGraph démarré';
-    }
-    steps[1].status = 'loading';
-    steps[1].detail = 'Identification des tables requises...';
-    
-    const selectTablesSuccessLog = logs.find(log => log.includes('[OK] Tables sélectionnées'));
-    if (selectTablesSuccessLog) {
-      steps[1].status = 'success';
-      const elapsedMatch = selectTablesSuccessLog.match(/en ([\d.]+)s/);
-      const tablesMatch = selectTablesSuccessLog.match(/: \[(.*?)\]/);
-      const elapsed = elapsedMatch ? `${elapsedMatch[1]}s` : '';
-      const tables = tablesMatch ? tablesMatch[1].replace(/['"\s]/g, '').split(',') : [];
-      steps[1].elapsed = elapsed;
-      steps[1].detail = `Tables ciblées : ${tables.length > 0 && tables[0] !== '' ? tables.join(', ') : 'aucune'}`;
-    }
-  }
+  // 2. Initialize
+  steps.push({
+    id: 'init',
+    label: "Initialisation de l'agent",
+    status: 'success',
+    detail: 'Moteur LangGraph démarré'
+  });
 
-  // 3. SQL Generation step
-  const sqlGenLogs = logs.filter(log => log.includes('[ETAPE 1 - GENERATION SQL]'));
-  if (sqlGenLogs.length > 0) {
-    if (steps[1].status !== 'success') {
-      steps[1].status = 'success';
-      steps[1].detail = 'Tables ciblées avec succès';
+  // Track the indices of active tool steps to update them on success/error
+  let lastSearchIdx = -1;
+  let lastSchemaIdx = -1;
+  let lastSampleIdx = -1;
+  let lastDryRunIdx = -1;
+  let lastExecIdx = -1;
+
+  for (let i = 0; i < logs.length; i++) {
+    const log = logs[i];
+
+    // Reflection step
+    if (log.includes('[RÉFLEXION]')) {
+      const iterMatch = log.match(/itération (\d+)/);
+      const iter = iterMatch ? iterMatch[1] : '1';
+      
+      // Update previous loading reflection to success
+      const prevReflect = steps.find(s => s.id.startsWith('reflect-') && s.status === 'loading');
+      if (prevReflect) {
+        prevReflect.status = 'success';
+      }
+      
+      // Add new reflection step
+      steps.push({
+        id: `reflect-${iter}`,
+        label: `Réflexion et planification (Itération #${iter})`,
+        status: 'loading'
+      });
     }
-    
-    steps[2].status = 'loading';
-    const lastLog = sqlGenLogs[sqlGenLogs.length - 1];
-    const iterationMatch = lastLog.match(/Essai #(\d+)/);
-    const iterationNum = iterationMatch ? parseInt(iterationMatch[1]) : 1;
-    steps[2].iteration = iterationNum;
-    steps[2].detail = `Réflexion du LLM (essai #${iterationNum})...`;
 
-    const sqlSuccessLog = logs.find(log => log.includes('[OK] SQL généré'));
-    if (sqlSuccessLog) {
-      steps[2].status = 'success';
-      const elapsedMatch = sqlSuccessLog.match(/en ([\d.]+)s/);
-      steps[2].elapsed = elapsedMatch ? `${elapsedMatch[1]}s` : '';
-      steps[2].detail = `Requête SQL générée en ${steps[2].elapsed}`;
+    // Search Value tool call
+    if (log.includes('[APPEL OUTIL] mcp_search_value')) {
+      // Mark reflection step as success since it made a decision
+      const prevRef = steps.find(s => s.id.startsWith('reflect-') && s.status === 'loading');
+      if (prevRef) prevRef.status = 'success';
+
+      const termMatch = log.match(/term['"]?:\s*['"](.*?)['"]/);
+      const term = termMatch ? termMatch[1] : '';
+      steps.push({
+        id: `tool-search-${i}`,
+        label: `Recherche de la valeur "${term}"`,
+        status: 'loading'
+      });
+      lastSearchIdx = steps.length - 1;
     }
-  }
-
-  // 4. Execution step
-  const executionLogIndex = logs.findIndex(log => log.includes('[ETAPE 2 - EXECUTION SQL]'));
-  if (executionLogIndex !== -1) {
-    if (steps[2].status !== 'success') {
-      steps[2].status = 'success';
+    if (log.includes('[OUTIL SUCCÈS] mcp_search_value') || log.includes('[OUTIL ERREUR] mcp_search_value')) {
+      if (lastSearchIdx !== -1) {
+        const isSuccess = log.includes('[OUTIL SUCCÈS]');
+        steps[lastSearchIdx].status = isSuccess ? 'success' : 'error';
+        steps[lastSearchIdx].detail = isSuccess ? 'Valeur sémantique localisée dans la base' : 'Erreur lors de la recherche';
+      }
     }
-    steps[3].status = 'loading';
-    steps[3].detail = 'Exécution de la requête sur PostgreSQL...';
 
-    const execSuccessLog = logs.find(log => log.includes('Requete executee avec succes'));
-    const execErrorLog = logs.find(log => log.includes('[ERROR] Echec de l\'execution') || log.includes('[ERROR] Alerte Securite'));
+    // Get Schema tool call
+    if (log.includes('[APPEL OUTIL] mcp_get_schema')) {
+      const prevRef = steps.find(s => s.id.startsWith('reflect-') && s.status === 'loading');
+      if (prevRef) prevRef.status = 'success';
 
-    if (execSuccessLog) {
-      steps[3].status = 'success';
-      const elapsedMatch = execSuccessLog.match(/en ([\d.]+)s/);
-      const rowsMatch = execSuccessLog.match(/\((\d+) ligne/);
-      steps[3].elapsed = elapsedMatch ? `${elapsedMatch[1]}s` : '';
-      const rows = rowsMatch ? rowsMatch[1] : '0';
-      steps[3].detail = `Requête exécutée avec succès (${rows} ligne(s) retournée(s))`;
-    } else if (execErrorLog) {
-      steps[3].status = 'error';
-      steps[3].detail = execErrorLog.includes('Alerte Securite') 
-        ? 'Alerte de Sécurité (Read-Only uniquement)' 
-        : 'Échec de l\'exécution SQL';
+      const tableMatch = log.match(/table_name['"]?:\s*['"](.*?)['"]/);
+      const table = tableMatch ? tableMatch[1] : '';
+      steps.push({
+        id: `tool-schema-${i}`,
+        label: `Analyse des relations de la table "${table}"`,
+        status: 'loading'
+      });
+      lastSchemaIdx = steps.length - 1;
     }
-  }
+    if (log.includes('[OUTIL SUCCÈS] mcp_get_schema') || log.includes('[OUTIL ERREUR] mcp_get_schema')) {
+      if (lastSchemaIdx !== -1) {
+        const isSuccess = log.includes('[OUTIL SUCCÈS]');
+        steps[lastSchemaIdx].status = isSuccess ? 'success' : 'error';
+        steps[lastSchemaIdx].detail = isSuccess ? 'Schéma et clés étrangères chargés' : 'Erreur de chargement du schéma';
+      }
+    }
 
-  // Auto-correction warning log handling
-  const hasAutoCorrection = logs.some(log => log.includes('[AUTO-CORRECTION]'));
-  if (hasAutoCorrection) {
-    const correctionLogs = logs.filter(log => log.includes('[AUTO-CORRECTION]'));
-    const lastCorrLog = correctionLogs[correctionLogs.length - 1];
-    const attemptMatch = lastCorrLog.match(/Tentative #(\d+)/);
-    const attempt = attemptMatch ? attemptMatch[1] : '';
-    steps[2].status = 'loading';
-    steps[2].detail = `Auto-correction en cours (essai #${attempt}/3)...`;
-    steps[3].status = 'pending';
-    steps[3].detail = undefined;
+    // Get Sample Data tool call
+    if (log.includes('[APPEL OUTIL] mcp_get_sample_data')) {
+      const prevRef = steps.find(s => s.id.startsWith('reflect-') && s.status === 'loading');
+      if (prevRef) prevRef.status = 'success';
+
+      const tableMatch = log.match(/table_name['"]?:\s*['"](.*?)['"]/);
+      const table = tableMatch ? tableMatch[1] : '';
+      steps.push({
+        id: `tool-sample-${i}`,
+        label: `Chargement d'exemples pour "${table}"`,
+        status: 'loading'
+      });
+      lastSampleIdx = steps.length - 1;
+    }
+    if (log.includes('[OUTIL SUCCÈS] mcp_get_sample_data') || log.includes('[OUTIL ERREUR] mcp_get_sample_data')) {
+      if (lastSampleIdx !== -1) {
+        const isSuccess = log.includes('[OUTIL SUCCÈS]');
+        steps[lastSampleIdx].status = isSuccess ? 'success' : 'error';
+        steps[lastSampleIdx].detail = isSuccess ? 'Lignes d\'exemples récupérées' : 'Erreur lors de la lecture des lignes';
+      }
+    }
+
+    // Dry Run (Explain) tool call
+    if (log.includes('[APPEL OUTIL] mcp_dry_run_query')) {
+      const prevRef = steps.find(s => s.id.startsWith('reflect-') && s.status === 'loading');
+      if (prevRef) prevRef.status = 'success';
+
+      steps.push({
+        id: `tool-dryrun-${i}`,
+        label: "Validation de la syntaxe par EXPLAIN",
+        status: 'loading'
+      });
+      lastDryRunIdx = steps.length - 1;
+    }
+    if (log.includes('[OUTIL SUCCÈS] mcp_dry_run_query') || log.includes('[OUTIL ERREUR] mcp_dry_run_query')) {
+      if (lastDryRunIdx !== -1) {
+        const isSuccess = log.includes('[OUTIL SUCCÈS]');
+        steps[lastDryRunIdx].status = isSuccess ? 'success' : 'error';
+        steps[lastDryRunIdx].detail = isSuccess ? 'Structure SQL validée par PostgreSQL' : 'Correction de syntaxe requise';
+      }
+    }
+
+    // Finalize
+    if (log.includes('[FIN] Finalisation')) {
+      // Mark any loading reflection as success
+      const prevRef = steps.find(s => s.id.startsWith('reflect-') && s.status === 'loading');
+      if (prevRef) prevRef.status = 'success';
+
+      steps.push({
+        id: 'finalize',
+        label: "Finalisation du SQL & Nettoyage Regex",
+        status: 'success',
+        detail: 'Requête finalisée'
+      });
+    }
+
+    // Execution
+    if (log.includes('Exécution finale sur PostgreSQL...')) {
+      steps.push({
+        id: 'exec',
+        label: "Exécution physique sur la base de données",
+        status: 'loading'
+      });
+      lastExecIdx = steps.length - 1;
+    }
+    if (log.includes('Exécution finale réussie')) {
+      if (lastExecIdx !== -1) {
+        steps[lastExecIdx].status = 'success';
+        const rowsMatch = log.match(/: (\d+) ligne/);
+        const rows = rowsMatch ? rowsMatch[1] : '0';
+        steps[lastExecIdx].detail = `${rows} ligne(s) retournée(s)`;
+      }
+    }
+    if (log.includes('[ERROR] Échec de l\'exécution final')) {
+      if (lastExecIdx !== -1) {
+        steps[lastExecIdx].status = 'error';
+        steps[lastExecIdx].detail = 'Erreur lors de l\'exécution SQL';
+      }
+    }
   }
 
   return steps;

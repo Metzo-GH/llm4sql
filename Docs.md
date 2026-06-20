@@ -68,6 +68,14 @@ Le projet s'articule autour d'une architecture modulaire moderne respectant les 
   - **Télémétrie & Observabilité** : Suivi des métriques de performance, vitesse d'inférence en tokens/s, badges des tables interrogées et accordéon pliable pour la réflexion du modèle (`<think>`).
   - **Interface de Configuration** : Tiroir déroulant d'options de configuration (Modèle, Température, Contexte).
 
+### Phase R8 : Moteur Agentique avec Tool Calling & Outils MCP Étendus (100% VALIDÉE)
+- **État :** Terminé avec succès.
+- **Réalisations :**
+  - **Extension du serveur MCP** : Ajout des fonctions d'enquête sémantique (`search_value`), d'exploration d'exemples de données (`get_sample_data`), et de validation syntaxique (`dry_run_query` avec `EXPLAIN` PostgreSQL et sécurité AST stricte).
+  - **Refonte de l'orchestration LangGraph** : Transition vers une boucle ReAct tool-calling autonome dans `graph.py` avec `bind_tools` de ChatOllama et un **Garde-fou (Loop Guard)** fixé à 5 itérations maximum pour empêcher les récursions infinies.
+  - **Post-traitement SQL Regex** : Implémentation d'un post-traitement Regex Python (`sql_utils.py`) pour corriger les erreurs de syntaxe mineures générées par le modèle (ex: points-virgules de fin ou mal positionnés avant un ORDER BY).
+  - **Raffinement UI & Télémétrie SSE** : Intégration en temps réel des logs SSE des appels d'outils et animations fluides dans un `StepsTracker` soigné.
+
 ## 5. Contraintes et Prérequis
 
 - **Matériel cible :** Carte Graphique dédiée avec minimum 8 Go de VRAM.

@@ -18,6 +18,9 @@ def send_agent_event(event_type: str, data: Any):
             pass
 
 
+from langchain_core.messages import BaseMessage
+
+
 class AgentState(TypedDict):
     """
     Représente l'état partagé tout au long de l'exécution du graphe LangGraph.
@@ -34,3 +37,4 @@ class AgentState(TypedDict):
     model: Optional[str]
     temperature: Optional[float]
     context_size: Optional[int]
+    messages: Annotated[List[BaseMessage], operator.add]

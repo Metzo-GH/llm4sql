@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Message, ContextUsage, LoadedModelStatus, SqlResultRow } from '../types/chat';
-import { parseThinking } from '../utils/thinkingParser';
+import { parseThinking, parseAllThinking } from '../utils/thinkingParser';
 
 import { API_BASE_URL } from '../config/api';
 
@@ -215,7 +215,7 @@ export function useChat() {
               rawLLMText += event.data;
               
               // Parse thinking vs SQL in real-time using unified thinkingParser
-              const { thinking, answer: sql } = parseThinking(rawLLMText);
+              const { answer: sql } = parseThinking(rawLLMText);
               
               // Clean codeblock markers from SQL while streaming
               let cleanedSql = sql;
@@ -228,12 +228,13 @@ export function useChat() {
                 cleanedSql = cleanedSql.substring(0, cleanedSql.length - 3).trim();
               }
               
+              const allThinkingText = parseAllThinking(rawLLMText);
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === assistantMsgId
                     ? {
                         ...msg,
-                        thinking: thinking || undefined,
+                        thinking: allThinkingText || undefined,
                         sqlQuery: cleanedSql || undefined,
                         content: rawLLMText,
                       }
@@ -278,6 +279,7 @@ export function useChat() {
                         steps: data.steps,
                         cacheHit: data.cache_hit,
                         tables: data.tables,
+                        thinking: parseAllThinking(rawLLMText),
                       }
                     : msg
                 )

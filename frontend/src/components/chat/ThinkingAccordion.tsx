@@ -26,6 +26,43 @@ export const ThinkingAccordion: React.FC<ThinkingAccordionProps> = React.memo(({
     }
   }, [thinkingText, isLoading]);
 
+  const renderThinkingContent = () => {
+    if (!thinkingText) return null;
+
+    if (thinkingText.includes('[Réflexion #')) {
+      const blocks = thinkingText.split(/\[Réflexion\s*#/g).filter(Boolean);
+      return (
+        <div className="message-thinking-chain">
+          {blocks.map((block, idx) => {
+            const closingBracketIdx = block.indexOf(']');
+            if (closingBracketIdx === -1) {
+              return (
+                <div key={idx} className="message-thinking-block animate-fade-in">
+                  <div className="message-thinking-block-title">💡 Réflexion #{idx + 1}</div>
+                  <div className="message-thinking-block-text">{block.trim()}</div>
+                </div>
+              );
+            }
+            const titlePart = block.substring(0, closingBracketIdx).trim();
+            const textPart = block.substring(closingBracketIdx + 1).trim();
+            return (
+              <div key={idx} className="message-thinking-block animate-fade-in">
+                <div className="message-thinking-block-title">
+                  💡 Réflexion #{titlePart}
+                </div>
+                <div className="message-thinking-block-text">
+                  {textPart}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return <div className="message-thinking-block-text">{thinkingText}</div>;
+  };
+
   return (
     <details
       className="message-thinking-details"
@@ -33,10 +70,10 @@ export const ThinkingAccordion: React.FC<ThinkingAccordionProps> = React.memo(({
       onToggle={(e) => onToggle((e.target as HTMLDetailsElement).open)}
     >
       <summary className="message-thinking-summary select-none text-purple-glow">
-        <span>💡 Réflexion du modèle ({modelName || 'Raisonnement'})</span>
+        <span>💡 Chaîne de Réflexion ({modelName || 'Raisonnement'})</span>
       </summary>
       <div ref={thinkingRef} className="message-thinking-body">
-        {thinkingText}
+        {renderThinkingContent()}
       </div>
     </details>
   );

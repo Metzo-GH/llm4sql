@@ -26,3 +26,33 @@ export function parseThinking(content: string): { thinking: string; answer: stri
     answer: content.substring(thinkEnd + 8).trim()
   };
 }
+
+/**
+ * Extracts all thinking blocks from the content and formats them chronologically
+ * as a continuous reasoning chain.
+ * 
+ * @param content - Raw content containing multiple <think>...</think> blocks.
+ * @returns Formatted string of all thinking steps.
+ */
+export function parseAllThinking(content: string): string {
+  if (!content) return '';
+  
+  const regex = /<think>([\s\S]*?)<\/think>/g;
+  const matches = [...content.matchAll(regex)];
+  const formattedBlocks: string[] = [];
+  
+  matches.forEach((match, idx) => {
+    formattedBlocks.push(`[Réflexion #${idx + 1}]\n${match[1].trim()}`);
+  });
+  
+  // Check if there is an unclosed think block at the very end
+  const lastStart = content.lastIndexOf('<think>');
+  if (lastStart !== -1) {
+    const lastEnd = content.indexOf('</think>', lastStart);
+    if (lastEnd === -1) {
+      formattedBlocks.push(`[Réflexion #${matches.length + 1} (en cours...)]\n${content.substring(lastStart + 7).trim()}`);
+    }
+  }
+  
+  return formattedBlocks.join('\n\n');
+}

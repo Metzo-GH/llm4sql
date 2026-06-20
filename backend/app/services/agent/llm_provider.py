@@ -11,28 +11,50 @@ MAX_LLM_CACHE_SIZE = 10
 _model_context_lengths = {}
 
 
-def get_model_context_length(model_name: str) -> int:
+def get_model_context_length(model_name: str, force_refresh: bool = False) -> int:
     """
-    Interroge l'API Ollama /api/show pour récupérer la taille de contexte native du modèle.
-    Utilise un cache en mémoire pour éviter les appels HTTP répétés.
+    Récupère la taille de contexte réelle du modèle depuis l'API Ollama /api/ps si chargé,
+    ou interroge /api/show en limitant à une taille réaliste pour éviter les valeurs théoriques géantes.
     """
     global _model_context_lengths
-    if model_name in _model_context_lengths:
+    if not force_refresh and model_name in _model_context_lengths:
         return _model_context_lengths[model_name]
         
+    # 1. Tenter d'abord /api/ps pour le modèle actif en mémoire
+    try:
+        url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/ps"
+        with httpx.Client(timeout=1.0) as client:
+            response = client.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                for m in data.get("models", []):
+                    m_name = m.get("name", "")
+                    # Match exact ou par préfixe
+                    if m_name == model_name or m_name.split(":")[0] == model_name.split(":")[0]:
+                        ctx_len = m.get("context_length", 0)
+                        if ctx_len > 0:
+                            _model_context_lengths[model_name] = ctx_len
+                            return ctx_len
+    except Exception as e:
+        print(f"[Ollama API] Erreur /api/ps pour context_length: {e}")
+
+    # 2. Repli sur /api/show
     try:
         url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/show"
-        with httpx.Client(timeout=2.0) as client:
+        with httpx.Client(timeout=1.0) as client:
             response = client.post(url, json={"name": model_name})
             if response.status_code == 200:
                 data = response.json()
                 model_info = data.get("model_info", {})
                 for k, v in model_info.items():
                     if k.endswith(".context_length") and isinstance(v, int):
-                        _model_context_lengths[model_name] = v
-                        return v
+                        # Si la valeur est aberrante (taille max théorique comme 262144),
+                        # on la cap à 8192 car Ollama utilise 2048/8192 par défaut.
+                        val = v if v <= 32768 else 8192
+                        _model_context_lengths[model_name] = val
+                        return val
     except Exception as e:
-        print(f"[Ollama API] Impossible de récupérer le context_length de {model_name}: {e}")
+        print(f"[Ollama API] Impossible de récupérer le context_length via show de {model_name}: {e}")
         
     return 2048
 
