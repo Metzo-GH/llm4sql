@@ -113,29 +113,29 @@ Le traitement d'une question utilisateur suit le parcours dynamique suivant :
 
 ```mermaid
 flowchart TD
-    Q[Question Utilisateur] --> Cache{Recherche Cache Sémantique}
-    Cache -- Succès (Similarity > 0.90) --> R_Cache[Renvoi Immédiat de la Réponse (0ms)]
-    Cache -- Échec --> AgentLoop[Nœud : agent_loop \n Réflexion & Décision du LLM]
+    Q["Question Utilisateur"] --> Cache{Recherche Cache Sémantique}
+    Cache -->| "Succès (Similarité > 0.90)" | R_Cache["Renvoi Immédiat de la Réponse (0ms)"]
+    Cache -->| "Échec" | AgentLoop["Nœud : agent_loop <br/> Réflexion & Décision du LLM"]
     
-    AgentLoop --> Choice{Le LLM demande-t-il \nun outil ?}
-    Choice -- Oui (Tool Calls) --> ExecTools[Nœud : execute_tools \n Appel des Outils MCP]
-    ExecTools --> LoopGuard{Itérations < 5}
-    LoopGuard -- Oui --> AgentLoop
-    LoopGuard -- Non (Sécurité) --> Break[Nœud : force_loop_break]
+    AgentLoop --> Choice{Le LLM demande-t-il un outil ?}
+    Choice -->| "Oui (Tool Calls)" | ExecTools["Nœud : execute_tools <br/> Appel des Outils MCP"]
+    ExecTools --> LoopGuard{"Itérations < 5"}
+    LoopGuard -->| "Oui" | AgentLoop
+    LoopGuard -->| "Non (Sécurité)" | Break["Nœud : force_loop_break"]
     
-    Choice -- Non (Réponse Finale) --> FinalNode[Nœud : clean_and_finalize]
-    FinalNode --> RegexClean[Nettoyage Regex de la requête]
+    Choice -->| "Non (Réponse Finale)" | FinalNode["Nœud : clean_and_finalize"]
+    FinalNode --> RegexClean["Nettoyage Regex de la requête"]
     RegexClean --> ASTCheck{Validation Sécurité AST SQLGlot}
     
-    ASTCheck -- Rejet de sécurité --> Correct[Alimentation de l'erreur au LLM]
-    ASTCheck -- Conforme --> ExecSQL[Exécution PostgreSQL en Lecture Seule]
+    ASTCheck -->| "Rejet de sécurité" | Correct["Alimentation de l'erreur au LLM"]
+    ASTCheck -->| "Conforme" | ExecSQL["Exécution PostgreSQL en Lecture Seule"]
     
-    ExecSQL -- Erreur SQL (Postgres) --> Correct
-    Correct --> SelfHealingGuard{Essais de correction < 3}
-    SelfHealingGuard -- Oui --> AgentLoop
-    SelfHealingGuard -- Non --> Fallback[Récupération dernière requête validée par EXPLAIN]
+    ExecSQL -->| "Erreur SQL (Postgres)" | Correct
+    Correct --> SelfHealingGuard{"Essais de correction < 3"}
+    SelfHealingGuard -->| "Oui" | AgentLoop
+    SelfHealingGuard -->| "Non" | Fallback["Récupération dernière requête validée par EXPLAIN"]
     
-    ExecSQL -- Succès --> Final[Restitution de la réponse]
+    ExecSQL -->| "Succès" | Final["Restitution de la réponse"]
     Fallback --> Final
     Break --> Final
 ```

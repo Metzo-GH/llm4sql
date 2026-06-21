@@ -65,49 +65,49 @@ L'application est pré-configurée avec une base de données de test simulant un
 ```mermaid
 erDiagram
     PERSONNE {
-        int idp PK "Identifiant unique auteur"
-        varchar nom "Nom de famille"
-        varchar prenom "Prénom"
-        date date_naiss "Date de naissance"
-        date date_deces "Date de décès (optionnelle)"
+        int idp PK
+        varchar nom
+        varchar prenom
+        date date_naiss
+        date date_deces
     }
     SERIE {
-        int ids PK "Identifiant unique série"
-        varchar titre "Titre de la série"
+        int ids PK
+        varchar titre
     }
     OUVRAGE {
-        int ido PK "Identifiant unique album"
-        varchar titre "Titre de l'album"
-        int dessinateur FK "Référence PERSONNE.idp"
-        int scenariste FK "Référence PERSONNE.idp"
-        int coloriste FK "Référence PERSONNE.idp (optionnelle)"
-        int ids FK "Référence SERIE.ids"
-        int num_ordre "Numéro d'album dans la série"
-        date date_sortie "Date de parution"
+        int ido PK
+        varchar titre
+        int dessinateur FK
+        int scenariste FK
+        int coloriste FK
+        int ids FK
+        int num_ordre
+        date date_sortie
     }
     CONCEPT {
-        int idc PK "Identifiant unique concept"
-        varchar label "Libellé du concept"
-        int concept_pere FK "Référence auto-référencée CONCEPT.idc"
+        int idc PK
+        varchar label
+        int concept_pere FK
     }
     A_POUR_MOT_CLE {
-        int ido PK,FK "Référence OUVRAGE.ido"
-        int idc PK,FK "Référence CONCEPT.idc"
+        int ido PK "FK"
+        int idc PK "FK"
     }
     AVIS {
-        varchar pseudo PK "Pseudonyme du lecteur"
-        int ido PK,FK "Référence OUVRAGE.ido"
-        int score "Note de l'album (0 à 5)"
+        varchar pseudo PK
+        int ido PK "FK"
+        int score
     }
 
     PERSONNE ||--o{ OUVRAGE : "dessine"
     PERSONNE ||--o{ OUVRAGE : "scenarise"
     PERSONNE |o--o{ OUVRAGE : "colorise"
     SERIE |o--o{ OUVRAGE : "contient"
-    OUVRAGE ||--o{ A_POUR_MOT_CLE : "est décrit par"
-    CONCEPT ||--o{ A_POUR_MOT_CLE : "est associé à"
-    CONCEPT |o--o{ CONCEPT : "est sous-concept de"
-    OUVRAGE ||--o{ AVIS : "reçoit"
+    OUVRAGE ||--o{ A_POUR_MOT_CLE : "decrit"
+    CONCEPT ||--o{ A_POUR_MOT_CLE : "associe"
+    CONCEPT |o--o{ CONCEPT : "a_pour_pere"
+    OUVRAGE ||--o{ AVIS : "recoit"
 ```
 
 ### 3.1 Description Métier des Tables

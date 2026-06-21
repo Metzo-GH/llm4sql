@@ -12,22 +12,22 @@ L'application est structurée selon un modèle modulaire moderne qui distribue l
 
 ```mermaid
 graph TD
-    subgraph Frontend [Client Web (Vite + React + TS)]
-        UI[Interface Graphique]
-        State[Gestion d'État & Hooks - useChat / useSandbox]
-        Viz[Restitution - Recharts, DataTable, Mermaid]
+    subgraph Frontend ["Client Web (Vite + React + TS)"]
+        UI["Interface Graphique"]
+        State["Gestion d'État & Hooks - useChat / useSandbox"]
+        Viz["Restitution - Recharts, DataTable, Mermaid"]
     end
 
-    subgraph Backend [Serveur API (FastAPI)]
-        API[Routes REST /api/chat, /api/sandbox, /api/schema]
-        Cache[Cache Sémantique & Cache Schéma Thread-Safe]
-        Agent[Orchestrator Agentique - LangGraph]
-        Parser[Analyseur DDL Mermaid déterministe]
+    subgraph Backend ["Serveur API (FastAPI)"]
+        API["Routes REST (/api/chat, /api/sandbox, /api/schema)"]
+        Cache["Cache Sémantique & Cache Schéma Thread-Safe"]
+        Agent["Orchestrator Agentique - LangGraph"]
+        Parser["Analyseur DDL Mermaid déterministe"]
     end
 
-    subgraph Infrastructure [Services Locaux]
-        Postgres[(PostgreSQL 16 en conteneur Docker - Port 5433)]
-        Ollama[Ollama - Inférence LLM local & Embeddings]
+    subgraph Infrastructure ["Services Locaux"]
+        Postgres[("PostgreSQL 16 en conteneur Docker - Port 5433")]
+        Ollama["Ollama - Inférence LLM local & Embeddings"]
     end
 
     %% Relations
