@@ -1,273 +1,190 @@
-# LLM4SQL - Moteur Backend & Agent SQL Local 🚀
+# LLM4SQL - Manuel de Référence Technique du Backend ⚙️
 
-Ce dossier contient le moteur backend local et sécurisé de **LLM4SQL**. L'application est conçue pour fonctionner **à 100% en local** sur votre machine. Elle traduit des questions en langage naturel en requêtes SQL valides, les exécute sur une base de données PostgreSQL et utilise un agent intelligent pour s'auto-corriger en cas d'erreur.
+Ce dossier héberge le moteur de traitement local et sécurisé de **LLM4SQL**. Il gère la réception des questions utilisateurs, l'orchestration agentique de génération SQL, la validation de sécurité syntaxique, l'exécution isolée et l'optimisation des performances.
+
+---
 
 ## 🏗️ Clean Architecture du Backend
 
-Le backend est structuré selon les principes du **SOLID**, du **DRY** (Don't Repeat Yourself) et de la **Clean Architecture** (Architecture Propre). L'ensemble du code de production est encapsulé dans le package principal `app/`, garantissant un couplage faible, une séparation stricte des responsabilités (SRP) et une lisibilité maximale.
+Le code backend respecte scrupuleusement les principes du **SOLID**, du **DRY** (Don't Repeat Yourself) et de la **Clean Architecture** (Architecture Propre). L'ensemble de la logique applicative est découplée dans le package `app/`.
 
-### Organisation des Répertoires :
+### Organisation Complète des Répertoires :
 
 ```text
 backend/
 ├── app/                       # Package principal de l'application
 │   ├── core/                  # Configurations globales, sécurité et utilitaires transverses
-│   │   ├── config.py          # Configuration via pydantic-settings
+│   │   ├── config.py          # Configuration globale via pydantic-settings
 │   │   ├── limiter.py         # Configuration du rate-limiter global (slowapi)
-│   │   └── security.py        # Analyseur AST SQL pour la sécurité et blocage d'injection (sqlglot)
-│   ├── database/              # Couche d'accès aux données (PostgreSQL)
-│   │   ├── pool.py            # Gestion asynchrone et thread-safe du pool de connexions (DRY)
-│   │   ├── queries.py         # Requêtes SQL réutilisables d'extraction de schéma
-│   │   └── seed_db.py         # Script d'initialisation et peuplement de la BD Ouvrages
+│   │   └── security.py        # Validateur AST de sécurité SQL (sqlglot)
+│   ├── database/              # Services d'accès à PostgreSQL
+│   │   ├── pool.py            # Gestion thread-safe du pool de connexions (DRY)
+│   │   ├── queries.py         # Centralisation des requêtes d'extraction de schéma
+│   │   └── seed_db.py         # Script de peuplement de la BD d'exercice
 │   ├── services/              # Logique métier et orchestrations intelligentes
-│   │   ├── cache.py           # Service de cache thread-safe pour le schéma de base de données
-│   │   └── agent/             # Sous-système intelligent LangGraph
-│   │       ├── graph.py       # Définition du graphe de flux LangGraph
-│   │       ├── llm_provider.py# Fournisseur et configuration du LLM local (Ollama)
-│   │       ├── nodes.py       # Définition unitaire des nœuds du graphe (ex: génération SQL)
-│   │       ├── routing.py     # Logique d'aiguillage conditionnel du flux
+│   │   ├── cache.py           # Service de cache schéma thread-safe
+│   │   └── agent/             # Graphe de décision LangGraph (Le Cerveau)
+│   │       ├── graph.py       # Définition et compilation du graphe de flux
+│   │       ├── llm_provider.py# Singleton global de chargement paresseux d'Ollama
+│   │       ├── nodes.py       # Définition unitaire des nœuds de traitement (SRP)
+│   │       ├── routing.py     # Logique de routage conditionnel
 │   │       ├── prompts.py     # Centralisation et versioning des prompts système
-│   │       ├── schema.py      # Modèles Pydantic de données pour l'agent
-│   │       ├── state.py       # Typage et gestion d'état de l'agent
-│   │       ├── tools.py       # Définition des outils de l'agent (exécution SQL, etc.)
-│   │       └── sql_utils.py   # Utilitaires de nettoyage et correction regex post-génération
-│   ├── schemas/               # Modèles d'échange d'API (Pydantic avec max_length strict)
-│   │   ├── chat.py            # Modèles pour le chat
-│   │   └── sandbox.py         # Modèles pour l'initialisation et la visualisation de sandbox
-│   ├── routers/               # Contrôleurs API FastAPI par domaine
-│   │   ├── chat.py            # Route `/api/chat` (discussion intelligente et self-healing)
-│   │   ├── monitoring.py      # Route `/api/monitoring` (métriques et journalisation)
-│   │   └── sandbox.py         # Routes `/api/sandbox` (init et visualisation Mermaid déterministe)
-│   ├── mcp/                   # Implémentation du Model Context Protocol (MCP) d'Anthropic
-│   │   └── mcp_server.py      # Serveur MCP exposant des outils aux LLMs externes
-│   └── main.py                # Point d'entrée de l'application FastAPI
-├── tests/                     # Suite complète de tests automatisés (pytest)
-│   ├── test_agent.py          # Tests d'intégration de l'agent LangGraph
-│   ├── test_api.py            # Tests de validation des points d'accès HTTP
+│   │       ├── schema.py      # Modèles Pydantic internes à l'agent
+│   │       ├── state.py       # Modèles d'état de l'agent LangGraph
+│   │       ├── tools.py       # Définition des outils exposés à l'agent
+│   │       └── sql_utils.py   # Nettoyage regex des requêtes SQL brutes générées
+│   ├── schemas/               # Modèles de requêtes/réponses d'API (Pydantic)
+│   │   ├── chat.py            # Modèles pour le chat (validation de longueur max)
+│   │   └── sandbox.py         # Modèles pour l'initialisation de la Sandbox
+│   ├── routers/               # APIRouters FastAPI découpés par domaine
+│   │   ├── chat.py            # Route `/api/chat` (agent intelligent SSE)
+│   │   ├── monitoring.py      # Route `/api/monitoring` (métriques système)
+│   │   └── sandbox.py         # Routes `/api/sandbox` (DDL & visualiseur déterministe)
+│   ├── mcp/                   # Implémentation du Model Context Protocol (MCP)
+│   │   └── mcp_server.py      # Serveur MCP exposant les outils de lecture de schéma et requête
+│   └── main.py                # Point d'entrée principal de l'application FastAPI
+├── tests/                     # Suite complète de tests unitaires et intégration (pytest)
+│   ├── test_agent.py          # Tests de l'agent LangGraph et boucle de Self-Healing
+│   ├── test_api.py            # Tests de validation des routes FastAPI
 │   ├── test_mcp_security.py   # Tests unitaires du validateur SQL sécurité
-│   └── test_security_r1.py    # Tests de non-régression de sécurité
-├── pyproject.toml             # Configuration du projet et dépendances uv
-├── uv.lock                    # Fichier de verrouillage des versions
-├── .env                       # Configuration locale des variables d'environnement
-├── .env.example               # Template d'environnement partagé
+│   └── test_security_r1.py    # Tests d'intégration et de non-régression de sécurité
+├── pyproject.toml             # Configuration et dépendances de l'environnement virtuel Python
+├── uv.lock                    # Fichier de verrouillage des versions exactes
+├── .env                       # Fichier de secrets locaux
+├── .env.example               # Template des variables d'environnement
 └── start_backend.ps1          # Script PowerShell de démarrage automatique et optimisations
 ```
 
-### Choix de Conception & Stabilité :
-- **Rate-Limiting (slowapi)** : Protection globale contre le déni de service (DoS) et la surcharge de jetons LLM, implémentée via un middleware slowapi limitant le nombre de requêtes par minute et par IP.
-- **Thread-Safety (threading.Lock)** : Utilisation de verrous explicites lors de la récupération et de la mise à jour du cache de schéma, évitant tout risque de condition de concurrence (*Race Condition*) lors d'accès simultanés de l'agent LangGraph.
-- **Asynchronisme Non Bloquant (`asyncio.to_thread`)** : Les opérations bloquantes du pilote de base de données synchrone (`psycopg2`) sont encapsulées dans des threads séparés via `asyncio.to_thread`, libérant la boucle d'événements principale de FastAPI.
-- **Validation d'Entrées Strictes** : Tous les points d'entrée de l'API valident la longueur maximale (`max_length` Pydantic) et la structure des payloads clients pour rejeter en amont toute tentative de dépassement de tampon ou de requête démesurée.
-- **Journalisation (logging standard)** : Abandon des instructions `print()` en faveur de la bibliothèque standard `logging` de Python pour une journalisation propre, filtrée par niveau et compatible avec la journalisation de production.
-- **Correction SQL Déterministe** : Nettoyage et post-traitement de la requête générée par l'IA via un processeur Regex (`sql_utils.py`) pour supprimer les points-virgules de fin mal positionnés, assurant une conformité syntaxique maximale avant exécution.
-
-## ⚡ Démarrage Automatisé & Optimisations (Recommandé) 🛠️
-
-Pour vous simplifier la vie, un script d'automatisation PowerShell a été créé : **[`start_backend.ps1`](start_backend.ps1)**. 
-
-### Que fait ce script automatiquement pour vous ?
-1. **Optimise Ollama sous Windows** : L'application Ollama en arrière-plan sous Windows ignore les variables de session. Ce script inscrit donc de manière **permanente** (via le profil Utilisateur Windows) les variables nécessaires (`OLLAMA_KV_CACHE_TYPE="q4_0"`, `OLLAMA_FLASH_ATTENTION="1"`, `OLLAMA_KEEP_ALIVE="-1"`, `OLLAMA_NUM_PARALLEL="1"`) et redémarre silencieusement Ollama. Cela garantit que le modèle reste en mémoire vive (RAM), n'alloue qu'un seul slot de contexte et répond instantanément sans temps de chargement fastidieux !
-2. **Configure l'environnement Python** : Ajoute le chemin local de `uv` au PATH de votre terminal.
-3. **Gère l'infrastructure Docker** : Lance la base de données PostgreSQL sur le port sécurisé `5433`.
-4. **Initialise vos données** : Vide et peuple les tables avec le jeu de données "BD Ouvrages" automatiquement via `app.database.seed_db`.
-
-### Comment l'utiliser ?
-Ouvrez PowerShell et lancez simplement :
-```powershell
-cd backend
-.\start_backend.ps1
-```
-Et voilà ! Tout est prêt, configuré et optimisé en une seule commande !
-
 ---
 
-## 🛠️ Guide d'Installation de la Stack (Manuel)
+## ⚡ Guide d'Installation et Configuration Pas-à-Pas
 
-Si vous préférez exécuter chaque étape manuellement, suivez le guide ci-dessous :
+### Étape 1 : Installation des prérequis système
+1. **Docker Desktop** : Requis pour exécuter l'instance PostgreSQL locale isolée. [Télécharger Docker](https://www.docker.com/products/docker-desktop/).
+2. **Ollama** : Requis pour charger le LLM localement. [Télécharger Ollama](https://ollama.com/).
+3. **uv** : Le gestionnaire de packages et d'environnement Python ultra-rapide. Sous Windows PowerShell, installez-le avec :
+   ```powershell
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
 
-### Étape 1 : Prérequis système
-Assurez-vous d'avoir installé sur votre machine :
-- **Docker Desktop** : [Télécharger Docker](https://www.docker.com/products/docker-desktop/) (nécessaire pour exécuter la base de données).
-- **Ollama** : [Télécharger Ollama](https://ollama.com/) (nécessaire pour faire tourner l'IA localement).
+### Étape 2 : Optimisation d'Ollama pour Windows (Très important)
+Par défaut, Ollama sous Windows peut décharger les modèles de la mémoire VRAM ou limiter le traitement parallèle, provoquant des lenteurs. 
+Le script `start_backend.ps1` configure automatiquement et de manière **permanente** les variables suivantes dans le profil utilisateur Windows :
+- `OLLAMA_KV_CACHE_TYPE="q4_0"` : Active le cache KV quantifié en 4-bit, économisant environ 30% de mémoire VRAM.
+- `OLLAMA_FLASH_ATTENTION="1"` : Active Flash Attention pour accélérer l'inférence.
+- `OLLAMA_KEEP_ALIVE="-1"` : Force Ollama à garder le modèle en mémoire (RAM/VRAM) indéfiniment après la première requête.
+- `OLLAMA_NUM_PARALLEL="1"` : Limite le traitement parallèle à un seul slot pour optimiser le débit sur GPU grand public.
 
-### Étape 2 : Démarrage du modèle local (Ollama)
-Assurez-vous que le modèle Qwen 3.5 4B est installé et prêt :
+Après avoir configuré ces variables, téléchargez le modèle par défaut (ou celle de votre choix plus c'est fort mieux c'est) :
 ```bash
 ollama run qwen3.5:4b
 ```
 
-### Étape 3 : Installation du gestionnaire `uv`
-`uv` est un outil de pointe pour la gestion des paquets Python. Si vous ne l'avez pas, ouvrez PowerShell et lancez :
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-### Étape 4 : Initialisation de l'environnement virtuel Python
-Positionnez-vous dans le répertoire du backend et synchronisez les dépendances déclarées dans `pyproject.toml` :
-```powershell
-cd backend
+### Étape 3 : Restauration de l'environnement virtuel Python
+Positionnez-vous dans le répertoire `backend/` et synchronisez les dépendances :
+```bash
 uv sync
 ```
-Les dépendances clés installées incluent :
-- `psycopg2-binary` (pilote PostgreSQL)
-- `langgraph`, `langchain-core` et `langchain-ollama` (pour le moteur agentique LangGraph)
-- `fastapi` et `uvicorn` (pour la future API web)
-- `mcp` (SDK du protocole Model Context Protocol d'Anthropic)
-- `pydantic-settings` (gestion de la configuration par environnement)
-- `sqlglot` (analyseur AST SQL)
-- `pytest` et `pytest-asyncio` (cadre de tests asynchrones)
+Cela crée un environnement virtuel `.venv/` et installe les dépendances (FastAPI, LangGraph, SQLGlot, Psycopg2, etc.) en quelques secondes.
 
----
-
-## 🔌 Points d'Accès de l'API (FastAPI)
-
-Le serveur FastAPI s'exécute par défaut sur le port **8500** (`http://127.0.0.1:8500`) (le port par défaut 8000 a été basculé sur 8500 pour éviter tout conflit avec les plages d'exclusions de ports réservées par Windows/Hyper-V) et expose les routes suivantes :
-
-### 1. Discussion SQL Agentique & Self-Healing
-- **URL :** `POST /api/chat`
-- **Description :** Reçoit une question en langage naturel, la traduit en SQL, l'exécute de manière isolée et applique une boucle d'auto-correction automatique (jusqu'à 3 tentatives) via LangGraph en cas d'erreur PostgreSQL.
-- **Corps de requête :**
-  ```json
-  {
-    "question": "trouver le nom des abonnés ayant des livres non rendus..."
-  }
-  ```
-
-### 2. Bac à sable SQL (Sandbox) Dynamique
-- **URL :** `POST /api/sandbox/init`
-- **Description :** Permet d'isoler l'utilisateur en effaçant puis en recréant un schéma PostgreSQL isolé nommé `user_sandbox`. Y exécute vos structures `CREATE TABLE` et vos scripts d'insertions `INSERT INTO` à la volée.
-- **Corps de requête :**
-  ```json
-  {
-    "schema_sql": "CREATE TABLE ...",
-    "insert_sql": "INSERT INTO ..."
-  }
-  ```
-
-### 3. Visualisation de Schéma (Mermaid) Déterministe
-- **URL :** `POST /api/sandbox/visualize`
-- **Description :** Convertit votre code SQL de création de tables brut en diagramme de relations Mermaid.js de manière 100% déterministe grâce à un analyseur syntaxique DDL écrit en Python pur (<1ms), garantissant un rendu sans erreur de syntaxe Mermaid.
-- **Corps de requête :**
-  ```json
-  {
-    "schema_sql": "CREATE TABLE ..."
-  }
-  ```
-
-### 4. Récupération du Schéma Actif
-- **URL :** `GET /api/schema`
-- **Description :** Récupère la description textuelle structurée et mise en cache de toutes les tables actives (soit dans `user_sandbox` s'il a été initialisé, soit dans `public` par défaut).
-
----
-
-## 💾 La Base de Données "Ouvrages BD" (Docker PostgreSQL)
-
-### ⚠️ Gestion de conflit de port sous Windows (Pédagogie)
-Par défaut, PostgreSQL s'exécute sur le port **`5432`**. Cependant, si vous avez déjà un serveur PostgreSQL installé nativement sur votre système Windows (service Windows `postgres.exe`), lancer Docker sur le port `5432` provoquera un conflit d'accès.
-Pour résoudre cela :
-- Notre configuration Docker expose le port **`5433`** de votre machine hôte vers le port `5432` interne du conteneur.
-- Votre service PostgreSQL natif Windows continue de tourner sur le port `5432` sans aucun conflit.
-- Notre application se connecte à Docker à l'adresse `127.0.0.1:5433`.
-
-### Démarrage de la base de données
-```powershell
+### Étape 4 : Lancement de PostgreSQL (Docker)
+PostgreSQL est configuré pour écouter sur le port **`5433`** de la machine hôte. Cela évite tout conflit si vous avez déjà un PostgreSQL installé nativement sur le port par défaut `5432` sous Windows.
+```bash
 docker compose up -d
 ```
-Pour vérifier que le conteneur tourne correctement :
-```powershell
-docker compose ps
-```
 
-### Peupler la base de données (Seed)
-Pour initialiser le schéma relationnel et y injecter les données d'exemple, exécutez la commande suivante (grâce au flag `-m`, Python gère la structure de package de manière transparente) :
-```powershell
+### Étape 5 : Initialisation et peuplement (Seed) de la base de données
+Injectez le schéma conceptuel et le jeu de données "BD Ouvrages" en exécutant :
+```bash
 uv run -m app.database.seed_db
 ```
 
 ---
 
-## 📊 Description du Jeu de Données (Schéma "BD Ouvrages")
+## 🔄 Flux Logique et d'Exécution (Dataflow) de l'Agent ReAct
 
-La base de données simule une gestion de bandes dessinées (albums, séries, auteurs, concepts et avis lecteurs). Elle est structurée autour de **6 tables** clés :
+Le cœur de la génération SQL repose sur une architecture **ReAct (Reasoning and Action)** exécutée au sein d'un graphe d'état **LangGraph**. 
+
+> [!IMPORTANT]
+> **Recommandation Majeure : LLM avec Tool Calling Natif**
+> Pour fonctionner, cet agent exige un modèle local d'Ollama supportant **nativement l'appel d'outils (Tool Calling)** (ex: `qwen3.5`). Sans cette fonctionnalité, le LLM ne pourra pas interroger les outils MCP pour explorer la base de données, et l'orchestration s'arrêtera.
+
+Le traitement d'une question utilisateur suit le parcours dynamique suivant :
 
 ```mermaid
-erDiagram
-    PERSONNE {
-        int idp PK
-        varchar nom
-        varchar prenom
-        date date_naiss
-        date date_deces
-    }
-    SERIE {
-        int ids PK
-        varchar titre
-    }
-    OUVRAGE {
-        int ido PK
-        varchar titre
-        int dessinateur FK
-        int scenariste FK
-        int coloriste FK
-        int ids FK
-        int num_ordre
-        date date_sortie
-    }
-    CONCEPT {
-        int idc PK
-        varchar label
-        int concept_pere FK
-    }
-    A_POUR_MOT_CLE {
-        int ido PK "FK"
-        int idc PK "FK"
-    }
-    AVIS {
-        varchar pseudo PK
-        int ido PK "FK"
-        int score
-    }
-
-    PERSONNE ||--o{ OUVRAGE : "dessine"
-    PERSONNE ||--o{ OUVRAGE : "scenarise"
-    PERSONNE |o--o{ OUVRAGE : "colorise"
-    SERIE |o--o{ OUVRAGE : "contient"
-    OUVRAGE ||--o{ A_POUR_MOT_CLE : "decrit"
-    CONCEPT ||--o{ A_POUR_MOT_CLE : "associe"
-    CONCEPT |o--o{ CONCEPT : "a_pour_pere"
-    OUVRAGE ||--o{ AVIS : "recoit"
+flowchart TD
+    Q[Question Utilisateur] --> Cache{Recherche Cache Sémantique}
+    Cache -- Succès (Similarity > 0.90) --> R_Cache[Renvoi Immédiat de la Réponse (0ms)]
+    Cache -- Échec --> AgentLoop[Nœud : agent_loop \n Réflexion & Décision du LLM]
+    
+    AgentLoop --> Choice{Le LLM demande-t-il \nun outil ?}
+    Choice -- Oui (Tool Calls) --> ExecTools[Nœud : execute_tools \n Appel des Outils MCP]
+    ExecTools --> LoopGuard{Itérations < 5}
+    LoopGuard -- Oui --> AgentLoop
+    LoopGuard -- Non (Sécurité) --> Break[Nœud : force_loop_break]
+    
+    Choice -- Non (Réponse Finale) --> FinalNode[Nœud : clean_and_finalize]
+    FinalNode --> RegexClean[Nettoyage Regex de la requête]
+    RegexClean --> ASTCheck{Validation Sécurité AST SQLGlot}
+    
+    ASTCheck -- Rejet de sécurité --> Correct[Alimentation de l'erreur au LLM]
+    ASTCheck -- Conforme --> ExecSQL[Exécution PostgreSQL en Lecture Seule]
+    
+    ExecSQL -- Erreur SQL (Postgres) --> Correct
+    Correct --> SelfHealingGuard{Essais de correction < 3}
+    SelfHealingGuard -- Oui --> AgentLoop
+    SelfHealingGuard -- Non --> Fallback[Récupération dernière requête validée par EXPLAIN]
+    
+    ExecSQL -- Succès --> Final[Restitution de la réponse]
+    Fallback --> Final
+    Break --> Final
 ```
 
-### Les Tables en détail :
-1. **`personne`** : Stocke les auteurs de BD (dessinateurs, scénaristes, coloristes).
-2. **`serie`** : Liste les séries d'albums (ex: *Blacksad*, *Trolls de Troy*).
-3. **`ouvrage`** : Stocke chaque album/ouvrage individuel de bande dessinée.
-4. **`concept`** : Représente des concepts thématiques hiérarchiques (ex: *animal* -> *chien*).
-5. **`a_pour_mot_cle`** : Table d'association liant les ouvrages aux concepts.
-6. **`avis`** : Recense les critiques et notes des lecteurs.
+### 1. La Boîte à Outils MCP (Model Context Protocol) exposée au LLM
+Grâce au mécanisme de **Tool Calling**, le LLM n'a pas à deviner la structure de la base de données. Il peut décider de lui-même d'appeler un ou plusieurs outils de son serveur MCP pour s'orienter :
+- **`mcp_list_tables`** : Fournit la liste de toutes les tables existant dans la base de données active.
+- **`mcp_get_schema`** : Donne le schéma DDL complet (`CREATE TABLE`) de tables ciblées. Cela évite d'inonder le contexte du modèle avec des tables inutiles (stratégie "Diviser pour Régner").
+- **`mcp_search_value`** : Permet de faire une recherche textuelle sémantique dans la base pour identifier le code ou l'identifiant exact correspondant à une valeur saisie par l'utilisateur (ex: trouver l'identifiant d'un auteur par son nom).
+- **`mcp_get_sample_data`** : Récupère les 3 premières lignes d'une table pour aider le modèle à comprendre la forme concrète des données.
+- **`mcp_dry_run_query`** : Exécute un `EXPLAIN` sur la requête SQL générée. Cela permet au LLM de tester la validité syntaxique de sa requête auprès de PostgreSQL sans réellement l'exécuter.
+
+### 2. Détail des nœuds du graphe LangGraph :
+
+- **`node_agent_loop`** : Prépare l'historique des messages, estime la jauge de contexte, lie les outils MCP au LLM via `.bind_tools(all_tools)` et lance l'inférence. Si le streaming est actif, il extrait la réflexion `<think>` et les événements en direct.
+- **`node_execute_tools`** : Inspecte la demande d'outil du LLM, exécute l'outil MCP correspondant localement, enveloppe le résultat dans un message de type `ToolMessage` et reboucle sur l'agent.
+- **`node_force_loop_break`** : Coupe le traitement si l'agent entre dans une boucle infinie d'appels d'outils (limite fixée à 5 itérations).
+- **`node_clean_and_finalize`** : Se lance lorsque le LLM estime avoir rédigé la requête finale. Ce nœud applique le nettoyage par Regex, valide la requête avec l'AST `SQLGlot` pour interdire toute modification de données, et l'exécute de manière sécurisée en lecture seule.
+- **Boucle d'Auto-Correction (Self-Healing)** : Si l'exécution lève une erreur de base de données, l'erreur exacte est transformée en `HumanMessage` et renvoyée dans le contexte du LLM. L'agent retourne au nœud `agent_loop` pour tenter de corriger sa syntaxe. Cette boucle est limitée à **3 tentatives**.
+- **Mécanisme de Repli (Fallback)** : Si la boucle d'auto-correction s'épuise sans succès, le système récupère dans l'historique la dernière requête SQL ayant passé avec succès le test d'outil `mcp_dry_run_query`, assurant qu'une requête syntaxiquement fonctionnelle soit toujours fournie.
 
 ---
 
-## 🧪 Cadre de Tests Automatisés (TDD) 🟢
+## ⚡ Services Transverses d'Optimisation
 
-Pour garantir que notre code reste robuste et de qualité professionnelle, nous avons configuré un cadre de tests basé sur **`pytest`** :
-1. **Validation unitaire** des syntaxes SQL générées.
-2. **Validation d'intégration** avec la base de données PostgreSQL dans Docker.
-3. **Tests de sécurité** pour bloquer toute commande SQL malveillante.
-4. **Validation de l'agent LangGraph** et de sa boucle d'auto-correction (*Self-Healing*).
+### Cache Sémantique
+Le backend intègre un cache sémantique en mémoire pour accélérer les requêtes récurrentes. Lors de la saisie d'une question :
+1. Une requête d'embedding est envoyée à Ollama pour obtenir la représentation vectorielle.
+2. La similarité cosinus est calculée avec les questions enregistrées dans le cache.
+3. Si la similarité est supérieure à 0.90, la requête SQL et les résultats associés sont renvoyés immédiatement (0ms).
+4. Si Ollama est indisponible ou lent pour les embeddings, un algorithme textuel de **Jaccard** basé sur l'intersection des mots-clés est exécuté en repli.
 
-### Exécuter les tests :
-Depuis le dossier `backend`, lancez la commande suivante :
+### Sécurisation Asynchrone Thread-Safe
+- **ThreadPool asynchrone** : Pour éviter de bloquer la boucle d'événements de FastAPI, les requêtes bloquantes vers PostgreSQL sont encapsulées dans des threads d'arrière-plan via `asyncio.to_thread`.
+- **Verrous explicites** : L'accès en lecture et en écriture au cache système du dictionnaire de schéma est protégé par un verrou `threading.Lock`, empêchant les conditions de concurrence concurrentes lors d'appels simultanés de plusieurs utilisateurs.
+
+---
+
+## 🧪 Suite de Tests Automatisés
+
+Le backend intègre une suite de tests robustes pour garantir la non-régression de l'application.
+
+### Lancement des tests :
 ```powershell
 uv run pytest
 ```
-*Le système découvrira et exécutera automatiquement tous les tests présents dans le répertoire `tests/`.*
 
----
-
-## 🛡️ Audit de Santé & Sécurité (Health Audit)
-
-Un audit complet a été réalisé et consigné dans **`health_audit.md`** à la racine de la conversation. Les points critiques pris en compte sont :
-- **Sécurisation en lecture seule** : Pour la phase 2, nous avons construit un validateur SQL (`app/core/security.py`) basé sur `sqlglot` interceptant toute requête autre que `SELECT` (blocage de `DROP`, `DELETE`, `UPDATE`, `INSERT`, etc.). De plus, la connexion PostgreSQL est également forcée en mode `readonly = True` au niveau du pilote.
-- **Gestion de la VRAM** : Stabilisation et réduction drastique de l'empreinte VRAM grâce à la configuration `q4_0` pour le cache KV d'Ollama.
-- **Résilience** : La boucle d'auto-correction de LangGraph utilise les retours d'erreurs PostgreSQL natifs pour corriger les requêtes en temps réel (boucle limitée à 3 tentatives pour éviter toute boucle infinie).
+### Description des fichiers de test :
+- `test_mcp_security.py` : Valide que le validateur AST bloque correctement les requêtes non autorisées (ex: `DROP`, `UPDATE`) et vérifie le comportement des outils MCP.
+- `test_security_r1.py` : Valide la protection physique en lecture seule des connexions à la base de données.
+- `test_agent.py` : Valide le graphe LangGraph, la boucle de Self-Healing face à des erreurs SQL simulées et le fonctionnement du Fallback de sécurité.
+- `test_api.py` : Teste la réactivité et la conformité des routes de l'API FastAPI.

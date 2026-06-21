@@ -79,8 +79,7 @@ group by o.ido, o.titre ;
 
 -- Question 2.2
 -- requete 1
--- le nombre d'avis, le plus petit score, le plus grand score
--- et le score moyen de chaque ouvrage.
+-- le nombre d'avis, le plus petit score, le plus grand score et le score moyen de chaque ouvrage.
 select ido, titre, count(*) as nb_avis,
 min(score) as score_min, max(score) as score_max, round(avg(score),2) as score_moy
 from ouvrage
@@ -95,8 +94,7 @@ left join avis using (ido)
 group by ido, titre;
 
 -- requete 2
--- l'ouvrage (ou les ouvrages en cas d'ex aequo)
--- avec la meilleur moyenne des scores.
+-- l'ouvrage (ou les ouvrages en cas d'ex aequo) avec la meilleur moyenne des scores.
 select ido, titre
 from ouvrage
 join avis using (ido)

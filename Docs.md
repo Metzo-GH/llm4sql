@@ -1,108 +1,137 @@
-# Cahier des Charges : Assistant SQL Local via LLM (local)
+# LLM4SQL - Spécifications Fonctionnelles & Walkthrough Applicatif 📘
 
-## 1. Contexte et Objectifs
+Ce document constitue le cahier des charges, la spécification d'architecture fonctionnelle et le manuel de référence du modèle de données métier du projet **LLM4SQL**.
 
-L'interrogation de bases de données relationnelles nécessite aujourd'hui des compétences techniques spécifiques (maîtrise du langage SQL). Dans un contexte professionnel ou académique, les administrateurs et décideurs ont besoin d'accéder rapidement aux données sans passer par des requêtes manuelles complexes.
+---
 
-Cependant, l'utilisation d'Intelligences Artificielles génératives cloud pose un risque majeur de confidentialité, car elle implique d'exposer le schéma des bases de données et potentiellement des données sensibles à des serveurs tiers.
+## 1. Contexte, Problématique et Objectifs
 
-**L'objectif de ce projet (LLM4SQL)** est de développer une application locale privée, tournant à 100% en local, permettant d'interroger une base de données en langage naturel. L'outil garantit une sécurité totale des données tout en offrant une interface utilisateur moderne et accessible, avec une boucle d'auto-correction pour garantir la fiabilité des requêtes générées.
+L'interrogation de bases de données relationnelles complexes en SQL reste une barrière pour de nombreux utilisateurs métiers ou analystes. Les solutions basées sur des modèles d'Intelligence Artificielle hébergés dans le cloud (SaaS) résolvent ce problème mais introduisent des risques majeurs :
+- **Fuite de données et métadonnées** : exposition des schémas de table, des relations métiers et des données confidentielles à des tiers.
+- **Dépendance et coûts** : latences variables, instabilité d'API et coûts d'infrastructure récurrents.
 
-## 2. Périmètre Fonctionnel
+**LLM4SQL** apporte une réponse à ces défis en combinant la puissance de l'IA générative et de l'orchestration locale :
+- **Confidentialité absolue** : L'intégralité du traitement (modèle de langage local via Ollama, base PostgreSQL et application web) s'exécute localement et sans connexion externe.
+- **Fiabilité opérationnelle** : Un mécanisme d'auto-correction (*Self-Healing*) capture et résout de manière autonome les erreurs de syntaxe SQL avant affichage.
+- **Visualisation dynamique** : Un bac à sable (Sandbox) permet de tester et visualiser graphiquement des schémas SQL à la volée.
 
-- **Interface Utilisateur (UI) :** Application web de type "Chat" (historique conversationnel) permettant la saisie itérative de questions en langage naturel.
-- **Traduction Naturel -> SQL :** Génération automatique de requêtes SQL pertinentes via LLM local.
-- **Boucle d'Auto-correction (Self-Healing) :** Si le code SQL généré est invalide, l'erreur est renvoyée au LLM pour qu'il la corrige de manière autonome avant de présenter le résultat à l'utilisateur.
-- **Sécurité "Human-in-the-loop" :** Affichage de la requête SQL générée pour validation par l'utilisateur avant son exécution réelle sur la base de données.
-- **Restitution des données :** 
-  - Affichage des résultats sous forme de tableau.
-  - Visualisation de données (Data Viz) automatique via des graphiques adaptés au type de résultat (ex: Recharts).
-  - Bouton d'export CSV pour une exploitation métier immédiate.
-- **Architecture Locale Privée :** Aucune donnée ou métadonnée ne quitte la machine locale.
+---
 
-## 3. Architecture Technique Cible
+## 2. Walkthrough Fonctionnel & Parcours Utilisateur
 
-Le projet s'articule autour d'une architecture modulaire moderne respectant les principes SOLID/DRY :
+L'interface de l'application est découpée en trois zones majeures agencées en grille plein écran asymétrique :
 
-- **Frontend :** `React` propulsé par `Vite`, implémentant une UI moderne (composants Shadcn ou similaires), avec typage strict (TypeScript) et documentation TSDoc.
-- **Backend / API :** `Python (FastAPI)` géré via `uv` (le standard moderne de gestion de dépendances et d'environnement virtuel Python, ultra-rapide).
-- **Orchestration IA :** `LangGraph` (écosystème LangChain) pour orchestrer la boucle de rétroaction complexe et la gestion d'état de l'agent.
-- **RAG / Few-Shot Prompting :** Intégration d'une petite base vectorielle locale (ex: Chroma) pour fournir dynamiquement les exemples de requêtes les plus pertinents (Few-Shot Prompting).
-- **Moteur LLM Local :** `Ollama` exécutant le modèle **Qwen 3.5 (9B)** sur GPU (8 Go VRAM minimum).
-- **Connexion Données :** Intégration via le standard MCP (Model Context Protocol) pour une exposition sécurisée et dynamique du schéma SQL au LLM.
+```
++-------------------+-----------------------------+-------------------------------+
+|                   |                             |                               |
+|  1. LABORATOIRE   |     2. ASSISTANT SQL        |      3. EXPLORATEUR           |
+|      (Sandbox)    |          (Chat)             |         DE DONNÉES            |
+|                   |                             |                               |
++-------------------+-----------------------------+-------------------------------+
+```
 
-## 4. Les 5 Phases du Projet & État d'Avancement (100% Réalisé) 🎉
+### 2.1 Zone 1 : Le Laboratoire SQL (Sandbox)
+La Sandbox permet de tester des requêtes sur un schéma temporaire isolé.
+- **Onglet Structure (DDL)** : Champ de texte libre permettant de saisir du code SQL de structure (`CREATE TABLE`).
+- **Onglet Données (DML)** : Permet de saisir des instructions d'insertion de données de test (`INSERT INTO`).
+- **Onglet Visuel (Double mode)** :
+  - **Vue Cartes 🎴 (Modélisation Client)** : Analyse instantanément le code DDL pour dessiner des fiches pour chaque table, listant ses colonnes et types SQL associés avec des badges de contraintes (`🔑 PK` pour clé primaire, `🔗 FK` pour clé étrangère). Cliquer sur une table met en surbrillance ses dépendances.
+  - **Vue Diagramme ER 📊 (Mermaid)** : Rendu graphique stable Mermaid.js généré instantanément (<1ms) de façon déterministe grâce au parser Python du backend.
+- **Actions** : 
+  - **Initialiser la Sandbox** : Réinitialise et peuple le schéma isolé `user_sandbox` sur PostgreSQL.
+  - **Réinitialiser par défaut** : Restaure le schéma "BD Ouvrages" par défaut dans le schéma `public`.
 
-### Phase 1 : Le POC, le Moteur et l'Environnement (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :** Configuration `uv`, déploiement de PostgreSQL sous Docker (Port 5433), et validation initiale d'Ollama avec `qwen3.5:9b`.
+### 2.2 Zone 2 : L'Assistant SQL (Chat-like)
+Cette zone est dédiée à la formulation des requêtes en langage naturel et au suivi de la réflexion de l'IA.
+- **Champ de saisie** : L'utilisateur formule sa question (ex : *"Quels albums ont une note supérieure à 4 ?"*).
+- **Suivi d'exécution en direct** : Une checklist s'anime en temps réel, montrant les étapes parcourues par l'agent (ex: Sélection des tables -> Génération SQL -> Validation syntaxique -> Exécution).
+- **Streaming de la réflexion** : Un accordéon pliable affiche en temps réel la pensée brute de l'IA (`<think>`) pendant la phase de réflexion, garantissant une observabilité complète.
+- **Restitution de la réponse** :
+  - **Bloc de code SQL** : Affiche la requête SQL exécutée avec un bouton "Copier" rapide.
+  - **Badge d'auto-correction (Self-Healing)** : Indique si la requête a dû être corrigée et en combien d'itérations.
+  - **Console de logs SSE** : Un volet rétractable en bas de l'écran diffuse en temps réel les logs d'activité du backend.
 
-### Phase 2 : Le Cœur (Agent LangGraph & MCP) (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :** 
-  - Implémentation d'un serveur MCP Python sécurisé avec validation syntaxique stricte de sécurité via AST `sqlglot` et pilotes DB configurés en Lecture Seule.
-  - Développement du graphe LangGraph d'auto-correction (*Self-Healing*) avec boucles de rétroaction d'erreurs (limité à 3 essais pour éviter la récursion infinie).
+### 2.3 Zone 3 : L'Explorateur de Données
+Cette zone présente le résultat brut extrait de la base sous deux formes :
+- **Mode Tableau 📋** : Grille de données paginée et triable, munie d'une barre de recherche locale. Elle intègre un bouton d'export CSV encodé en UTF-8 BOM, garantissant une ouverture sans altération de caractères dans Excel.
+- **Mode Graphique 📈** : Construit des tracés (Histogrammes, Courbes, Aires) avec détection et adaptation dynamique des axes de coordonnées (axe X pour les dimensions textuelles/temporelles, axe Y pour les mesures numériques).
 
-### Phase 3 : L'Écosystème Web & Bac à Sable Dynamique (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - Route d'API FastAPI pour l'agent (`/api/chat`), l'extraction du schéma (`/api/schema`), et l'initialisation isolée de Sandbox (`/api/sandbox/init`).
-  - Développement de l'UI conversationnelle sous React + TypeScript + Vite avec design Spatial Glassmorphism.
-  - Rendu des données en Tableaux dynamiques paginés avec export CSV natif UTF-8 BOM (compatible Excel).
-  - Intégration de graphiques réactifs adaptatifs (Barres, Aires, Courbes) avec **Recharts**.
+---
 
-### Phase 4 : Consolidation & Laboratoire Visuel (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - **Vue Cartes Interactives 🎴** : Parsing SQL DDL en temps réel (côté client) de vos scripts de création de tables, avec badges de type SQL colorés, et détection de contraintes clés (`🔑 PK`, `🔗 FK`) pour tracer les dépendances.
-  - **Rendu Diagramme ER Mermaid Déterministe** : Visualiseur basé sur un parseur de syntaxe DDL SQL écrit en Python pur, s'exécutant instantanément (<1ms) de façon déterministe pour générer des diagrammes Mermaid 100% valides sans solliciter le LLM ni la VRAM.
-  - Suite de **33 tests unitaires et d'intégration** entièrement validée par `pytest`.
-  - Documentation exhaustive JSDoc/TSDoc sur l'ensemble des modules frontend et backend.
+## 3. Modèle Conceptuel de Données : "BD Ouvrages"
 
-### Phase 5 : Optimisations, Cache Sémantique & Diviser pour Régner (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - **Refonte "Diviser pour Régner"** : Ajout du nœud de sélection de tables (`select_tables`) qui interroge les fonctions MCP et restreint la taille du prompt de génération.
-  - **Consolidation du Few-Shot** : Réduction du prompt à 2 exemples d'or complets pour éviter le collapse du modèle local `qwen3.5:4b`.
-  - **Cache sémantique (RAG Mémoire)** : Système de cache basé sur des embeddings Ollama (Cosinus) avec repli Jaccard résilient.
-  - **Télémétrie & Observabilité** : Suivi des métriques de performance, vitesse d'inférence en tokens/s, badges des tables interrogées et accordéon pliable pour la réflexion du modèle (`<think>`).
-  - **Interface de Configuration** : Tiroir déroulant d'options de configuration (Modèle, Température, Contexte).
+L'application est pré-configurée avec une base de données de test simulant une bibliothèque de bandes dessinées (albums, auteurs, séries et critiques). Elle comprend **6 tables** interconnectées :
 
-### Phase R8 : Moteur Agentique avec Tool Calling & Outils MCP Étendus (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - **Extension du serveur MCP** : Ajout des fonctions d'enquête sémantique (`search_value`), d'exploration d'exemples de données (`get_sample_data`), et de validation syntaxique (`dry_run_query` avec `EXPLAIN` PostgreSQL et sécurité AST stricte).
-  - **Refonte de l'orchestration LangGraph** : Transition vers une boucle ReAct tool-calling autonome dans `graph.py` avec `bind_tools` de ChatOllama et un **Garde-fou (Loop Guard)** fixé à 5 itérations maximum pour empêcher les récursions infinies.
-  - **Post-traitement SQL Regex** : Implémentation d'un post-traitement Regex Python (`sql_utils.py`) pour corriger les erreurs de syntaxe mineures générées par le modèle (ex: points-virgules de fin ou mal positionnés avant un ORDER BY).
-  - **Raffinement UI & Télémétrie SSE** : Intégration en temps réel des logs SSE des appels d'outils et animations fluides dans un `StepsTracker` soigné.
+```mermaid
+erDiagram
+    PERSONNE {
+        int idp PK "Identifiant unique auteur"
+        varchar nom "Nom de famille"
+        varchar prenom "Prénom"
+        date date_naiss "Date de naissance"
+        date date_deces "Date de décès (optionnelle)"
+    }
+    SERIE {
+        int ids PK "Identifiant unique série"
+        varchar titre "Titre de la série"
+    }
+    OUVRAGE {
+        int ido PK "Identifiant unique album"
+        varchar titre "Titre de l'album"
+        int dessinateur FK "Référence PERSONNE.idp"
+        int scenariste FK "Référence PERSONNE.idp"
+        int coloriste FK "Référence PERSONNE.idp (optionnelle)"
+        int ids FK "Référence SERIE.ids"
+        int num_ordre "Numéro d'album dans la série"
+        date date_sortie "Date de parution"
+    }
+    CONCEPT {
+        int idc PK "Identifiant unique concept"
+        varchar label "Libellé du concept"
+        int concept_pere FK "Référence auto-référencée CONCEPT.idc"
+    }
+    A_POUR_MOT_CLE {
+        int ido PK,FK "Référence OUVRAGE.ido"
+        int idc PK,FK "Référence CONCEPT.idc"
+    }
+    AVIS {
+        varchar pseudo PK "Pseudonyme du lecteur"
+        int ido PK,FK "Référence OUVRAGE.ido"
+        int score "Note de l'album (0 à 5)"
+    }
 
-### Phase R11 : Architecture & Performance - Sprint 2 (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - **Modularisation du Backend** : Découpage du fichier monolithique `graph.py` en modules SRP (`tools.py`, `nodes.py`, `routing.py`, `prompts.py`) et décomposition de la fonction de finalisation de nœud.
-  - **Rate Limiting** : Intégration globale et par route de la bibliothèque `slowapi` pour intercepter les requêtes excessives (/minute).
-  - **Code-Splitting Frontend** : Extraction de composants volumineux (`SandboxPanel`, `DataExplorerPanel`, `SettingsDropdown`) et chargement à la demande (`React.lazy()` + `Suspense`), réduisant la taille du bundle initial de 1.4 Mo.
-  - **Event Loop asynchrone** : Wrapping de la récupération synchrone de schéma dans `asyncio.to_thread` pour conserver la fluidité du serveur FastAPI.
+    PERSONNE ||--o{ OUVRAGE : "dessine"
+    PERSONNE ||--o{ OUVRAGE : "scenarise"
+    PERSONNE |o--o{ OUVRAGE : "colorise"
+    SERIE |o--o{ OUVRAGE : "contient"
+    OUVRAGE ||--o{ A_POUR_MOT_CLE : "est décrit par"
+    CONCEPT ||--o{ A_POUR_MOT_CLE : "est associé à"
+    CONCEPT |o--o{ CONCEPT : "est sous-concept de"
+    OUVRAGE ||--o{ AVIS : "reçoit"
+```
 
-### Phase R12 : Qualité, DRY & Refactoring Frontend - Sprint 3 (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - **Thread Safety** : Protection contre les conditions de concurrence sur la mise en cache de schéma via `threading.Lock`.
-  - **Validation d'Entrées** : Limites `max_length` strictes sur les modèles de requêtes d'API Pydantic.
-  - **Suppression des IIFE JSX** : Élimination complète de tout bloc de rendu IIFE JSX dans `ChatMessage` et `PerformanceMetrics` au profit de sous-composants typés et documentés.
-  - **Robustesse & Typage TypeScript** : Typage strict du type `tool_call`, des infobulles Recharts, limitation mémoire du tableau de logs en temps réel (`slice(-200)`) et typage des captures d'erreurs `catch (error: unknown)`.
+### 3.1 Description Métier des Tables
+1. **`personne`** : Contient les auteurs de BD. Un auteur peut cumuler plusieurs rôles (scénariste pour une œuvre, dessinateur ou coloriste pour une autre).
+2. **`serie`** : Regroupe des albums thématiques (ex : *Astérix*, *Lanfeust de Troy*).
+3. **`ouvrage`** : Table pivot représentant un album physique de BD. Elle lie l'œuvre à sa série de rattachement, ses auteurs (trois clés étrangères référençant `personne`), son ordre d'apparition et sa date de parution.
+4. **`concept`** : Représente une ontologie hiérarchique de thèmes (ex : `Science-Fiction` est parent de `Space-Opera`). Le champ `concept_pere` est une relation auto-référencée.
+5. **`a_pour_mot_cle`** : Table de liaison (relation Plusieurs-à-Plusieurs) associant chaque album à des concepts sémantiques clés.
+6. **`avis`** : Enregistre les scores de satisfaction saisis par des lecteurs identifiés par leur pseudonyme.
 
-### Phase R13 : Accessibilité & Nettoyage - Sprint 4 (100% VALIDÉE)
-- **État :** Terminé avec succès.
-- **Réalisations :**
-  - **Accessibilité (a11y)** : Ajout d'attributs `aria-label` explicites et descriptifs sur la totalité des boutons de pagination, de barre de recherche, d'export CSV, de choix d'axes de données et de types de graphes.
-  - **Migration Logging** : Remplacement des appels `print()` par l'utilisation standardisée de la bibliothèque `logging` dans le backend.
-  - **Sécurité Encodage** : Substitution des caractères unicode/emojis non-ASCII provoquant des plantages d'encodage CP1252 sous Windows par des équivalents ASCII standard.
-  - **Nettoyage des Imports** : Retrait d'imports orphelins et inutilisés (`psycopg2`, `SystemMessage`, `get_llm`).
+---
 
-## 5. Contraintes et Prérequis
+## 4. Principes Transverses d'Architecture & Sécurité
 
-- **Matériel cible :** Carte Graphique dédiée avec minimum 8 Go de VRAM.
-- **Dépendances :** React (Vite/TS), Python 3.12 (uv), PostgreSQL 16 (Docker), Ollama (local).
-- **Règles d'or appliquées :** Zéro Legacy, respect strict du SOLID et du DRY, typage TypeScript strict.
-- **Règles de Code (Globaux) :** "Zéro Legacy", architecture SOLID/DRY, utilisation systématique d'outils d'année en cours.
+Pour maintenir une sécurité et une robustesse de niveau production, plusieurs contraintes et mécanismes transverses sont appliqués :
+
+### 4.1 Sécurité des Données (Defense in Depth)
+- **Validation AST (SQLGlot)** : Toute requête SQL générée par l'IA ou soumise par un client est convertie en arbre syntaxique (AST) et analysée par `SQLGlot`. Les commandes autres que `SELECT` (comme `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`) sont immédiatement interceptées et bloquées.
+- **Lecture Seule au Niveau Pilote** : Les connexions de requêtes de l'assistant sont instanciées avec le flag `readonly = True` au niveau du pilote de base de données.
+- **Sandbox Isolé** : L'initialisation du laboratoire SQL s'effectue dans un schéma PostgreSQL dédié (`user_sandbox`) isolé du schéma principal, limitant la portée de toute commande DDL.
+
+### 4.2 Optimisation du Flux de Requête (Performance)
+- **Exploration de Schéma Dynamique (MCP & Tool Calling)** : Le modèle interroge de lui-même et de manière sélective les outils du serveur MCP (ex: `mcp_get_schema`) pour charger dynamiquement le schéma des tables nécessaires au traitement de la question, évitant de saturer inutilement sa jauge de contexte. Pour ce faire, l'utilisation d'un modèle capable d'appels d'outils (*Tool Calling*) est indispensable.
+- **Cache Sémantique Double Couche** :
+  - **Embedding Cosinus** : Calcule la proximité de la question avec les questions passées en base vectorielle locale via l'API Ollama.
+  - **Distance de Jaccard** : En cas de latence sur les embeddings, un calcul sémantique basé sur l'intersection des mots-clés est appliqué en repli. Une question similaire renvoie instantanément le résultat mis en cache (0ms).
+- **Asynchronisme Non Bloquant** : Toutes les requêtes d'accès au dictionnaire de données de PostgreSQL sont déportées dans un pool de threads d'arrière-plan (`asyncio.to_thread`) pour garantir que la boucle d'événements principale du serveur FastAPI ne subisse aucune latence.
