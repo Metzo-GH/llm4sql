@@ -121,7 +121,7 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     
     # 5. Métriques de performance
     metadata = getattr(response, "response_metadata", {})
-    prompt_tokens = metadata.get("prompt_eval_count", 0) or estimated_prompt_tokens
+    prompt_tokens = max(metadata.get("prompt_eval_count", 0), estimated_prompt_tokens)
     eval_tokens = metadata.get("eval_count", 0) or 0
     eval_duration = metadata.get("eval_duration", 0) or 0
     tokens_per_sec = 0.0
