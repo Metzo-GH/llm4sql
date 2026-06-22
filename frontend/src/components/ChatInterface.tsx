@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Bot, Terminal, Send, Square } from 'lucide-react';
+import { Bot, Terminal, Send, Square, Trash2 } from 'lucide-react';
 import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
 import { ChatMessage } from './chat/ChatMessage';
 import { getEffectiveContextLimit } from '../utils/context';
@@ -11,6 +11,7 @@ interface ChatInterfaceProps {
   isLoading: boolean;
   onSendMessage: (e: React.FormEvent) => void;
   onSelectMessageData: (messageId: string) => void;
+  onClearHistory: () => void;
   activeMessageDataId: string | null;
   liveLogs: string[];
   contextUsage: ContextUsage | null;
@@ -32,6 +33,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isLoading,
   onSendMessage,
   onSelectMessageData,
+  onClearHistory,
   activeMessageDataId,
   liveLogs,
   contextUsage,
@@ -99,6 +101,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 />
               </div>
             </div>
+          )}
+
+          {/* Effacer l'historique de discussion */}
+          {messages.length > 0 && (
+            <button
+              onClick={onClearHistory}
+              disabled={isLoading}
+              className="chat-clear-btn"
+              title="Effacer l'historique des messages"
+              aria-label="Effacer l'historique des messages"
+            >
+              <Trash2 size={12} />
+              <span>Effacer</span>
+            </button>
           )}
 
           {/* Toggle Terminal button */}

@@ -34,6 +34,9 @@ export function useChat() {
     const val = localStorage.getItem('llm4sql_context_size');
     return val !== null ? parseInt(val) : 0;
   });
+  const [bypassSemanticCache, setBypassSemanticCache] = useState<boolean>(() => {
+    return localStorage.getItem('llm4sql_bypass_semantic_cache') === 'true';
+  });
 
   useEffect(() => {
     localStorage.setItem('llm4sql_model', model);
@@ -46,6 +49,10 @@ export function useChat() {
   useEffect(() => {
     localStorage.setItem('llm4sql_context_size', contextSize.toString());
   }, [contextSize]);
+
+  useEffect(() => {
+    localStorage.setItem('llm4sql_bypass_semantic_cache', bypassSemanticCache.toString());
+  }, [bypassSemanticCache]);
 
   // Real-time telemetry log lines for the terminal visualizer
   const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -161,7 +168,8 @@ export function useChat() {
         question: promptText,
         model,
         temperature,
-        context_size: contextSize
+        context_size: contextSize,
+        bypass_semantic_cache: bypassSemanticCache
       };
 
       const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
@@ -332,7 +340,7 @@ export function useChat() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [model, temperature, contextSize]);
+  }, [model, temperature, contextSize, bypassSemanticCache]);
 
   /**
    * Submits the user's natural language question.
@@ -390,6 +398,17 @@ export function useChat() {
     setActiveView('table');
   }, []);
 
+  /**
+   * Resets/wipes the entire chat conversation, active query states and telemetry logs.
+   */
+  const handleClearHistory = useCallback(() => {
+    setMessages([]);
+    setResultsStore({});
+    setActiveMessageId(null);
+    setLiveLogs([]);
+    setContextUsage(null);
+  }, []);
+
   return {
     messages,
     inputValue,
@@ -404,12 +423,15 @@ export function useChat() {
     handleStopRequest,
     handleEditMessage,
     handleSelectMessageData,
+    handleClearHistory,
     model,
     setModel,
     temperature,
     setTemperature,
     contextSize,
     setContextSize,
+    bypassSemanticCache,
+    setBypassSemanticCache,
     liveLogs,
     contextUsage,
     apiOnline,

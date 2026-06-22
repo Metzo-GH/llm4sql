@@ -131,7 +131,9 @@ Pour maintenir une sécurité et une robustesse de niveau production, plusieurs 
 
 ### 4.2 Optimisation du Flux de Requête (Performance)
 - **Exploration de Schéma Dynamique (MCP & Tool Calling)** : Le modèle interroge de lui-même et de manière sélective les outils du serveur MCP (ex: `mcp_get_schema`) pour charger dynamiquement le schéma des tables nécessaires au traitement de la question, évitant de saturer inutilement sa jauge de contexte. Pour ce faire, l'utilisation d'un modèle capable d'appels d'outils (*Tool Calling*) est indispensable.
-- **Cache Sémantique Double Couche** :
+- **Cache Sémantique Double Couche & Contrôles** :
   - **Embedding Cosinus** : Calcule la proximité de la question avec les questions passées en base vectorielle locale via l'API Ollama.
   - **Distance de Jaccard** : En cas de latence sur les embeddings, un calcul sémantique basé sur l'intersection des mots-clés est appliqué en repli. Une question similaire renvoie instantanément le résultat mis en cache (0ms).
+  - **Bypass de Cache Dynamique** : Une option dans les paramètres de l'UI permet à l'utilisateur de désactiver à la volée le cache sémantique pour forcer l'agent à ré-exécuter le modèle local (utile si une mauvaise réponse a été mémorisée). Le statut du bypass (`Bypass Cache: True/False`) s'affiche en temps réel dans les logs de l'assistant.
+  - **Effacement de l'Historique** : L'en-tête du chat dispose d'un bouton d'effacement de l'historique permettant de vider le fil des messages et de réinitialiser le cache des résultats de l'explorateur.
 - **Asynchronisme Non Bloquant** : Toutes les requêtes d'accès au dictionnaire de données de PostgreSQL sont déportées dans un pool de threads d'arrière-plan (`asyncio.to_thread`) pour garantir que la boucle d'événements principale du serveur FastAPI ne subisse aucune latence.

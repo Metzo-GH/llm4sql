@@ -80,8 +80,42 @@ def test_api_chat_success(mock_run_agent):
         simulate_only=False,
         model=None,
         temperature=None,
-        context_size=None
+        context_size=None,
+        bypass_semantic_cache=False
     )
+
+
+@patch("app.routers.chat.run_agent")
+def test_api_chat_bypass_cache(mock_run_agent):
+    """
+    Vérifie que le flag bypass_semantic_cache est correctement propagé à run_agent.
+    """
+    mock_run_agent.return_value = {
+        "question": "liste des ouvrages",
+        "sql_query": "SELECT * FROM ouvrage;",
+        "error_message": None,
+        "query_results": [],
+        "iteration_count": 1,
+        "schema_context": ""
+    }
+
+    payload = {
+        "question": "liste des ouvrages",
+        "bypass_semantic_cache": True
+    }
+    response = client.post("/api/chat", json=payload)
+    
+    assert response.status_code == 200
+    mock_run_agent.assert_called_once_with(
+        question="liste des ouvrages",
+        custom_schema=None,
+        simulate_only=False,
+        model=None,
+        temperature=None,
+        context_size=None,
+        bypass_semantic_cache=True
+    )
+
 
 
 def test_api_chat_empty_payload():

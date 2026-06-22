@@ -23,6 +23,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = Field(None, max_length=100, description="Modèle Ollama à utiliser (optionnel).")
     temperature: Optional[float] = Field(None, description="Température de génération (optionnelle).")
     context_size: Optional[int] = Field(None, description="Taille du contexte Ollama (optionnelle).")
+    bypass_semantic_cache: bool = Field(False, description="Si vrai, l'agent ignorera le cache sémantique et ré-exécutera le LLM.")
 
 
 class ChatResponse(BaseModel):

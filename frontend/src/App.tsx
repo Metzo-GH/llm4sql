@@ -72,12 +72,15 @@ export default function App() {
     handleStopRequest,
     handleEditMessage,
     handleSelectMessageData,
+    handleClearHistory,
     model,
     setModel,
     temperature,
     setTemperature,
     contextSize,
     setContextSize,
+    bypassSemanticCache,
+    setBypassSemanticCache,
     liveLogs,
     contextUsage,
     apiOnline,
@@ -144,6 +147,8 @@ export default function App() {
             setTemperature={setTemperature}
             contextSize={contextSize}
             setContextSize={setContextSize}
+            bypassSemanticCache={bypassSemanticCache}
+            setBypassSemanticCache={setBypassSemanticCache}
             installedModels={installedModels}
             isSettingsOpen={isSettingsOpen}
             setIsSettingsOpen={setIsSettingsOpen}
@@ -189,6 +194,7 @@ export default function App() {
             onStopRequest={handleStopRequest}
             onEditMessage={handleEditMessage}
             onSelectMessageData={handleSelectMessageData}
+            onClearHistory={handleClearHistory}
             activeMessageDataId={activeMessageId}
             liveLogs={liveLogs}
             contextUsage={contextUsage}

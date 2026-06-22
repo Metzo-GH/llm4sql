@@ -2135,6 +2135,37 @@ textarea:focus-visible {
   transition: transform 0.1s ease-out;
 }
 
+.chat-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-clear-btn:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--accent-ruby);
+}
+
+.chat-clear-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-checkbox {
+  accent-color: var(--accent-primary);
+}
+
+
 /* 11. Prompt Editing & Request Cancellation (Stop Button) */
 .message-text-content-wrapper {
   display: flex;

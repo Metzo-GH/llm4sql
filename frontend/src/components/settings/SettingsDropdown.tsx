@@ -17,6 +17,10 @@ interface SettingsDropdownProps {
   contextSize: number;
   /** Callback to update the context size. */
   setContextSize: (size: number) => void;
+  /** State indicating if semantic cache should be bypassed. */
+  bypassSemanticCache: boolean;
+  /** Callback to update the bypass semantic cache state. */
+  setBypassSemanticCache: (bypass: boolean) => void;
   /** List of all installed Ollama models. */
   installedModels: string[];
   /** State indicating if the settings dropdown is open. */
@@ -35,6 +39,8 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = React.memo(({
   setTemperature,
   contextSize,
   setContextSize,
+  bypassSemanticCache,
+  setBypassSemanticCache,
   installedModels,
   isSettingsOpen,
   setIsSettingsOpen,
@@ -99,6 +105,21 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = React.memo(({
               <option value={131072}>128k (131072 tokens)</option>
               <option value={262144}>256k (262144 tokens)</option>
             </select>
+          </div>
+
+          <div className="settings-field-group border-t border-subtle pt-3 mt-3">
+            <label className="settings-label flex items-center gap-2 cursor-pointer select-none font-medium">
+              <input
+                type="checkbox"
+                checked={bypassSemanticCache}
+                onChange={(e) => setBypassSemanticCache(e.target.checked)}
+                className="settings-checkbox rounded border-subtle bg-black/40 text-primary focus:ring-accent-primary w-4 h-4 cursor-pointer"
+              />
+              <span>Bypasser le cache sémantique</span>
+            </label>
+            <p className="text-[10px] text-muted mt-1 leading-normal">
+              Force le modèle à recalculer une réponse neuve plutôt que de réutiliser une réponse proche en mémoire.
+            </p>
           </div>
         </div>
       )}

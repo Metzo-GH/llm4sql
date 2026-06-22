@@ -34,7 +34,7 @@ async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
         )
         
     logger.info("="*60)
-    logger.info(f"[API IN] REQUÊTE REÇUE : '{chat_request.question}'")
+    logger.info(f"[API IN] REQUÊTE REÇUE : '{chat_request.question}' (Bypass Cache: {chat_request.bypass_semantic_cache})")
     logger.info("="*60)
     start_time = time.time()
         
@@ -47,7 +47,8 @@ async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
             simulate_only=chat_request.simulate_only,
             model=chat_request.model,
             temperature=chat_request.temperature,
-            context_size=chat_request.context_size
+            context_size=chat_request.context_size,
+            bypass_semantic_cache=chat_request.bypass_semantic_cache
         )
         
         total_time = time.time() - start_time
@@ -90,7 +91,7 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
         )
 
     logger.info("="*60)
-    logger.info(f"[API IN] REQUÊTE STREAMING REÇUE : '{chat_request.question}'")
+    logger.info(f"[API IN] REQUÊTE STREAMING REÇUE : '{chat_request.question}' (Bypass Cache: {chat_request.bypass_semantic_cache})")
     logger.info("="*60)
     
     async_queue = asyncio.Queue()
@@ -113,7 +114,8 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
                 simulate_only=chat_request.simulate_only,
                 model=chat_request.model,
                 temperature=chat_request.temperature,
-                context_size=chat_request.context_size
+                context_size=chat_request.context_size,
+                bypass_semantic_cache=chat_request.bypass_semantic_cache
             )
             
             # Envoyer le résultat final consolidé
