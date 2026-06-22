@@ -2,7 +2,7 @@ import asyncio
 import re
 import logging
 from fastapi import APIRouter, HTTPException, Request
-from app.database.pool import init_user_sandbox
+from app.database.pool import init_user_sandbox, get_db_conn
 from app.core.limiter import limiter
 
 logger = logging.getLogger("llm4sql.sandbox")
@@ -10,7 +10,8 @@ from app.schemas import (
     SandboxInitRequest,
     SandboxInitResponse,
     VisualizeRequest,
-    VisualizeResponse
+    VisualizeResponse,
+    SandboxSchemaResponse
 )
 
 router = APIRouter(prefix="/api/sandbox", tags=["Sandbox"])
@@ -233,3 +234,241 @@ async def visualize_schema(request: Request, visualize_request: VisualizeRequest
     except Exception as e:
         logger.error(f"[Visualize Error] {str(e)}")
         raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de la génération du diagramme ER.")
+
+
+def generate_ddl_from_db(schema_name: str) -> str:
+    """
+    Génère un schéma DDL (CREATE TABLE) complet à partir du dictionnaire de données PostgreSQL.
+    """
+    with get_db_conn(readonly=True) as conn:
+        with conn.cursor() as cur:
+            # Récupérer les tables
+            cur.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = %s AND table_type = 'BASE TABLE'
+                ORDER BY table_name;
+            """, (schema_name,))
+            tables = [r[0] for r in cur.fetchall()]
+            
+            ddl_parts = []
+            
+            for table in tables:
+                # Récupérer les colonnes de cette table
+                cur.execute("""
+                    SELECT 
+                        column_name, 
+                        data_type, 
+                        character_maximum_length,
+                        is_nullable, 
+                        column_default
+                    FROM 
+                        information_schema.columns 
+                    WHERE 
+                        table_schema = %s AND table_name = %s
+                    ORDER BY 
+                        ordinal_position;
+                """, (schema_name, table))
+                cols = cur.fetchall()
+                
+                # Récupérer la clé primaire
+                cur.execute("""
+                    SELECT kcu.column_name
+                    FROM 
+                        information_schema.table_constraints tc 
+                        JOIN information_schema.key_column_usage kcu 
+                          ON tc.constraint_name = kcu.constraint_name 
+                          AND tc.table_schema = kcu.table_schema
+                    WHERE 
+                        tc.constraint_type = 'PRIMARY KEY' 
+                        AND tc.table_schema = %s AND tc.table_name = %s;
+                """, (schema_name, table))
+                pks = [r[0] for r in cur.fetchall()]
+                
+                # Récupérer les clés étrangères
+                cur.execute("""
+                    SELECT
+                        kcu.column_name AS local_column,
+                        ccu.table_name AS foreign_table,
+                        ccu.column_name AS foreign_column
+                    FROM
+                        information_schema.table_constraints AS tc
+                        JOIN information_schema.key_column_usage AS kcu
+                          ON tc.constraint_name = kcu.constraint_name
+                          AND tc.table_schema = kcu.table_schema
+                        JOIN information_schema.constraint_column_usage AS ccu
+                          ON ccu.constraint_name = tc.constraint_name
+                          AND ccu.table_schema = tc.table_schema
+                    WHERE 
+                        tc.constraint_type = 'FOREIGN KEY'
+                        AND tc.table_schema = %s AND tc.table_name = %s;
+                """, (schema_name, table))
+                fks = cur.fetchall()
+                
+                col_defs = []
+                for col_name, data_type, max_len, is_nullable, col_default in cols:
+                    col_type = data_type
+                    if max_len:
+                        col_type = f"{data_type}({max_len})"
+                    
+                    null_str = " NOT NULL" if is_nullable == "NO" else ""
+                    default_str = f" DEFAULT {col_default}" if col_default else ""
+                    col_defs.append(f"    {col_name} {col_type.upper()}{null_str}{default_str}")
+                
+                # Ajouter la clé primaire
+                if pks:
+                    col_defs.append(f"    PRIMARY KEY ({', '.join(pks)})")
+                    
+                # Ajouter les clés étrangères
+                for local_col, foreign_table, foreign_col in fks:
+                    col_defs.append(f"    FOREIGN KEY ({local_col}) REFERENCES {foreign_table}({foreign_col})")
+                    
+                table_ddl = f"CREATE TABLE {table} (\n" + ",\n".join(col_defs) + "\n);"
+                ddl_parts.append(table_ddl)
+                
+            return "\n\n".join(ddl_parts)
+
+
+def generate_mermaid_from_db(schema_name: str) -> str:
+    """
+    Génère le code Mermaid ER diagramme à partir du dictionnaire de données PostgreSQL.
+    """
+    with get_db_conn(readonly=True) as conn:
+        with conn.cursor() as cur:
+            # 1. Récupérer les colonnes
+            cur.execute("""
+                SELECT 
+                    table_name, 
+                    column_name, 
+                    data_type, 
+                    is_nullable
+                FROM 
+                    information_schema.columns 
+                WHERE 
+                    table_schema = %s
+                ORDER BY 
+                    table_name, 
+                    ordinal_position;
+            """, (schema_name,))
+            columns_rows = cur.fetchall()
+            
+            # 2. Récupérer les clés primaires
+            cur.execute("""
+                SELECT 
+                    kcu.table_name, 
+                    kcu.column_name
+                FROM 
+                    information_schema.table_constraints tc 
+                    JOIN information_schema.key_column_usage kcu 
+                      ON tc.constraint_name = kcu.constraint_name 
+                      AND tc.table_schema = kcu.table_schema
+                WHERE 
+                    tc.constraint_type = 'PRIMARY KEY' 
+                    AND tc.table_schema = %s;
+            """, (schema_name,))
+            pk_rows = cur.fetchall()
+            pks = {(r[0], r[1]) for r in pk_rows}
+            
+            # 3. Récupérer les clés étrangères
+            cur.execute("""
+                SELECT
+                    kcu.table_name AS child_table,
+                    kcu.column_name AS child_column,
+                    ccu.table_name AS parent_table,
+                    ccu.column_name AS parent_column
+                FROM
+                    information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                      ON tc.constraint_name = kcu.constraint_name
+                      AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.constraint_column_usage AS ccu
+                      ON ccu.constraint_name = tc.constraint_name
+                      AND ccu.table_schema = tc.table_schema
+                WHERE 
+                    tc.constraint_type = 'FOREIGN KEY'
+                    AND tc.table_schema = %s;
+            """, (schema_name,))
+            fk_rows = cur.fetchall()
+            
+    # Structurer Mermaid
+    tables = {}
+    
+    for table_name, col_name, data_type, is_nullable in columns_rows:
+        if table_name not in tables:
+            tables[table_name] = []
+        
+        is_pk = (table_name, col_name) in pks
+        is_fk = any(r[0] == table_name and r[1] == col_name for r in fk_rows)
+        
+        # Nettoyage types
+        clean_type = re.sub(r'\(.*?\)', '', data_type).lower()
+        clean_type = re.sub(r'[^a-zA-Z0-9_]', '', clean_type)
+        if not clean_type:
+            clean_type = "text"
+            
+        tables[table_name].append({
+            "name": col_name,
+            "type": clean_type,
+            "is_pk": is_pk,
+            "is_fk": is_fk
+        })
+        
+    mermaid_lines = ["erDiagram"]
+    
+    # Ajouter les relations
+    added_relations = set()
+    for child_table, child_column, parent_table, parent_column in fk_rows:
+        relation_key = (parent_table, child_table, child_column)
+        if relation_key not in added_relations:
+            mermaid_lines.append(f"    {parent_table} ||--o{{ {child_table} : \"{child_column}\"")
+            added_relations.add(relation_key)
+            
+    # Ajouter les tables
+    for table_name, cols in tables.items():
+        mermaid_lines.append(f"    {table_name} {{")
+        for col in cols:
+            attrs = []
+            if col["is_pk"]:
+                attrs.append("PK")
+            if col["is_fk"]:
+                attrs.append("FK")
+            attrs_str = " " + ", ".join(attrs) if attrs else ""
+            cleaned_name = re.sub(r'[^a-zA-Z0-9_]', '', col["name"])
+            mermaid_lines.append(f"        {col['type']} {cleaned_name}{attrs_str}")
+        mermaid_lines.append("    }")
+        
+    return "\n".join(mermaid_lines)
+
+
+@router.get("/schema", response_model=SandboxSchemaResponse)
+async def get_current_sandbox_schema() -> SandboxSchemaResponse:
+    """
+    Récupère la structure DDL et le diagramme Mermaid actuellement configurés dans le sandbox.
+    S'il n'y a aucune table dans la sandbox, se replie sur le schéma public.
+    """
+    try:
+        # 1. Vérifier si user_sandbox contient des tables
+        schema_to_use = 'user_sandbox'
+        with get_db_conn(readonly=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COUNT(*) 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'user_sandbox' AND table_type = 'BASE TABLE';
+                """)
+                count = cur.fetchone()[0]
+                if count == 0:
+                    schema_to_use = 'public'
+                    
+        # 2. Générer le DDL et le diagramme de manière asynchrone
+        ddl_sql = await asyncio.to_thread(generate_ddl_from_db, schema_to_use)
+        mermaid_code = await asyncio.to_thread(generate_mermaid_from_db, schema_to_use)
+        
+        return SandboxSchemaResponse(
+            schema_sql=ddl_sql,
+            mermaid_code=mermaid_code,
+            active_schema=schema_to_use
+        )
+    except Exception as e:
+        logger.error(f"[Get Sandbox Schema Error] {str(e)}")
+        raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de l'extraction du schéma actuel.")

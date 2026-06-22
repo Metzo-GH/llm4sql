@@ -194,6 +194,8 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'mermaid'>('cards');
   const [searchTerm, setSearchTerm] = useState('');
+  const [zoomScale, setZoomScale] = useState(1.0);
+  const [originalSize, setOriginalSize] = useState<{ width: number; height: number } | null>(null);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
 
   // Parse tables dynamically from SQL schema
@@ -234,6 +236,23 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
               ADD_TAGS: ['foreignObject'],
               HTML_INTEGRATION_POINTS: { 'foreignobject': true }
             });
+            
+            // Extract the original dimensions from the SVG element
+            const svgElement = containerRef.current.querySelector('svg');
+            if (svgElement) {
+              const viewBox = svgElement.getAttribute('viewBox');
+              if (viewBox) {
+                const parts = viewBox.split(/\s+/);
+                if (parts.length === 4) {
+                  const width = parseFloat(parts[2]);
+                  const height = parseFloat(parts[3]);
+                  setOriginalSize({ width, height });
+                  return;
+                }
+              }
+              const rect = svgElement.getBoundingClientRect();
+              setOriginalSize({ width: rect.width || 600, height: rect.height || 400 });
+            }
           }
         }).catch((e) => {
           console.error("Erreur de rendu Mermaid :", e);
@@ -453,11 +472,58 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
             </button>
           </div>
         ) : (
-          <div 
-            key="mermaid-view"
-            ref={containerRef} 
-            className="schema-visual-mermaid-container"
-          />
+          <div key="mermaid-view" className="schema-visual-mermaid-wrapper">
+            {/* Zoom Control Panel */}
+            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 p-1 rounded-lg border border-subtle bg-black/60 backdrop-blur-md">
+              <button 
+                onClick={() => setZoomScale(prev => Math.min(prev + 0.1, 5.0))}
+                className="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 text-sm font-semibold cursor-pointer text-heading"
+                title="Zoomer (+)"
+              >
+                +
+              </button>
+              <button 
+                onClick={() => setZoomScale(prev => Math.max(prev - 0.1, 0.4))}
+                className="w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 text-sm font-semibold cursor-pointer text-heading"
+                title="Dézoomer (-)"
+              >
+                -
+              </button>
+              <button 
+                onClick={() => setZoomScale(1.0)}
+                className="px-2 h-7 flex items-center justify-center rounded hover:bg-white/10 text-[10px] font-medium cursor-pointer text-heading"
+                title="Réinitialiser"
+              >
+                Reset
+              </button>
+              <span className="text-[10px] text-muted select-none px-1">
+                {Math.round(zoomScale * 100)}%
+              </span>
+            </div>
+            {/* Scroll Area wrapping the scaled SVG container */}
+            <div className="schema-visual-mermaid-scrollarea">
+              <div 
+                className="schema-visual-mermaid-viewport"
+                style={originalSize ? {
+                  width: originalSize.width * zoomScale,
+                  height: originalSize.height * zoomScale,
+                  position: 'relative',
+                } : undefined}
+              >
+                <div 
+                  ref={containerRef} 
+                  className="schema-visual-mermaid-container"
+                  style={{ 
+                    transform: `scale(${zoomScale})`,
+                    transformOrigin: 'top left',
+                    position: 'absolute',
+                    left: 0,
+                    top: 0
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -30,3 +30,9 @@ class VisualizeRequest(BaseModel):
 
 class VisualizeResponse(BaseModel):
     mermaid_code: str = Field(..., description="Le code du diagramme ER Mermaid.")
+
+
+class SandboxSchemaResponse(BaseModel):
+    schema_sql: str = Field(..., description="Le code SQL DDL généré à partir de la base de données réelle.")
+    mermaid_code: str = Field(..., description="Le diagramme ER Mermaid correspondant.")
+    active_schema: str = Field(..., description="Le schéma actif de la base de données (user_sandbox ou public).")

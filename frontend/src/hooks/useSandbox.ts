@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 import { API_BASE_URL } from '../config/api';
 
@@ -20,6 +20,31 @@ export function useSandbox(options?: UseSandboxOptions) {
   const [mermaidCode, setMermaidCode] = useState('');
   const [isSandboxLoading, setIsSandboxLoading] = useState(false);
   const [isVisualizing, setIsVisualizing] = useState(false);
+
+  // Fetch active database schema (user_sandbox or public) on startup
+  useEffect(() => {
+    const fetchExistingSchema = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/sandbox/schema`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.schema_sql) {
+            setSchemaSql(data.schema_sql);
+          }
+          if (data.mermaid_code) {
+            setMermaidCode(data.mermaid_code);
+            // Switch to visual tab if there's actually a non-empty schema (more than just "erDiagram")
+            if (data.mermaid_code.trim() !== 'erDiagram') {
+              setSandboxTab('visual');
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Impossible de charger le schéma existant :", e);
+      }
+    };
+    fetchExistingSchema();
+  }, []);
 
   /**
    * Wipes and recreates the user_sandbox schema in PostgreSQL, applies user tables and inserts.

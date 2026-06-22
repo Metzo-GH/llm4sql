@@ -4,5 +4,6 @@ from app.schemas.sandbox import (
     SandboxInitRequest,
     SandboxInitResponse,
     VisualizeRequest,
-    VisualizeResponse
+    VisualizeResponse,
+    SandboxSchemaResponse
 )

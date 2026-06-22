@@ -32,6 +32,20 @@ def test_api_get_schema_success():
     assert "personne" in data["schema_context"].lower()
 
 
+def test_api_get_sandbox_schema_success():
+    """
+    Vérifie que l'endpoint /api/sandbox/schema retourne le schéma de la sandbox ou public.
+    """
+    response = client.get("/api/sandbox/schema")
+    assert response.status_code == 200
+    data = response.json()
+    assert "schema_sql" in data
+    assert "mermaid_code" in data
+    assert "active_schema" in data
+    assert data["active_schema"] in ["user_sandbox", "public"]
+
+
+
 @patch("app.routers.chat.run_agent")
 def test_api_chat_success(mock_run_agent):
     """
