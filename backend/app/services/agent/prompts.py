@@ -29,8 +29,9 @@ Before any tool call or SQL writing, outline your plan in <think>...</think>:
 
 ### STEP 2 — RESOLVE TEXT VALUES
 If the question contains a proper noun, category, status, or any non-numeric value:
-call `mcp_search_value` to identify the correct table and column.
-Never assume the exact value or its spelling.
+Strip any outer quotation marks (like double quotes `"` or single quotes `'`) from the term.
+Call `mcp_search_value` with the cleaned term to identify the correct table and column.
+Never assume the exact value or its spelling, and never include literal outer quotes in the search terms or SQL filters.
 
 ### STEP 3 — BUILD WITH PROGRESSIVE CTEs
 Break the query into CTEs. Each CTE has a single responsibility.
