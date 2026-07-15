@@ -57,47 +57,55 @@ backend/
 
 ---
 
-## ⚡ Guide d'Installation et Configuration Pas-à-Pas
+## ⚡ Guide d'Installation & Démarrage Rapide
 
-### Étape 1 : Installation des prérequis système
-1. **Docker Desktop** : Requis pour exécuter l'instance PostgreSQL locale isolée. [Télécharger Docker](https://www.docker.com/products/docker-desktop/).
-2. **Ollama** : Requis pour charger le LLM localement. [Télécharger Ollama](https://ollama.com/).
-3. **uv** : Le gestionnaire de packages et d'environnement Python ultra-rapide. Sous Windows PowerShell, installez-le avec :
-   ```powershell
-   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-   ```
+### 1. Installer les prérequis système
+1. **Docker / Docker Desktop** : Requis pour la base PostgreSQL. [Télécharger Docker](https://www.docker.com/products/docker-desktop/).
+2. **Ollama** : Requis pour exécuter le LLM localement.
+   - **Windows** : [Télécharger Ollama](https://ollama.com/).
+   - **Linux** : Installez la dépendance `zstd` puis Ollama :
+     ```bash
+     sudo apt-get install -y zstd && curl -fsSL https://ollama.com/install.sh | sh
+     ```
+3. **uv** : Le gestionnaire de dépendances Python ultra-rapide.
+   - **Windows (PowerShell)** :
+     ```powershell
+     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+     ```
+   - **Linux/macOS** :
+     ```bash
+     curl -LsSf https://astral.sh/uv/install.sh | sh
+     ```
 
-### Étape 2 : Optimisation d'Ollama pour Windows (Très important)
-Par défaut, Ollama sous Windows peut décharger les modèles de la mémoire VRAM ou limiter le traitement parallèle, provoquant des lenteurs. 
-Le script `start_backend.ps1` configure automatiquement et de manière **permanente** les variables suivantes dans le profil utilisateur Windows :
-- `OLLAMA_KV_CACHE_TYPE="q4_0"` : Active le cache KV quantifié en 4-bit, économisant environ 30% de mémoire VRAM.
-- `OLLAMA_FLASH_ATTENTION="1"` : Active Flash Attention pour accélérer l'inférence.
-- `OLLAMA_KEEP_ALIVE="-1"` : Force Ollama à garder le modèle en mémoire (RAM/VRAM) indéfiniment après la première requête.
-- `OLLAMA_NUM_PARALLEL="1"` : Limite le traitement parallèle à un seul slot pour optimiser le débit sur GPU grand public.
-
-Après avoir configuré ces variables, téléchargez le modèle par défaut (ou celle de votre choix plus c'est fort mieux c'est) :
+### 2. Télécharger le modèle de langage
+Ouvrez un terminal et récupérez le modèle par défaut :
 ```bash
 ollama run qwen3.5:4b
 ```
 
-### Étape 3 : Restauration de l'environnement virtuel Python
-Positionnez-vous dans le répertoire `backend/` et synchronisez les dépendances :
-```bash
-uv sync
-```
-Cela crée un environnement virtuel `.venv/` et installe les dépendances (FastAPI, LangGraph, SQLGlot, Psycopg2, etc.) en quelques secondes.
+### 3. Démarrer et initialiser automatiquement le backend
+Rendez-vous dans le dossier `backend/` et lancez le script correspondant à votre système :
 
-### Étape 4 : Lancement de PostgreSQL (Docker)
-PostgreSQL est configuré pour écouter sur le port **`5433`** de la machine hôte. Cela évite tout conflit si vous avez déjà un PostgreSQL installé nativement sur le port par défaut `5432` sous Windows.
-```bash
-docker compose up -d
-```
+- **Sous Windows** (PowerShell) :
+  ```powershell
+  .\start_backend.ps1
+  ```
+- **Sous Linux** (Bash) :
+  ```bash
+  chmod +x start_backend.sh
+  ./start_backend.sh
+  ```
 
-### Étape 5 : Initialisation et peuplement (Seed) de la base de données
-Injectez le schéma conceptuel et le jeu de données "BD Ouvrages" en exécutant :
-```bash
-uv run -m app.database.seed_db
-```
+*Ce script s'occupe de tout : il applique les optimisations d'Ollama, synchronise votre environnement virtuel Python, démarre la base PostgreSQL dans Docker, peuple les données avec le schéma d'exercice, et lance le serveur FastAPI.*
+
+---
+
+## ⚙️ Détails des Optimisations Appliquées (Pour information)
+Les scripts `start_backend` configurent automatiquement les variables d'environnement suivantes pour maximiser les performances d'Ollama :
+- `OLLAMA_KV_CACHE_TYPE="q4_0"` : Active le cache KV quantifié en 4-bit, économisant environ 30% de mémoire VRAM.
+- `OLLAMA_FLASH_ATTENTION="1"` : Active Flash Attention pour accélérer l'inférence.
+- `OLLAMA_KEEP_ALIVE="-1"` : Force Ollama à garder le modèle en mémoire (RAM/VRAM) indéfiniment après la première requête.
+- `OLLAMA_NUM_PARALLEL="1"` : Limite le traitement parallèle à un seul slot pour optimiser le débit sur GPU grand public.
 
 ---
 

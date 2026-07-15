@@ -70,12 +70,18 @@ Vous pouvez visualiser le fonctionnement complet de l'application (dialogue, sel
 ## ⚡ Démarrage Rapide
 
 ### 1. Démarrer le Backend & PostgreSQL
-Depuis un terminal PowerShell sous Windows, lancez le script d'optimisation et d'initialisation automatique :
-```powershell
-cd backend
-.\start_backend.ps1
-```
-*Ce script configure Ollama pour optimiser la mémoire VRAM, démarre PostgreSQL dans Docker, peuple la base et lance le serveur FastAPI.*
+- **Sous Windows** (PowerShell), lancez le script d'optimisation et d'initialisation automatique :
+  ```powershell
+  cd backend
+  .\start_backend.ps1
+  ```
+- **Sous Linux** (Bash), donnez les permissions d'exécution puis lancez le script :
+  ```bash
+  cd backend
+  chmod +x start_backend.sh
+  ./start_backend.sh
+  ```
+*Ce script configure Ollama pour optimiser la mémoire VRAM/RAM, démarre PostgreSQL dans Docker, peuple la base et lance le serveur FastAPI.*
 
 ### 2. Démarrer le Frontend (Vite)
 Depuis un second terminal :

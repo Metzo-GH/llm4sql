@@ -15,7 +15,7 @@ frontend/
 ├── src/
 │   ├── assets/                # Logos et icônes statiques
 │   ├── config/                # Configurations transverses
-│   │   └── api.ts             # Centralisation des ports et endpoints (Port 8500 backend)
+│   │   └── api.ts             # Centralisation des ports et endpoints (Port 8000 backend)
 │   ├── hooks/                 # Hooks de gestion d'état logique (Séparation Vue/Logique)
 │   │   ├── useChat.ts         # Hook d'orchestration du chat et flux SSE
 │   │   └── useSandbox.ts      # Hook de gestion de l'environnement isolé (Sandbox)
@@ -56,18 +56,34 @@ frontend/
 ## ⚡ Guide de Démarrage et Installation
 
 ### Prérequis
-Assurez-vous d'avoir installé **Node.js (v18+)** et d'avoir configuré le backend de LLM4SQL sur le port `8500`.
+- **Node.js (v22+)** : Requis pour faire tourner le frontend.
+  - **Sur Windows** : [Télécharger l'installateur officiel Node.js](https://nodejs.org/).
+  - **Sur Linux / WSL 2** : Vous devez impérativement installer Node.js **directement dans votre distribution Linux** (n'utilisez pas la version Windows depuis WSL pour éviter l'erreur de chemin UNC `\\wsl.localhost\`). Installez-le via `nvm` avec ces commandes :
+    ```bash
+    # 1. Installer nvm (Node Version Manager)
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    
+    # 2. Recharger la configuration du terminal
+    source ~/.bashrc
+    
+    # 3. Installer et activer Node.js v22
+    nvm install 22 && nvm use 22
+    ```
+- Le backend de LLM4SQL configuré et actif sur le port `8000`.
 
 ### Étape 1 : Installation des dépendances
 ```bash
 npm install
 ```
+*(Note de dépannage pour WSL 2 : Si vous rencontrez une erreur du type `sh: 1: tsc: Permission denied` ou `vite: Permission denied` lors du build, cela signifie que le dossier `node_modules/` a été initialisé depuis Windows, ce qui bloque les droits d'exécution sous Linux. Supprimez-le et réinstallez proprement depuis votre terminal Linux/WSL : `rm -rf node_modules package-lock.json && npm install`).*
 
 ### Étape 2 : Lancement en mode développement (Vite)
 ```bash
 npm run dev
 ```
 L'interface est accessible instantanément sur : **[http://localhost:5173/](http://localhost:5173/)**.
+
+*(Note pour les utilisateurs WSL 2 : Le port forwarding de WSL 2 lie automatiquement localhost. Vous pouvez donc accéder à l'application depuis Firefox sous Windows via cette même adresse. En cas de problème de connexion, lancez Vite sur toutes les interfaces réseau avec : `npm run dev -- --host`).*
 
 ### Étape 3 : Compilation de production (Strict Typecheck)
 Pour générer les fichiers optimisés et minifiés dans le dossier `/dist`, lancez :
