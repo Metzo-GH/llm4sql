@@ -33,6 +33,7 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     
     # 1. Préparer les messages initiaux si c'est la première itération
     messages = list(state.get("messages", []))
+    initial_messages_to_save = []
     if not messages:
         schema_context = state.get("schema_context") or get_database_schema_context()
         
@@ -41,6 +42,7 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
             SystemMessage(content=system_prompt),
             HumanMessage(content=state["question"])
         ]
+        initial_messages_to_save = messages.copy()
         
     # 2. Configurer le LLM et bind les tools
     temp = state.get("temperature") if state.get("temperature") is not None else 0.0
@@ -157,7 +159,7 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     }
     
     return {
-        "messages": [response],
+        "messages": initial_messages_to_save + [response],
         "steps": [step_info]
     }
 
