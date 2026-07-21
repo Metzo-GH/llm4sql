@@ -67,9 +67,16 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = React.memo(({
               onChange={(e) => setModel(e.target.value)}
               className="input-field settings-select"
             >
-              {installedModels.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              {installedModels.length === 0 ? (
+                <option value="" disabled>Aucun modèle disponible</option>
+              ) : (
+                <>
+                  <option value="">-- Choisir un modèle --</option>
+                  {installedModels.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
           

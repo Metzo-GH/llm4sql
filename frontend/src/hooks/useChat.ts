@@ -24,7 +24,7 @@ export function useChat() {
 
   // Agent configuration states with localStorage persistence
   const [model, setModel] = useState<string>(() => {
-    return localStorage.getItem('llm4sql_model') || 'qwen3.5:4b';
+    return localStorage.getItem('llm4sql_model') || '';
   });
   const [temperature, setTemperature] = useState<number>(() => {
     const val = localStorage.getItem('llm4sql_temperature');
@@ -62,55 +62,59 @@ export function useChat() {
 
   const [apiOnline, setApiOnline] = useState(false);
   const [loadedModelStatus, setLoadedModelStatus] = useState<LoadedModelStatus | null>(null);
-  const [installedModels, setInstalledModels] = useState<string[]>(['qwen3.5:4b', 'qwen3.5:9b', 'deepseek-r1:1.5b', 'deepseek-r1:8b']);
+  const [installedModels, setInstalledModels] = useState<string[]>([]);
 
   // Ref to hold the current AbortController for stopping running requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/`);
-        if (res.ok) {
-          setApiOnline(true);
-        } else {
-          setApiOnline(false);
-        }
-      } catch (err: unknown) {
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/?t=${Date.now()}`);
+      if (res.ok) {
+        setApiOnline(true);
+      } else {
         setApiOnline(false);
       }
+    } catch (err: unknown) {
+      setApiOnline(false);
+    }
 
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/ollama/status`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.online && data.models && data.models.length > 0) {
-            setLoadedModelStatus(data.models[0]);
-          } else {
-            setLoadedModelStatus(null);
-          }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ollama/status?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.online && data.models && data.models.length > 0) {
+          setLoadedModelStatus(data.models[0]);
         } else {
           setLoadedModelStatus(null);
         }
-      } catch (err: unknown) {
+      } else {
         setLoadedModelStatus(null);
       }
-    };
+    } catch (err: unknown) {
+      setLoadedModelStatus(null);
+    }
+  }, []);
 
-    const fetchModels = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/ollama/models`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.models && data.models.length > 0) {
-            setInstalledModels(data.models);
-          }
-        }
-      } catch (err: unknown) {
-        console.error("Erreur lors de la récupération des modèles Ollama:", err);
+  const fetchModels = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ollama/models?t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const modelsList = data.models || [];
+        setInstalledModels(modelsList);
+        setModel((currentModel) => {
+          if (!modelsList || modelsList.length === 0) return '';
+          if (currentModel && modelsList.includes(currentModel)) return currentModel;
+          return '';
+        });
       }
-    };
+    } catch (err: unknown) {
+      console.error("Erreur lors de la récupération des modèles Ollama:", err);
+    }
+  }, []);
 
+  useEffect(() => {
     checkStatus();
     fetchModels();
 
@@ -129,7 +133,7 @@ export function useChat() {
       clearInterval(statusInterval);
       clearInterval(modelsInterval);
     };
-  }, []);
+  }, [checkStatus, fetchModels]);
 
   /**
    * Internal common method to submit a query to the LangGraph backend SSE endpoint,
@@ -159,6 +163,36 @@ export function useChat() {
       const history = truncateIndex !== undefined ? prev.slice(0, truncateIndex) : prev;
       return [...history, userMessage, initialAssistantMessage];
     });
+
+    if (installedModels.length === 0) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? {
+                ...msg,
+                content: "⚠️ Aucun modèle Ollama n'est disponible sur cette machine. Veuillez en installer un via Ollama (ex: `ollama pull <nom_du_modele>`) puis rafraîchir.",
+              }
+            : msg
+        )
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    if (!model || !installedModels.includes(model)) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMsgId
+            ? {
+                ...msg,
+                content: "⚠️ Veuillez choisir un modèle LLM dans les paramètres en haut à droite (⚙️) avant de poser votre question.",
+              }
+            : msg
+        )
+      );
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const controller = new AbortController();
@@ -340,7 +374,7 @@ export function useChat() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [model, temperature, contextSize, bypassSemanticCache]);
+  }, [model, installedModels, temperature, contextSize, bypassSemanticCache]);
 
   /**
    * Submits the user's natural language question.
@@ -437,5 +471,6 @@ export function useChat() {
     apiOnline,
     loadedModelStatus,
     installedModels,
+    refreshModels: fetchModels,
   };
 }

@@ -74,6 +74,9 @@ def get_llm(model: Optional[str] = None, temperature: float = 0.0, context_size:
     global _llm_cache
     if not model:
         model = settings.OLLAMA_MODEL
+
+    if not model or not model.strip():
+        raise ValueError("Aucun modèle LLM sélectionné. Veuillez choisir un modèle Ollama dans l'interface.")
         
     cache_key = f"{model}_{temperature}_{context_size}"
     

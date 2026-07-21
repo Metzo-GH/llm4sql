@@ -155,10 +155,25 @@ async def test_integration_run_agent_real():
     Test d'intégration complet qui interroge l'agent avec une question réelle.
     Vérifie que le graphe effectue sa tâche complète et retourne des données.
     """
+    # Dynamically find an installed model
+    import urllib.request
+    import json
+    try:
+        req = urllib.request.Request(f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags")
+        with urllib.request.urlopen(req, timeout=2.0) as response:
+            data = json.loads(response.read().decode())
+            installed_models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+    except Exception:
+        installed_models = []
+
+    if not installed_models:
+        pytest.skip("Aucun modèle n'est installé dans Ollama local. Test ignoré.")
+
+    first_model = installed_models[0]
     question = "Donne-moi la liste des ouvrages dessinés par Christophe Blain."
     
     # Exécuter l'agent
-    final_state = run_agent(question)
+    final_state = run_agent(question, model=first_model)
     
     # Vérifications sur le résultat final
     assert final_state["question"] == question

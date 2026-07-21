@@ -86,6 +86,7 @@ export default function App() {
     apiOnline,
     loadedModelStatus,
     installedModels,
+    refreshModels,
   } = useChat();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -151,7 +152,12 @@ export default function App() {
             setBypassSemanticCache={setBypassSemanticCache}
             installedModels={installedModels}
             isSettingsOpen={isSettingsOpen}
-            setIsSettingsOpen={setIsSettingsOpen}
+            setIsSettingsOpen={(open) => {
+              setIsSettingsOpen(open);
+              if (open) {
+                refreshModels();
+              }
+            }}
           />
 
           {/* Dynamic FastAPI status */}

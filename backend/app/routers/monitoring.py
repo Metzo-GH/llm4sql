@@ -1,7 +1,7 @@
 import httpx
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from app.core.config import settings
 
 logger = logging.getLogger("llm4sql.monitoring")
@@ -25,7 +25,8 @@ async def read_root() -> Dict[str, str]:
 
 
 @router.get("/api/ollama/models")
-async def get_ollama_models() -> Dict[str, Any]:
+async def get_ollama_models(response: Response) -> Dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     """
     Récupère la liste des modèles installés localement dans Ollama.
     """
@@ -41,13 +42,14 @@ async def get_ollama_models() -> Dict[str, Any]:
     
     # Fallback si Ollama est injoignable
     return {
-        "models": ["qwen3.5:4b", "qwen3.5:9b", "deepseek-r1:1.5b", "deepseek-r1:8b"],
+        "models": [],
         "online": False
     }
 
 
 @router.get("/api/ollama/status")
-async def get_ollama_status() -> Dict[str, Any]:
+async def get_ollama_status(response: Response) -> Dict[str, Any]:
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     """
     Récupère l'état en temps réel des modèles chargés en mémoire (GPU/CPU).
     """

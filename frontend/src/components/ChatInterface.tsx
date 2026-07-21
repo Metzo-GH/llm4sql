@@ -77,7 +77,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
           <div>
             <h2 className="chat-title m-0">Assistant SQL Local</h2>
-            <p className="chat-subtitle m-0">Moteur LangGraph + Qwen 3.5 Local</p>
+            <p className="chat-subtitle m-0">Moteur LangGraph + Ollama Local</p>
           </div>
         </div>
         

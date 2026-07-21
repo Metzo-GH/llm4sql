@@ -135,4 +135,5 @@ echo -e "${CYAN}====================================================${NC}"
 echo -e "${YELLOW}Lancement automatique du serveur FastAPI...${NC}"
 echo -e "${CYAN}====================================================${NC}"
 
-exec uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+exec uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --timeout-graceful-shutdown 2
+

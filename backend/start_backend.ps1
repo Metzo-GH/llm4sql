@@ -131,4 +131,5 @@ Write-Host "Lancement automatique du serveur FastAPI..." -ForegroundColor Yellow
 Write-Host "====================================================" -ForegroundColor Cyan
 
 # Lancement du serveur FastAPI avec uv et uvicorn
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --timeout-graceful-shutdown 2
+

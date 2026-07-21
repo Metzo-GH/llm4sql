@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.core.security import validate_sandbox_sql, FORBIDDEN_PG_FUNCTIONS
+from app.core.security import validate_sandbox_sql, validate_sql_query, FORBIDDEN_PG_FUNCTIONS
 
 client = TestClient(app)
 
@@ -111,3 +111,26 @@ def test_api_cors_headers():
     assert response.status_code == 200
     assert "POST" in response.headers.get("access-control-allow-methods", "")
     assert "DELETE" not in response.headers.get("access-control-allow-methods", "")
+
+
+def test_validate_sandbox_sql_comments():
+    """
+    Vérifie que les scripts SQL avec des commentaires de type -- et des points-virgules finaux sont acceptés par validate_sandbox_sql.
+    """
+    valid_comments = [
+        "CREATE TABLE test (id INT); -- Commentaire",
+        "CREATE TABLE test (id INT -- Commentaire\n);"
+    ]
+    for script in valid_comments:
+        is_safe, message = validate_sandbox_sql(script)
+        assert is_safe is True, f"Devrait être valide : {script}. Message : {message}"
+
+
+def test_validate_sql_query_with_comment():
+    """
+    Vérifie qu'une requête avec un commentaire de type -- et un point-virgule final est acceptée.
+    """
+    query = "SELECT * FROM ouvrage; -- Commentaire"
+    is_safe, message = validate_sql_query(query)
+    assert is_safe is True, f"Devrait être valide : {query}. Message : {message}"
+

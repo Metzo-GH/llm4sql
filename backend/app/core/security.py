@@ -74,12 +74,16 @@ def validate_sql_query(sql: str) -> Tuple[bool, str]:
     except sqlglot.errors.ParseError as e:
         return False, f"Erreur de syntaxe SQL lors de l'analyse : {str(e)}"
 
-    if len(parsed_statements) > 1:
+    statements = [s for s in parsed_statements if s is not None and type(s).__name__ != 'Semicolon']
+
+    if not statements:
+        return False, "La requête SQL est vide ou invalide."
+
+    if len(statements) > 1:
         return False, "Sécurité : L'exécution de plusieurs requêtes SQL séparées par ';' est interdite."
 
-    statement = parsed_statements[0]
-    if statement is None:
-        return False, "Instruction SQL invalide."
+    statement = statements[0]
+
 
     allowed_types = (exp.Select, exp.Union, exp.Subquery)
 
@@ -123,7 +127,9 @@ def validate_sandbox_sql(sql: str) -> Tuple[bool, str]:
     except sqlglot.errors.ParseError as e:
         return False, f"Erreur de syntaxe SQL lors de l'analyse : {str(e)}"
 
-    if not parsed_statements:
+    statements = [s for s in parsed_statements if s is not None and type(s).__name__ != 'Semicolon']
+
+    if not statements:
         return False, "Aucune instruction SQL valide détectée."
 
     sandbox_allowed_types = (exp.Create, exp.Insert, exp.Select)
@@ -145,12 +151,13 @@ def validate_sandbox_sql(sql: str) -> Tuple[bool, str]:
         r"\bCREATE\s+RULE\b",
     ]
 
-    upper_query = query.upper()
+    clean_query = "\n".join(s.sql(dialect="postgres", comments=False) for s in statements)
+    upper_query = clean_query.upper()
     for pattern in dangerous_patterns:
         if re.search(pattern, upper_query):
             return False, f"Sécurité : L'opération correspondant au pattern '{pattern}' est interdite dans le bac à sable."
 
-    for statement in parsed_statements:
+    for statement in statements:
         if statement is None:
             continue
 

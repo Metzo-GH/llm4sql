@@ -33,6 +33,12 @@ async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
             detail="La question fournie ne peut pas être vide."
         )
         
+    if not chat_request.model or not chat_request.model.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun modèle LLM sélectionné. Veuillez choisir un modèle Ollama dans l'interface."
+        )
+        
     logger.info("="*60)
     logger.info(f"[API IN] REQUÊTE REÇUE : '{chat_request.question}' (Bypass Cache: {chat_request.bypass_semantic_cache})")
     logger.info("="*60)
@@ -88,6 +94,12 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
         raise HTTPException(
             status_code=400,
             detail="La question fournie ne peut pas être vide."
+        )
+
+    if not chat_request.model or not chat_request.model.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun modèle LLM sélectionné. Veuillez choisir un modèle Ollama dans l'interface."
         )
 
     logger.info("="*60)

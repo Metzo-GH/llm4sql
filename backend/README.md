@@ -80,7 +80,7 @@ backend/
 ### 2. Télécharger le modèle de langage
 Ouvrez un terminal et récupérez le modèle par défaut :
 ```bash
-ollama run qwen3.5:4b
+ollama run <nom_du_modele>
 ```
 
 ### 3. Démarrer et initialiser automatiquement le backend
