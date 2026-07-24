@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Bot, User, AlertTriangle, RefreshCw, Pencil } from 'lucide-react';
 import type { Message, ParsedStep } from '../../types/chat';
 import { parseThinking } from '../../utils/thinkingParser';
@@ -32,10 +32,12 @@ interface UserMessageContentProps {
 const UserMessageContent: React.FC<UserMessageContentProps> = ({ msg, isLoading, onEditMessage }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(msg.content);
+  const [prevContent, setPrevContent] = useState(msg.content);
 
-  useEffect(() => {
+  if (prevContent !== msg.content) {
+    setPrevContent(msg.content);
     setEditText(msg.content);
-  }, [msg.content]);
+  }
 
   if (isEditing) {
     return (
@@ -106,13 +108,14 @@ const AssistantMessageContent: React.FC<AssistantMessageContentProps> = ({
   parsedSteps,
 }) => {
   const [isThinkingOpen, setIsThinkingOpen] = useState(true);
+  const [prevIsLoading, setPrevIsLoading] = useState(isLoading);
 
-  // Close thinking block by default when loading completes
-  useEffect(() => {
+  if (prevIsLoading !== isLoading) {
+    setPrevIsLoading(isLoading);
     if (!isLoading) {
       setIsThinkingOpen(false);
     }
-  }, [isLoading]);
+  }
 
   const thinkingText = msg.thinking || parseThinking(msg.content).thinking;
   const rawAnswer = msg.thinking

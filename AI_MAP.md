@@ -195,11 +195,11 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Actualisation temps réel de la liste des LLMs dans le menu déroulant (suppression du cache navigateur sur les routes `/api/ollama/models` et `/api/ollama/status` et actualisation automatique à l'ouverture du menu).
 - [x] Optimisation de la durée d'arrêt du backend (propagation rapide des signaux avec le paramètre uvicorn `--timeout-graceful-shutdown 2`).
 
-### Phase R18 : Suppression des Modèles par Défaut & Sélection Dynamique Ollama (Validée)
-- [x] Suppression du modèle par défaut codé en dur dans `config.py` (`OLLAMA_MODEL=""`).
-- [x] Retrait des listes de modèles fictifs en fallback dans `monitoring.py` et `useChat.ts`.
-- [x] Contrôle strict du modèle sélectionné avant l'envoi d'une requête (messages explicites dans l'UI si aucun modèle n'est sélectionné ou installé).
-- [x] Mise à jour du menu déroulant de paramètres avec l'option `-- Choisir un modèle --` et validation des types.
+### Phase R19 : Nettoyage Knip & Résolution Complète ESLint (Validée)
+- [x] Suppression de la dépendance inutilisée `@types/dompurify` dans `package.json`.
+- [x] Retrait du modificateur `export` inutilisé sur `AgentStep` dans `chat.ts`.
+- [x] Résolution des 12 erreurs ESLint (TypeScript strict, `set-state-in-effect` React 19, `no-useless-assignment`, variables de `catch` inutilisées).
+- [x] Validation générale : ESLint 0 erreur, Knip 0 problème, build Vite/TS réussi et 38 tests pytest backend passés avec succès.
 
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.

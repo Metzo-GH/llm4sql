@@ -2,6 +2,7 @@ import React from 'react';
 import { Database, Table, BarChart3, HelpCircle } from 'lucide-react';
 import { DataTable } from '../DataTable';
 import { DataVisualization } from '../DataVisualization';
+import type { SqlResultRow } from '../../types/chat';
 
 /**
  * Properties for the DataExplorerPanel component.
@@ -14,7 +15,7 @@ interface DataExplorerPanelProps {
   /** Callback to change the active view mode. */
   setActiveView: (view: 'table' | 'chart') => void;
   /** Selected query results data array. */
-  activeData: any[];
+  activeData: SqlResultRow[];
   /** Query SQL statement that generated the data. */
   activeSQL?: string;
 }

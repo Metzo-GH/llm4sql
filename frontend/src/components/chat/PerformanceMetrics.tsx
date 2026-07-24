@@ -54,15 +54,16 @@ interface ToolUsageInfoProps {
  */
 const ToolUsageInfo: React.FC<ToolUsageInfoProps> = ({ node, toolCall, success, error }) => {
   const toolName = node.replace('tool_', '');
-  let toolArgs = '';
+  const args = toolCall?.args as Record<string, string> | undefined;
+  let toolArgs: string;
   if (toolName === 'mcp_search_value') {
-    toolArgs = `terme = "${toolCall?.args?.term || ''}"`;
+    toolArgs = `terme = "${args?.term || ''}"`;
   } else if (toolName === 'mcp_get_schema') {
-    toolArgs = `table_name = "${toolCall?.args?.table_name || ''}"`;
+    toolArgs = `table_name = "${args?.table_name || ''}"`;
   } else if (toolName === 'mcp_get_sample_data') {
-    toolArgs = `table_name = "${toolCall?.args?.table_name || ''}"`;
+    toolArgs = `table_name = "${args?.table_name || ''}"`;
   } else if (toolName === 'mcp_dry_run_query') {
-    toolArgs = `sql = "${toolCall?.args?.sql?.substring(0, 40) || ''}..."`;
+    toolArgs = `sql = "${args?.sql?.substring(0, 40) || ''}..."`;
   } else {
     toolArgs = JSON.stringify(toolCall?.args || {});
   }

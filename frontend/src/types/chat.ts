@@ -1,10 +1,10 @@
 export interface ToolCall {
   name: string;
-  args?: Record<string, any>;
+  args?: Record<string, unknown>;
   id?: string;
 }
 
-export interface AgentStep {
+interface AgentStep {
   node: string;
   message?: string;
   selected_tables?: string[];

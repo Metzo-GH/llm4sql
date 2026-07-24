@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -22,7 +22,7 @@ interface DataVisualizationProps {
 interface TooltipPayloadItem {
   value: string | number;
   name: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }
 
 interface CustomTooltipProps {
@@ -60,25 +60,22 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, x
  */
 export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({ data }) => {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
-  const [xAxisKey, setXAxisKey] = useState('');
-  const [yAxisKey, setYAxisKey] = useState('');
-  
-  const [numericCols, setNumericCols] = useState<string[]>([]);
-  const [textualCols, setTextualCols] = useState<string[]>([]);
+  const [userXAxisKey, setUserXAxisKey] = useState('');
+  const [userYAxisKey, setUserYAxisKey] = useState('');
 
-  // Analyser les colonnes au chargement des données
-  useEffect(() => {
-    if (!data || data.length === 0) return;
+  const { numericCols, textualCols, defaultXAxisKey, defaultYAxisKey } = useMemo(() => {
+    if (!data || data.length === 0) {
+      return { numericCols: [], textualCols: [], defaultXAxisKey: '', defaultYAxisKey: '' };
+    }
 
     const sample = data[0];
     const columns = Object.keys(sample);
-    
+
     const numeric: string[] = [];
     const textual: string[] = [];
 
     for (const col of columns) {
       const val = sample[col];
-      // Vérifier si la valeur ressemble à un nombre
       if (val !== null && val !== undefined && !isNaN(Number(val)) && typeof val !== 'boolean') {
         numeric.push(col);
       } else {
@@ -86,23 +83,19 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
       }
     }
 
-    setNumericCols(numeric);
-    setTextualCols(textual);
+    const defaultX = textual.length > 0 ? textual[0] : (columns[0] || '');
+    const defaultY = numeric.length > 0 ? numeric[0] : (columns[1] || columns[0] || '');
 
-    // Configurer des axes par défaut intelligents
-    if (textual.length > 0) {
-      setXAxisKey(textual[0]);
-    } else if (columns.length > 0) {
-      setXAxisKey(columns[0]);
-    }
-
-    if (numeric.length > 0) {
-      setYAxisKey(numeric[0]);
-    } else if (columns.length > 1) {
-      // Fallback si aucune colonne n'est explicitement numérique
-      setYAxisKey(columns[1]);
-    }
+    return {
+      numericCols: numeric,
+      textualCols: textual,
+      defaultXAxisKey: defaultX,
+      defaultYAxisKey: defaultY,
+    };
   }, [data]);
+
+  const xAxisKey = userXAxisKey || defaultXAxisKey;
+  const yAxisKey = userYAxisKey || defaultYAxisKey;
 
   if (!data || data.length === 0) return null;
 
@@ -238,7 +231,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             <span className="data-vis-axis-label">Axe X :</span>
             <select
               value={xAxisKey}
-              onChange={(e) => setXAxisKey(e.target.value)}
+              onChange={(e) => setUserXAxisKey(e.target.value)}
               className="input-field data-vis-axis-select"
               aria-label="Sélectionner la colonne pour l'axe X"
             >
@@ -254,7 +247,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             <span className="data-vis-axis-label">Valeurs Y :</span>
             <select
               value={yAxisKey}
-              onChange={(e) => setYAxisKey(e.target.value)}
+              onChange={(e) => setUserYAxisKey(e.target.value)}
               className="input-field data-vis-axis-select"
               aria-label="Sélectionner la colonne pour les valeurs de l'axe Y"
             >

@@ -19,8 +19,8 @@ export const StepsTracker: React.FC<StepsTrackerProps> = React.memo(({ steps }) 
   return (
     <div className="message-steps-box">
       {steps.map((step) => {
-        let statusIcon = null;
-        let colorClass = 'var(--text-muted)';
+        let statusIcon: React.ReactNode;
+        let colorClass: string;
 
         if (step.status === 'success') {
           statusIcon = (

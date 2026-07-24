@@ -75,7 +75,7 @@ export function useChat() {
       } else {
         setApiOnline(false);
       }
-    } catch (err: unknown) {
+    } catch {
       setApiOnline(false);
     }
 
@@ -91,7 +91,7 @@ export function useChat() {
       } else {
         setLoadedModelStatus(null);
       }
-    } catch (err: unknown) {
+    } catch {
       setLoadedModelStatus(null);
     }
   }, []);
@@ -115,17 +115,20 @@ export function useChat() {
   }, []);
 
   useEffect(() => {
-    checkStatus();
-    fetchModels();
+    const initStatus = async () => {
+      await checkStatus();
+      await fetchModels();
+    };
+    void initStatus();
 
     const statusInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        checkStatus();
+        void checkStatus();
       }
     }, 5000);
     const modelsInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchModels();
+        void fetchModels();
       }
     }, 15000);
 
