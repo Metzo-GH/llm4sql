@@ -1,0 +1,1875 @@
+{
+  "timestamp": "2026-07-25T22:51:24.644466",
+  "model": "qwen3.5:4b",
+  "total_cases": 18,
+  "passed_cases": 15,
+  "global_score": 83.3,
+  "total_execution_time": 906.18,
+  "difficulty_breakdown": {
+    "Facile": {
+      "total": 6,
+      "passed": 5,
+      "accuracy": 83.3
+    },
+    "Moyen": {
+      "total": 5,
+      "passed": 4,
+      "accuracy": 80.0
+    },
+    "Difficile": {
+      "total": 4,
+      "passed": 3,
+      "accuracy": 75.0
+    },
+    "Avancé": {
+      "total": 3,
+      "passed": 3,
+      "accuracy": 100.0
+    }
+  },
+  "results": [
+    {
+      "id": 1,
+      "question": "Lister le nom et le prénom de tous les auteurs de la table personne.",
+      "difficulty": "Facile",
+      "passed": true,
+      "execution_time": 21.81,
+      "ground_truth_sql": "SELECT nom, prenom FROM personne ORDER BY nom, prenom;",
+      "generated_sql": "SELECT nom, prenom \nFROM personne \nORDER BY idp",
+      "error": null,
+      "expected_count": 14,
+      "actual_count": 14,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 7.753,
+          "prompt_tokens": 3331,
+          "eval_tokens": 213,
+          "tokens_per_second": 49.14,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.023,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT nom, prenom FROM personne ORDER BY idp;",
+              "target_schema": "public"
+            },
+            "id": "81a9b6ef-7da0-4682-8cc0-9255db84ea96",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"nom\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"prenom\",\n      \"type\": \"varchar\"\n    }\n  ],\n  \"estimated_rows\": 410\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 3.157,
+          "prompt_tokens": 3792,
+          "eval_tokens": 98,
+          "tokens_per_second": 46.76,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 14
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "question": "Combien y a-t-il de séries enregistrées dans la base de données ?",
+      "difficulty": "Facile",
+      "passed": true,
+      "execution_time": 28.33,
+      "ground_truth_sql": "SELECT COUNT(*) FROM serie;",
+      "generated_sql": "SELECT COUNT(*) AS nombre_series\nFROM   serie",
+      "error": null,
+      "expected_count": 1,
+      "actual_count": 1,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 19.49,
+          "prompt_tokens": 3331,
+          "eval_tokens": 246,
+          "tokens_per_second": 49.08,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 1
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "question": "Donner les titres des ouvrages sortis après l'année 2010.",
+      "difficulty": "Facile",
+      "passed": true,
+      "execution_time": 36.93,
+      "ground_truth_sql": "SELECT titre FROM ouvrage WHERE date_sortie > '2010-12-31' ORDER BY titre;",
+      "generated_sql": "SELECT titre \nFROM ouvrage \nWHERE date_sortie IS NOT NULL \nAND EXTRACT(YEAR FROM date_sortie) > 2010 \nORDER BY titre ASC",
+      "error": null,
+      "expected_count": 5,
+      "actual_count": 5,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 15.763,
+          "prompt_tokens": 3333,
+          "eval_tokens": 172,
+          "tokens_per_second": 48.43,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.029,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "896ca905-380d-4ecf-8031-090630a96471",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 5.201,
+          "prompt_tokens": 4057,
+          "eval_tokens": 201,
+          "tokens_per_second": 49.65,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.015,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT titre \nFROM ouvrage \nWHERE date_sortie IS NOT NULL \nAND EXTRACT(YEAR FROM date_sortie) > 2010 \nORDER BY titre ASC;",
+              "target_schema": "public"
+            },
+            "id": "9176495d-b151-4e4b-95da-e5a0c1ee6027",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"titre\",\n      \"type\": \"varchar\"\n    }\n  ],\n  \"estimated_rows\": 96\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 4.516,
+          "prompt_tokens": 4449,
+          "eval_tokens": 173,
+          "tokens_per_second": 49.7,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 5
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "question": "Quel est le score moyen des avis attribués à l'album 'Les Indes Fourbes' ?",
+      "difficulty": "Facile",
+      "passed": true,
+      "execution_time": 52.38,
+      "ground_truth_sql": "SELECT AVG(score) FROM avis a JOIN ouvrage o ON a.ido = o.ido WHERE o.titre = 'Les Indes Fourbes';",
+      "generated_sql": "SELECT AVG(a.score) AS score_moyen\nFROM avis a\nINNER JOIN ouvrage o ON a.ido = o.ido\nWHERE o.titre = 'Les Indes Fourbes'\nORDER BY 1",
+      "error": null,
+      "expected_count": 1,
+      "actual_count": 1,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 18.566,
+          "prompt_tokens": 3337,
+          "eval_tokens": 263,
+          "tokens_per_second": 46.22,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_search_value",
+          "elapsed": 0.047,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_search_value",
+            "args": {
+              "term": "Les Indes Fourbes",
+              "target_schema": "public"
+            },
+            "id": "1fb735a3-e595-4366-a664-6d4efe06adad",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"matches\": [\n    {\n      \"table\": \"ouvrage\",\n      \"column\": \"titre\",\n      \"matched_value\": \"Les Indes Fourbes\",\n      \"foreign_key_suggestion\": [\n        {\n          \"local_column\": \"dessinateur\",\n          \"foreign_table\": \"personne\",\n          \"foreign_column\": \"idp\"\n        },\n        {\n          \"local_column\": \"scenariste\",\n          \"foreign_table\": \"personne\",\n          \"foreign_column\": \"idp\"\n        },\n        {\n          \"local_column\": \"coloriste\",\n          \"foreign_table\": \"personne\",\n          \"foreign_column\": \"idp\"\n        },\n        {\n          \"local_column\": \"ids\",\n          \"foreign_table\": \"serie\",\n          \"foreign_column\": \"ids\"\n        }\n      ]\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 4.518,
+          "prompt_tokens": 4039,
+          "eval_tokens": 156,
+          "tokens_per_second": 47.65,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.035,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "1e46033a-1f91-4085-a9e8-93c261991785",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 2.486,
+          "prompt_tokens": 4735,
+          "eval_tokens": 59,
+          "tokens_per_second": 47.84,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.035,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "avis",
+              "target_schema": "public"
+            },
+            "id": "315f9d5a-4eda-4592-8beb-09cc41c23e96",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"avis\",\n  \"schema\": [\n    {\n      \"column\": \"pseudo\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"score\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"produit_id\",\n      \"foreign_table\": \"produits\",\n      \"foreign_column\": \"id\"\n    },\n    {\n      \"local_column\": \"client_id\",\n      \"foreign_table\": \"clients\",\n      \"foreign_column\": \"id\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 7.063,
+          "prompt_tokens": 5046,
+          "eval_tokens": 290,
+          "tokens_per_second": 48.49,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.012,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT AVG(a.score) AS score_moyen\nFROM avis a\nINNER JOIN ouvrage o ON a.ido = o.ido\nWHERE o.titre = 'Les Indes Fourbes'",
+              "target_schema": "public"
+            },
+            "id": "ca4a5120-2ce8-4e38-95fd-2e5c44908ac5",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"score_moyen\",\n      \"type\": \"numeric\"\n    }\n  ],\n  \"estimated_rows\": 1\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 5,
+          "elapsed": 5.256,
+          "prompt_tokens": 5540,
+          "eval_tokens": 199,
+          "tokens_per_second": 47.48,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.009,
+          "success": true,
+          "row_count": 1
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "question": "Donner le titre et le numéro d'ordre des albums appartenant à la série 'Blacksad'.",
+      "difficulty": "Facile",
+      "passed": true,
+      "execution_time": 39.68,
+      "ground_truth_sql": "SELECT o.titre, o.num_ordre FROM ouvrage o JOIN serie s ON o.ids = s.ids WHERE s.titre = 'Blacksad' ORDER BY o.num_ordre;",
+      "generated_sql": "SELECT o.titre AS album_titre, o.num_ordre\nFROM ouvrage o\nINNER JOIN serie s ON o.ids = s.ids\nWHERE s.titre = 'Blacksad'\nORDER BY o.num_ordre ASC",
+      "error": null,
+      "expected_count": 2,
+      "actual_count": 2,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 17.351,
+          "prompt_tokens": 3337,
+          "eval_tokens": 259,
+          "tokens_per_second": 47.58,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_search_value",
+          "elapsed": 0.03,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_search_value",
+            "args": {
+              "term": "Blacksad",
+              "target_schema": "public"
+            },
+            "id": "f96f6c46-a572-4913-a49f-bd8d908c01b5",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"matches\": [\n    {\n      \"table\": \"serie\",\n      \"column\": \"titre\",\n      \"matched_value\": \"Blacksad\",\n      \"foreign_key_suggestion\": []\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 5.141,
+          "prompt_tokens": 3884,
+          "eval_tokens": 201,
+          "tokens_per_second": 49.22,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.009,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT o.titre AS album_titre, o.num_ordre\nFROM ouvrage o\nINNER JOIN serie s ON o.ids = s.ids\nWHERE s.titre = 'Blacksad'\nORDER BY o.num_ordre ASC;",
+              "target_schema": "public"
+            },
+            "id": "8e25feb3-5599-4e1b-ac95-973e3c076dcf",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"album_titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"num_ordre\",\n      \"type\": \"int4\"\n    }\n  ],\n  \"estimated_rows\": 2\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 5.755,
+          "prompt_tokens": 4290,
+          "eval_tokens": 226,
+          "tokens_per_second": 48.29,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 2
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "question": "Lister les ouvrages dessinés par 'Blain' avec le titre de leur série associée.",
+      "difficulty": "Moyen",
+      "passed": true,
+      "execution_time": 56.29,
+      "ground_truth_sql": "SELECT o.titre, s.titre FROM ouvrage o JOIN personne p ON o.dessinateur = p.idp LEFT JOIN serie s ON o.ids = s.ids WHERE p.nom = 'Blain' ORDER BY o.titre;",
+      "generated_sql": "SELECT \n    o.titre AS titre_oeuvre,\n    s.titre AS titre_serie\nFROM   ouvrage o\nINNER JOIN personne p ON o.dessinateur = p.idp AND p.nom = 'Blain'\nLEFT  JOIN serie     s ON o.ids      = s.ids\nORDER BY o.titre",
+      "error": null,
+      "expected_count": 4,
+      "actual_count": 4,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 17.427,
+          "prompt_tokens": 3335,
+          "eval_tokens": 192,
+          "tokens_per_second": 46.48,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_search_value",
+          "elapsed": 0.035,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_search_value",
+            "args": {
+              "term": "Blain",
+              "target_schema": "public"
+            },
+            "id": "10e4f2d7-fa27-424b-921e-f324857d78ed",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"matches\": [\n    {\n      \"table\": \"personne\",\n      \"column\": \"nom\",\n      \"matched_value\": \"Blain\",\n      \"foreign_key_suggestion\": []\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 4.529,
+          "prompt_tokens": 3749,
+          "eval_tokens": 155,
+          "tokens_per_second": 46.66,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.031,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "76337f33-1270-4690-b3b7-40a3dda39b38",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 2.597,
+          "prompt_tokens": 4443,
+          "eval_tokens": 69,
+          "tokens_per_second": 50.47,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.021,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "serie",
+              "target_schema": "public"
+            },
+            "id": "6c141064-acdd-4550-9c4a-7248fbe233f0",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"serie\",\n  \"schema\": [\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    }\n  ],\n  \"relations\": []\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 9.92,
+          "prompt_tokens": 4640,
+          "eval_tokens": 441,
+          "tokens_per_second": 49.13,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.01,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    o.titre AS titre_oeuvre,\n    s.titre AS titre_serie\nFROM   ouvrage o\nINNER JOIN personne p ON o.dessinateur = p.idp AND p.nom = 'Blain'\nLEFT  JOIN serie     s ON o.ids      = s.ids\nORDER BY o.titre;",
+              "target_schema": "public"
+            },
+            "id": "65e9d65c-713e-49b7-9328-e36831904458",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"titre_oeuvre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"titre_serie\",\n      \"type\": \"varchar\"\n    }\n  ],\n  \"estimated_rows\": 1\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 5,
+          "elapsed": 7.507,
+          "prompt_tokens": 5349,
+          "eval_tokens": 311,
+          "tokens_per_second": 48.75,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 4
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "question": "Quels sont les 3 ouvrages ayant la meilleure note moyenne avec au moins 2 avis ?",
+      "difficulty": "Moyen",
+      "passed": false,
+      "execution_time": 42.55,
+      "ground_truth_sql": "SELECT o.titre, AVG(a.score) FROM ouvrage o JOIN avis a ON o.ido = a.ido GROUP BY o.ido, o.titre HAVING COUNT(a.score) >= 2 ORDER BY AVG(a.score) DESC LIMIT 3;",
+      "generated_sql": "SELECT \n    ido,\n    AVG(score) AS moyenne_score,\n    COUNT(*) AS nb_avis\nFROM \n    avis\nWHERE \n    score IS NOT NULL\nGROUP BY \n    ido\nHAVING \n    COUNT(*) >= 2\nORDER BY \n    moyenne_score DESC\nLIMIT 3",
+      "error": null,
+      "expected_count": 3,
+      "actual_count": 3,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 18.688,
+          "prompt_tokens": 3334,
+          "eval_tokens": 344,
+          "tokens_per_second": 49.57,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.029,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "avis",
+              "target_schema": "public"
+            },
+            "id": "4b444b12-ce5f-4fb5-8a78-19d9a2f266f9",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"avis\",\n  \"schema\": [\n    {\n      \"column\": \"pseudo\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"score\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"produit_id\",\n      \"foreign_table\": \"produits\",\n      \"foreign_column\": \"id\"\n    },\n    {\n      \"local_column\": \"client_id\",\n      \"foreign_table\": \"clients\",\n      \"foreign_column\": \"id\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 5.707,
+          "prompt_tokens": 4215,
+          "eval_tokens": 226,
+          "tokens_per_second": 49.89,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.014,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    ido,\n    AVG(score) AS moyenne_score,\n    COUNT(*) AS nb_avis\nFROM \n    avis\nWHERE \n    score IS NOT NULL\nGROUP BY \n    ido\nHAVING \n    COUNT(*) >= 2\nORDER BY \n    moyenne_score DESC\nLIMIT 3;",
+              "target_schema": "public"
+            },
+            "id": "d7f353ba-d8e8-4934-ad15-6965cf17b2c0",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"ido\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"moyenne_score\",\n      \"type\": \"numeric\"\n    },\n    {\n      \"name\": \"nb_avis\",\n      \"type\": \"int8\"\n    }\n  ],\n  \"estimated_rows\": 3\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 6.639,
+          "prompt_tokens": 4679,
+          "eval_tokens": 265,
+          "tokens_per_second": 47.41,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.008,
+          "success": true,
+          "row_count": 3
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "question": "Compter le nombre d'ouvrages associés à chaque mot-clé conceptuel.",
+      "difficulty": "Moyen",
+      "passed": true,
+      "execution_time": 53.22,
+      "ground_truth_sql": "SELECT c.label, COUNT(ap.ido) FROM concept c JOIN a_pour_mot_cle ap ON c.idc = ap.idc GROUP BY c.idc, c.label ORDER BY COUNT(ap.ido) DESC, c.label;",
+      "generated_sql": "SELECT c.idc AS id_concept,\n       COALESCE(c.label, 'Sans label') AS concept_label,\n       COUNT(aw.ido) AS nombre_ouvrages\nFROM   concept c\nINNER JOIN a_pour_mot_cle aw ON c.idc = aw.idc\nGROUP BY c.idc, COALESCE(c.label, 'Sans label')\nORDER  BY c.idc ASC",
+      "error": null,
+      "expected_count": 14,
+      "actual_count": 14,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 24.261,
+          "prompt_tokens": 3332,
+          "eval_tokens": 559,
+          "tokens_per_second": 49.72,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.018,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT c.idc AS id_concept,\n       COALESCE(c.label, 'Sans label') AS concept_label,\n       COUNT(aw.ido) AS nombre_ouvrages\nFROM   concept c\nINNER JOIN a_pour_mot_cle aw ON c.idc = aw.idc\nGROUP BY c.idc, COALESCE(c.label, 'Sans label')\nORDER  BY c.idc ASC;",
+              "target_schema": "public"
+            },
+            "id": "7cb3d3fc-f4f7-47ac-aad1-15203a777f43",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"id_concept\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"concept_label\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nombre_ouvrages\",\n      \"type\": \"int8\"\n    }\n  ],\n  \"estimated_rows\": 860\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 9.672,
+          "prompt_tokens": 4442,
+          "eval_tokens": 416,
+          "tokens_per_second": 49.42,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.013,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT c.idc AS id_concept,\n       COALESCE(c.label, 'Sans label') AS concept_label,\n       COUNT(aw.ido) AS nombre_ouvrages\nFROM   concept c\nINNER JOIN a_pour_mot_cle aw ON c.idc = aw.idc\nGROUP BY c.idc, COALESCE(c.label, 'Sans label')\nORDER  BY c.idc ASC;",
+              "target_schema": "public"
+            },
+            "id": "bdcbef4f-90cf-41e7-9184-e3aa7dd38fba",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"id_concept\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"concept_label\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nombre_ouvrages\",\n      \"type\": \"int8\"\n    }\n  ],\n  \"estimated_rows\": 860\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 7.578,
+          "prompt_tokens": 5266,
+          "eval_tokens": 314,
+          "tokens_per_second": 49.13,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.008,
+          "success": true,
+          "row_count": 14
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "question": "Quels sont les auteurs qui sont à la fois dessinateurs et scénaristes d'un même ouvrage ?",
+      "difficulty": "Moyen",
+      "passed": true,
+      "execution_time": 42.7,
+      "ground_truth_sql": "SELECT DISTINCT p.nom, p.prenom FROM personne p JOIN ouvrage o ON p.idp = o.dessinateur WHERE o.dessinateur = o.scenariste ORDER BY p.nom;",
+      "generated_sql": "SELECT DISTINCT p.nom || ' (' || COALESCE(p.prenom, '') || ')' AS auteur\nFROM ouvrage o\nINNER JOIN personne p ON (o.dessinateur = p.idp AND o.scenariste = p.idp)\nWHERE o.dessinateur IS NOT NULL \n  AND o.scenariste IS NOT NULL",
+      "error": null,
+      "expected_count": 2,
+      "actual_count": 2,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 23.582,
+          "prompt_tokens": 3337,
+          "eval_tokens": 566,
+          "tokens_per_second": 47.89,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.015,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT DISTINCT p.nom || ' (' || p.prenom || ')' AS auteur\nFROM ouvrage o\nINNER JOIN personne p ON (o.dessinateur = p.idp AND o.scenariste = p.idp)\nWHERE o.dessinateur IS NOT NULL \n  AND o.scenariste IS NOT NULL;",
+              "target_schema": "public"
+            },
+            "id": "6272a95c-1cb4-4259-8f86-0a1213911099",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"auteur\",\n      \"type\": \"text\"\n    }\n  ],\n  \"estimated_rows\": 1\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 8.938,
+          "prompt_tokens": 4426,
+          "eval_tokens": 344,
+          "tokens_per_second": 45.61,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.008,
+          "success": true,
+          "row_count": 2
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "question": "Quels sont les utilisateurs (pseudos) ayant donné des notes supérieures à la moyenne globale ?",
+      "difficulty": "Difficile",
+      "passed": true,
+      "execution_time": 51.82,
+      "ground_truth_sql": "SELECT DISTINCT pseudo FROM avis WHERE score > (SELECT AVG(score) FROM avis) ORDER BY pseudo;",
+      "generated_sql": "WITH moyenne_globale AS (\n    SELECT AVG(score) as avg_score\n    FROM avis\n    WHERE score IS NOT NULL\n),\nutilisateurs_sup_moyenne AS (\n    SELECT pseudo, score\n    FROM avis a1\n    CROSS JOIN moyenne_globale mg\n    WHERE a1.score > mg.avg_score AND a1.score IS NOT NULL\n)\nSELECT pseudo, score\nFROM utilisateurs_sup_moyenne\nORDER BY pseudo ASC",
+      "error": null,
+      "expected_count": 9,
+      "actual_count": 20,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 16.591,
+          "prompt_tokens": 3336,
+          "eval_tokens": 229,
+          "tokens_per_second": 47.81,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.027,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "avis",
+              "target_schema": "public"
+            },
+            "id": "eaef270a-65b1-45cd-b517-dc38602e804e",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"avis\",\n  \"schema\": [\n    {\n      \"column\": \"pseudo\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"score\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"produit_id\",\n      \"foreign_table\": \"produits\",\n      \"foreign_column\": \"id\"\n    },\n    {\n      \"local_column\": \"client_id\",\n      \"foreign_table\": \"clients\",\n      \"foreign_column\": \"id\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 6.364,
+          "prompt_tokens": 3987,
+          "eval_tokens": 251,
+          "tokens_per_second": 48.07,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.011,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH moyenne_globale AS (\n    SELECT AVG(score) as avg_score\n    FROM avis\n    WHERE score IS NOT NULL\n),\nutilisateurs_sup_moyenne AS (\n    SELECT pseudo, score\n    FROM avis a1\n    INNER JOIN moyenne_globale mg ON 1 = 1\n    WHERE a1.score > mg.avg_score AND a1.score IS NOT NULL\n)\nSELECT pseudo, score\nFROM utilisateurs_sup_moyenne\nORDER BY pseudo ASC;",
+              "target_schema": "public"
+            },
+            "id": "1be48d84-4ff2-4de5-af3d-a63c2b8aa61e",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"pseudo\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"score\",\n      \"type\": \"int4\"\n    }\n  ],\n  \"estimated_rows\": 365\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 7.962,
+          "prompt_tokens": 4439,
+          "eval_tokens": 331,
+          "tokens_per_second": 47.75,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.012,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH moyenne_globale AS (\n    SELECT AVG(score) as avg_score\n    FROM avis\n    WHERE score IS NOT NULL\n),\nutilisateurs_sup_moyenne AS (\n    SELECT pseudo, score\n    FROM avis a1\n    CROSS JOIN moyenne_globale mg\n    WHERE a1.score > mg.avg_score AND a1.score IS NOT NULL\n)\nSELECT pseudo, score\nFROM utilisateurs_sup_moyenne\nORDER BY pseudo ASC;",
+              "target_schema": "public"
+            },
+            "id": "2ca3cdd4-84e0-4144-b131-bea0dcf385b4",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"pseudo\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"score\",\n      \"type\": \"int4\"\n    }\n  ],\n  \"estimated_rows\": 365\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 8.09,
+          "prompt_tokens": 5057,
+          "eval_tokens": 330,
+          "tokens_per_second": 47.35,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.01,
+          "success": true,
+          "row_count": 20
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "question": "Trouver les paires d'auteurs (dessinateur et scénariste) ayant réalisé plus d'un album ensemble.",
+      "difficulty": "Difficile",
+      "passed": false,
+      "execution_time": 74.49,
+      "ground_truth_sql": "SELECT p1.nom, p2.nom FROM ouvrage o JOIN personne p1 ON o.dessinateur = p1.idp JOIN personne p2 ON o.scenariste = p2.idp GROUP BY p1.idp, p1.nom, p2.idp, p2.nom HAVING COUNT(*) > 1 ORDER BY p1.nom;",
+      "generated_sql": "WITH auteurs_paires AS (\n    SELECT \n        o.dessinateur AS id_dessin,\n        o.scenariste AS id_scenario,\n        COUNT(*) as nb_albums\n    FROM ouvrage o\n    WHERE o.dessinateur != o.scenariste  -- Pairs de personnes différentes uniquement\n    GROUP BY o.dessinateur, o.scenariste\n)\nSELECT \n    p.nom AS dessinateur,\n    s.nom AS scenariste,\n    ap.nb_albums\nFROM auteurs_paires ap\nINNER JOIN personne p ON p.idp = ap.id_dessin\nINNER JOIN personne s ON s.idp = ap.id_scenario\nWHERE ap.nb_albums > 1\nORDER BY ap.nb_albums DESC, p.nom ASC",
+      "error": null,
+      "expected_count": 6,
+      "actual_count": 5,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 18.691,
+          "prompt_tokens": 3340,
+          "eval_tokens": 305,
+          "tokens_per_second": 46.68,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.04,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "c6cfa6a3-5587-45b2-b045-51c70e718f1b",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 2.963,
+          "prompt_tokens": 4334,
+          "eval_tokens": 71,
+          "tokens_per_second": 45.78,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.034,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "personne",
+              "target_schema": "public"
+            },
+            "id": "778676d5-6b32-4f8e-80ad-c8a6daa8625e",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"personne\",\n  \"schema\": [\n    {\n      \"column\": \"idp\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"nom\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"prenom\",\n      \"type\": \"character varying\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_naiss\",\n      \"type\": \"date\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_deces\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": []\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 21.135,
+          "prompt_tokens": 4625,
+          "eval_tokens": 984,
+          "tokens_per_second": 49.24,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.014,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH auteurs_paires AS (\n    SELECT \n        o1.dessinateur AS id_dessin,\n        o1.scenariste AS id_scenario,\n        COUNT(*) as nb_albums\n    FROM ouvrage o1\n    WHERE o1.dessinateur != o1.scenariste  -- Different people only\n    GROUP BY o1.dessinateur, o1.scenariste\n)\nSELECT \n    p.nom AS dessinateur,\n    s.nom AS scenariste,\n    ap.nb_albums\nFROM auteurs_paires ap\nINNER JOIN personne p ON p.idp = ap.id_dessin\nINNER JOIN personne s ON s.idp = ap.id_scenario\nWHERE ap.nb_albums > 1\nORDER BY ap.nb_albums DESC, p.nom ASC;",
+              "target_schema": "public"
+            },
+            "id": "f38f535d-72b8-48d4-85b3-64e2c341a8e2",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"dessinateur\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"scenariste\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nb_albums\",\n      \"type\": \"int8\"\n    }\n  ],\n  \"estimated_rows\": 67\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 9.057,
+          "prompt_tokens": 6490,
+          "eval_tokens": 365,
+          "tokens_per_second": 49.24,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.012,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH auteurs_paires AS (\n    SELECT \n        o1.dessinateur AS id_dessin,\n        o1.scenariste AS id_scenario,\n        COUNT(*) as nb_albums\n    FROM ouvrage o1\n    WHERE o1.dessinateur != o1.scenariste  -- Different people only\n    GROUP BY o1.dessinateur, o1.scenariste\n)\nSELECT \n    p.nom AS dessinateur,\n    s.nom AS scenariste,\n    ap.nb_albums\nFROM auteurs_paires ap\nINNER JOIN personne p ON p.idp = ap.id_dessin\nINNER JOIN personne s ON s.idp = ap.id_scenario\nWHERE ap.nb_albums > 1\nORDER BY ap.nb_albums DESC, p.nom ASC;",
+              "target_schema": "public"
+            },
+            "id": "8567683b-e7cc-44b9-b6b6-90caac7e6098",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"dessinateur\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"scenariste\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nb_albums\",\n      \"type\": \"int8\"\n    }\n  ],\n  \"estimated_rows\": 67\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 5,
+          "elapsed": 8.263,
+          "prompt_tokens": 7129,
+          "eval_tokens": 347,
+          "tokens_per_second": 48.72,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.008,
+          "success": true,
+          "row_count": 5
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "question": "Donner la liste des ouvrages associés au concept père 'histoire' ou à ses sous-concepts.",
+      "difficulty": "Difficile",
+      "passed": true,
+      "execution_time": 75.28,
+      "ground_truth_sql": "WITH RECURSIVE me AS (SELECT idc FROM concept WHERE label = 'histoire' UNION ALL SELECT c.idc FROM concept c JOIN me ON c.concept_pere = me.idc) SELECT DISTINCT o.titre FROM ouvrage o JOIN a_pour_mot_cle ap ON o.ido = ap.ido JOIN me ON ap.idc = me.idc ORDER BY o.titre;",
+      "generated_sql": "WITH RECURSIVE histoire_concepts AS (\n    SELECT idc \n    FROM concept \n    WHERE label = 'histoire'\n    \n    UNION ALL\n    \n    SELECT c.idc \n    FROM concept c \n    INNER JOIN histoire_concepts hc ON c.concept_pere = hc.idc\n)\n\nSELECT DISTINCT o.*\nFROM ouvrage o\nINNER JOIN a_pour_mot_cle amk ON o.ido = amk.ido\nINNER JOIN histoire_concepts ic ON amk.idc = ic.idc",
+      "error": null,
+      "expected_count": 4,
+      "actual_count": 4,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 17.344,
+          "prompt_tokens": 3335,
+          "eval_tokens": 259,
+          "tokens_per_second": 47.01,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_search_value",
+          "elapsed": 0.04,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_search_value",
+            "args": {
+              "term": "histoire",
+              "target_schema": "public"
+            },
+            "id": "a73b3b96-f45e-4dc6-bda9-3afcaf77de98",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"matches\": [\n    {\n      \"table\": \"concept\",\n      \"column\": \"label\",\n      \"matched_value\": \"histoire\",\n      \"foreign_key_suggestion\": [\n        {\n          \"local_column\": \"concept_pere\",\n          \"foreign_table\": \"concept\",\n          \"foreign_column\": \"idc\"\n        }\n      ]\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 5.187,
+          "prompt_tokens": 3921,
+          "eval_tokens": 181,
+          "tokens_per_second": 44.9,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_sample_data",
+          "elapsed": 0.019,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_sample_data",
+            "args": {
+              "table_name": "concept",
+              "target_schema": "public",
+              "limit": 5
+            },
+            "id": "15f02c77-3234-4656-b066-4a37039cf159",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"concept\",\n  \"sample_data\": [\n    {\n      \"idc\": 1,\n      \"label\": \"histoire\",\n      \"concept_pere\": null\n    },\n    {\n      \"idc\": 12,\n      \"label\": \"antiquit\\u00e9\",\n      \"concept_pere\": 1\n    },\n    {\n      \"idc\": 13,\n      \"label\": \"moyen \\u00e2ge\",\n      \"concept_pere\": 1\n    },\n    {\n      \"idc\": 14,\n      \"label\": \"\\u00e9poque moderne\",\n      \"concept_pere\": 1\n    },\n    {\n      \"idc\": 3,\n      \"label\": \"animal\",\n      \"concept_pere\": null\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 4.977,
+          "prompt_tokens": 4450,
+          "eval_tokens": 169,
+          "tokens_per_second": 45.37,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_sample_data",
+          "elapsed": 0.019,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_sample_data",
+            "args": {
+              "table_name": "a_pour_mot_cle",
+              "target_schema": "public",
+              "limit": 5
+            },
+            "id": "ff09488e-1701-4776-9893-8ef385b4ee6b",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"a_pour_mot_cle\",\n  \"sample_data\": [\n    {\n      \"ido\": 11,\n      \"idc\": 8\n    },\n    {\n      \"ido\": 11,\n      \"idc\": 12\n    },\n    {\n      \"ido\": 11,\n      \"idc\": 4\n    },\n    {\n      \"ido\": 11,\n      \"idc\": 17\n    },\n    {\n      \"ido\": 12,\n      \"idc\": 8\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 16.277,
+          "prompt_tokens": 4889,
+          "eval_tokens": 717,
+          "tokens_per_second": 47.54,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.016,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH RECURSIVE histoire_concepts AS (\n    SELECT idc \n    FROM concept \n    WHERE label = 'histoire'\n    \n    UNION ALL\n    \n    SELECT c.idc \n    FROM concept c \n    INNER JOIN histoire_concepts hc ON c.concept_pere = hc.idc\n)\n\nSELECT DISTINCT o.*\nFROM ouvrage o\nINNER JOIN a_pour_mot_cle amk ON o.ido = amk.ido\nINNER JOIN histoire_concepts ic ON amk.idc = ic.idc;",
+              "target_schema": "public"
+            },
+            "id": "c5bc4b17-b2c8-42bb-b2eb-f70a31a720ce",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"ido\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"dessinateur\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"scenariste\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"coloriste\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"ids\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"num_ordre\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"date_sortie\",\n      \"type\": \"date\"\n    }\n  ],\n  \"estimated_rows\": 290\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 5,
+          "elapsed": 8.35,
+          "prompt_tokens": 6409,
+          "eval_tokens": 321,
+          "tokens_per_second": 47.44,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.013,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH RECURSIVE histoire_concepts AS (\n    SELECT idc \n    FROM concept \n    WHERE label = 'histoire'\n    \n    UNION ALL\n    \n    SELECT c.idc \n    FROM concept c \n    INNER JOIN histoire_concepts hc ON c.concept_pere = hc.idc\n)\n\nSELECT DISTINCT o.*\nFROM ouvrage o\nINNER JOIN a_pour_mot_cle amk ON o.ido = amk.ido\nINNER JOIN histoire_concepts ic ON amk.idc = ic.idc;",
+              "target_schema": "public"
+            },
+            "id": "8247dcad-e0a9-458c-b549-1ca6546f4e41",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"ido\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"dessinateur\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"scenariste\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"coloriste\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"ids\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"num_ordre\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"date_sortie\",\n      \"type\": \"date\"\n    }\n  ],\n  \"estimated_rows\": 290\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 6,
+          "elapsed": 7.328,
+          "prompt_tokens": 7139,
+          "eval_tokens": 286,
+          "tokens_per_second": 46.5,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.008,
+          "success": true,
+          "row_count": 4
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "question": "Calculer la note moyenne par série et classer les séries de la mieux notée à la moins bien notée.",
+      "difficulty": "Avancé",
+      "passed": true,
+      "execution_time": 81.98,
+      "ground_truth_sql": "SELECT s.titre, AVG(a.score) FROM serie s JOIN ouvrage o ON s.ids = o.ids JOIN avis a ON o.ido = a.ido GROUP BY s.ids, s.titre ORDER BY AVG(a.score) DESC;",
+      "generated_sql": "SELECT \n    s.titre AS serie_titre,\n    AVG(a.score) as moyenne_score\nFROM serie s\nLEFT JOIN ouvrage o ON s.ids = o.ids\nLEFT JOIN avis a ON o.ido = a.ido AND a.score IS NOT NULL\nGROUP BY s.ids, s.titre\nORDER BY moyenne_score DESC",
+      "error": null,
+      "expected_count": 5,
+      "actual_count": 5,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 18.09,
+          "prompt_tokens": 3339,
+          "eval_tokens": 183,
+          "tokens_per_second": 47.44,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.037,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "serie",
+              "target_schema": "public"
+            },
+            "id": "8f07fe50-0bda-4c8b-9fc8-a0ff9c32b3b5",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"serie\",\n  \"schema\": [\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    }\n  ],\n  \"relations\": []\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 2.326,
+          "prompt_tokens": 3764,
+          "eval_tokens": 60,
+          "tokens_per_second": 47.72,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.03,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "avis",
+              "target_schema": "public"
+            },
+            "id": "d6d8ff40-bd5b-42b3-a719-231007e53651",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"avis\",\n  \"schema\": [\n    {\n      \"column\": \"pseudo\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"score\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"produit_id\",\n      \"foreign_table\": \"produits\",\n      \"foreign_column\": \"id\"\n    },\n    {\n      \"local_column\": \"client_id\",\n      \"foreign_table\": \"clients\",\n      \"foreign_column\": \"id\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 4.596,
+          "prompt_tokens": 4077,
+          "eval_tokens": 166,
+          "tokens_per_second": 47.37,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.039,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "2685dd44-583a-4d85-ad5f-b33bedd91ea5",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 15.234,
+          "prompt_tokens": 4793,
+          "eval_tokens": 657,
+          "tokens_per_second": 47.16,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.013,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH serie_scores AS (\n    SELECT \n        s.id,\n        s.titre,\n        AVG(a.score) as moyenne_score\n    FROM serie s\n    LEFT JOIN ouvrage o ON s.ids = o.ids\n    LEFT JOIN avis a ON o.ido = a.ido AND a.score IS NOT NULL\n    GROUP BY s.id, s.titre\n),\nranked_series AS (\n    SELECT \n        titre,\n        moyenne_score,\n        ROW_NUMBER() OVER (ORDER BY moyenne_score DESC) as rang\n    FROM serie_scores\n)\nSELECT titre, moyenne_score\nFROM ranked_series;",
+              "target_schema": "public"
+            },
+            "id": "bbc5371b-25b0-4f39-8262-1e1ad5921e99",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": false,\n  \"db_error\": \"ERROR:  column s.id does not exist\\nLINE 3:         s.id,\\n                ^\\nHINT:  Perhaps you meant to reference the column \\\"s.ids\\\".\",\n  \"hint\": \"Perhaps you meant to reference the column \\\"s.ids\\\".\"\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 5,
+          "elapsed": 8.436,
+          "prompt_tokens": 6029,
+          "eval_tokens": 337,
+          "tokens_per_second": 48.47,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.015,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "WITH serie_scores AS (\n    SELECT \n        s.ids,\n        s.titre,\n        AVG(a.score) as moyenne_score\n    FROM serie s\n    LEFT JOIN ouvrage o ON s.ids = o.ids\n    LEFT JOIN avis a ON o.ido = a.ido AND a.score IS NOT NULL\n    GROUP BY s.ids, s.titre\n),\nranked_series AS (\n    SELECT \n        titre,\n        moyenne_score,\n        ROW_NUMBER() OVER (ORDER BY moyenne_score DESC) as rang\n    FROM serie_scores\n)\nSELECT titre, moyenne_score\nFROM ranked_series;",
+              "target_schema": "public"
+            },
+            "id": "d124f6ae-ee4a-48d6-ab9f-7a380d9bed05",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"moyenne_score\",\n      \"type\": \"numeric\"\n    }\n  ],\n  \"estimated_rows\": 320\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 6,
+          "elapsed": 7.582,
+          "prompt_tokens": 6627,
+          "eval_tokens": 314,
+          "tokens_per_second": 48.42,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.011,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    s.titre AS serie_titre,\n    AVG(a.score) as moyenne_score\nFROM serie s\nLEFT JOIN ouvrage o ON s.ids = o.ids\nLEFT JOIN avis a ON o.ido = a.ido AND a.score IS NOT NULL\nGROUP BY s.ids, s.titre\nORDER BY moyenne_score DESC;",
+              "target_schema": "public"
+            },
+            "id": "1d60e092-bf87-4b52-840c-6dc630a1d773",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"serie_titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"moyenne_score\",\n      \"type\": \"numeric\"\n    }\n  ],\n  \"estimated_rows\": 320\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 7,
+          "elapsed": 8.716,
+          "prompt_tokens": 7239,
+          "eval_tokens": 368,
+          "tokens_per_second": 48.47,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.008,
+          "success": true,
+          "row_count": 5
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "question": "Pour chaque série, trouver le titre de la série, son nombre d'albums et la date de sortie du premier album.",
+      "difficulty": "Avancé",
+      "passed": true,
+      "execution_time": 81.69,
+      "ground_truth_sql": "SELECT s.titre, COUNT(o.ido), MIN(o.date_sortie) FROM serie s JOIN ouvrage o ON s.ids = o.ids GROUP BY s.ids, s.titre ORDER BY s.titre;",
+      "generated_sql": "SELECT \n    s.titre AS titre_serie,\n    COUNT(o.ido) AS nombre_albums,\n    MIN(o.date_sortie) AS date_debut\nFROM serie s\nLEFT JOIN ouvrage o ON s.ids = o.ids\nGROUP BY s.ids, s.titre\nORDER BY s.titre",
+      "error": null,
+      "expected_count": 5,
+      "actual_count": 5,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 18.734,
+          "prompt_tokens": 3340,
+          "eval_tokens": 339,
+          "tokens_per_second": 49.13,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.025,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "serie",
+              "target_schema": "public"
+            },
+            "id": "402990c9-0bbd-4eed-a4b0-7d57a1b2d91b",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"serie\",\n  \"schema\": [\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    }\n  ],\n  \"relations\": []\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 2.489,
+          "prompt_tokens": 4077,
+          "eval_tokens": 61,
+          "tokens_per_second": 45.98,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.03,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "2128964d-ddaf-4c15-8c21-1ba227e8a34e",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 6.969,
+          "prompt_tokens": 4583,
+          "eval_tokens": 286,
+          "tokens_per_second": 48.09,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.039,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "a_pour_mot_cle",
+              "target_schema": "public"
+            },
+            "id": "f594e2d4-e67e-4157-b23d-6681bf31bced",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"a_pour_mot_cle\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"idc\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"idc\",\n      \"foreign_table\": \"concept\",\n      \"foreign_column\": \"idc\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 10.209,
+          "prompt_tokens": 5285,
+          "eval_tokens": 412,
+          "tokens_per_second": 46.15,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.015,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    s.titre AS titre_serie,\n    COUNT(o.ido) AS nombre_albums,\n    MIN(o.date_sortie) AS date_debut\nFROM serie s\nINNER JOIN ouvrage o ON s.ids = o.ids\nGROUP BY s.ids, s.titre\nORDER BY s.titre;",
+              "target_schema": "public"
+            },
+            "id": "02e87f53-05e5-4151-9603-f5fce4f56823",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"titre_serie\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nombre_albums\",\n      \"type\": \"int8\"\n    },\n    {\n      \"name\": \"date_debut\",\n      \"type\": \"date\"\n    }\n  ],\n  \"estimated_rows\": 290\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 5,
+          "elapsed": 13.269,
+          "prompt_tokens": 6121,
+          "eval_tokens": 562,
+          "tokens_per_second": 47.14,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.011,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    s.titre AS titre_serie,\n    COUNT(o.ido) AS nombre_albums,\n    MIN(o.date_sortie) AS date_debut\nFROM serie s\nLEFT JOIN ouvrage o ON s.ids = o.ids\nGROUP BY s.ids, s.titre\nORDER BY s.titre;",
+              "target_schema": "public"
+            },
+            "id": "dfbca2f3-e599-48e5-affa-f4aadc7fd072",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"titre_serie\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nombre_albums\",\n      \"type\": \"int8\"\n    },\n    {\n      \"name\": \"date_debut\",\n      \"type\": \"date\"\n    }\n  ],\n  \"estimated_rows\": 320\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 6,
+          "elapsed": 10.232,
+          "prompt_tokens": 7257,
+          "eval_tokens": 426,
+          "tokens_per_second": 47.94,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.011,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    s.titre AS titre_serie,\n    COUNT(o.ido) AS nombre_albums,\n    MIN(o.date_sortie) AS date_debut\nFROM serie s\nLEFT JOIN ouvrage o ON s.ids = o.ids\nGROUP BY s.ids, s.titre\nORDER BY s.titre;",
+              "target_schema": "public"
+            },
+            "id": "5b0480fa-7742-4ef7-986a-7b84bd6826e0",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"titre_serie\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nombre_albums\",\n      \"type\": \"int8\"\n    },\n    {\n      \"name\": \"date_debut\",\n      \"type\": \"date\"\n    }\n  ],\n  \"estimated_rows\": 320\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 7,
+          "elapsed": 2.746,
+          "prompt_tokens": 8121,
+          "eval_tokens": 71,
+          "tokens_per_second": 48.32,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.009,
+          "success": true,
+          "row_count": 5
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "question": "Peux-tu me donner la liste de tous les dessinateurs uniques enregistrés dans la table ouvrage ?",
+      "difficulty": "Facile",
+      "passed": false,
+      "execution_time": 28.83,
+      "ground_truth_sql": "SELECT DISTINCT p.nom, p.prenom FROM ouvrage o JOIN personne p ON o.dessinateur = p.idp ORDER BY p.nom;",
+      "generated_sql": "SELECT DISTINCT dessinateur \nFROM ouvrage \nORDER BY dessinateur",
+      "error": null,
+      "expected_count": 6,
+      "actual_count": 6,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 15.943,
+          "prompt_tokens": 3337,
+          "eval_tokens": 208,
+          "tokens_per_second": 48.9,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.01,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT DISTINCT dessinateur FROM ouvrage ORDER BY dessinateur;",
+              "target_schema": "public"
+            },
+            "id": "c999d329-72ca-46ee-9145-b39420c47373",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"dessinateur\",\n      \"type\": \"int4\"\n    }\n  ],\n  \"estimated_rows\": 200\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 2.83,
+          "prompt_tokens": 3770,
+          "eval_tokens": 86,
+          "tokens_per_second": 47.51,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 6
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "question": "Affiche pour chaque album son titre, le nom de son scénariste, et le nom de son dessinateur.",
+      "difficulty": "Moyen",
+      "passed": true,
+      "execution_time": 46.93,
+      "ground_truth_sql": "SELECT o.titre, ps.nom, pd.nom FROM ouvrage o JOIN personne pd ON o.dessinateur = pd.idp JOIN personne ps ON o.scenariste = ps.idp ORDER BY o.titre;",
+      "generated_sql": "SELECT \n    o.ido,\n    o.titre AS album_titre,\n    p1.nom AS nom_dessinateur,\n    p2.nom AS nom_scénariste\nFROM ouvrage o\nINNER JOIN personne p1 ON o.dessinateur = p1.idp\nINNER JOIN personne p2 ON o.scenariste = p2.idp\nORDER BY o.titre",
+      "error": null,
+      "expected_count": 16,
+      "actual_count": 16,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 28.644,
+          "prompt_tokens": 3340,
+          "eval_tokens": 715,
+          "tokens_per_second": 48.08,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.011,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    o.ido,\n    o.titre AS album_titre,\n    p1.nom AS nom_dessinateur,\n    p2.nom AS nom_scénariste\nFROM ouvrage o\nINNER JOIN personne p1 ON o.dessinateur = p1.idp\nINNER JOIN personne p2 ON o.scenariste = p2.idp\nORDER BY o.titre;",
+              "target_schema": "public"
+            },
+            "id": "8f6b62f9-e241-4020-b5f0-1c2ebe0862db",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"ido\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"album_titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nom_dessinateur\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nom_sc\\u00e9nariste\",\n      \"type\": \"varchar\"\n    }\n  ],\n  \"estimated_rows\": 290\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 8.202,
+          "prompt_tokens": 4793,
+          "eval_tokens": 335,
+          "tokens_per_second": 49.5,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 16
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "question": "Donner la liste des ouvrages n'ayant reçu aucun avis de lecteur.",
+      "difficulty": "Difficile",
+      "passed": true,
+      "execution_time": 40.19,
+      "ground_truth_sql": "SELECT o.titre FROM ouvrage o LEFT JOIN avis a ON o.ido = a.ido WHERE a.ido IS NULL ORDER BY o.titre;",
+      "generated_sql": "SELECT o.* \nFROM public.ouvrage o\nWHERE o.ido NOT IN (SELECT DISTINCT a.ido FROM public.avis a)\nORDER BY o.titre",
+      "error": null,
+      "expected_count": 1,
+      "actual_count": 1,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 15.915,
+          "prompt_tokens": 3330,
+          "eval_tokens": 218,
+          "tokens_per_second": 49.61,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.031,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "ouvrage",
+              "target_schema": "public"
+            },
+            "id": "2a932756-7f10-41c9-8f2c-aed963d51d69",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"ouvrage\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"titre\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"dessinateur\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"scenariste\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"coloriste\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"ids\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"num_ordre\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"date_sortie\",\n      \"type\": \"date\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"dessinateur\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"scenariste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"coloriste\",\n      \"foreign_table\": \"personne\",\n      \"foreign_column\": \"idp\"\n    },\n    {\n      \"local_column\": \"ids\",\n      \"foreign_table\": \"serie\",\n      \"foreign_column\": \"ids\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 2.688,
+          "prompt_tokens": 4150,
+          "eval_tokens": 74,
+          "tokens_per_second": 49.32,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.035,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "avis",
+              "target_schema": "public"
+            },
+            "id": "cc64e217-7229-4360-9818-bf99b2401e33",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"avis\",\n  \"schema\": [\n    {\n      \"column\": \"pseudo\",\n      \"type\": \"character varying\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"score\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"produit_id\",\n      \"foreign_table\": \"produits\",\n      \"foreign_column\": \"id\"\n    },\n    {\n      \"local_column\": \"client_id\",\n      \"foreign_table\": \"clients\",\n      \"foreign_column\": \"id\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 5.286,
+          "prompt_tokens": 4491,
+          "eval_tokens": 211,
+          "tokens_per_second": 49.02,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.012,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT o.* \nFROM public.ouvrage o\nWHERE o.ido NOT IN (SELECT DISTINCT a.ido FROM public.avis a)\nORDER BY o.titre;",
+              "target_schema": "public"
+            },
+            "id": "5699f1a4-861a-4c12-b4b7-cab7c6937f3f",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"ido\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"titre\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"dessinateur\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"scenariste\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"coloriste\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"ids\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"num_ordre\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"date_sortie\",\n      \"type\": \"date\"\n    }\n  ],\n  \"estimated_rows\": 145\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 3.493,
+          "prompt_tokens": 5075,
+          "eval_tokens": 119,
+          "tokens_per_second": 48.67,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.006,
+          "success": true,
+          "row_count": 1
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "question": "Lister les concepts n'ayant aucun concept père et compter combien d'ouvrages y sont associés.",
+      "difficulty": "Avancé",
+      "passed": true,
+      "execution_time": 50.27,
+      "ground_truth_sql": "SELECT c.label, COUNT(ap.ido) FROM concept c LEFT JOIN a_pour_mot_cle ap ON c.idc = ap.idc WHERE c.concept_pere IS NULL GROUP BY c.idc, c.label ORDER BY c.label;",
+      "generated_sql": "SELECT \n    c.idc,\n    COALESCE(c.label, 'Sans étiquette') AS label_concepte,\n    COUNT(DISTINCT ac.ido) AS nombre_ouvrages_associes\nFROM concept c\nLEFT JOIN a_pour_mot_cle ac ON c.idc = ac.idc\nWHERE c.concept_pere IS NULL\nGROUP BY c.idc, COALESCE(c.label, 'Sans étiquette')\nORDER BY nombre_ouvrages_associes DESC",
+      "error": null,
+      "expected_count": 11,
+      "actual_count": 11,
+      "steps": [
+        {
+          "node": "agent_loop",
+          "iteration": 1,
+          "elapsed": 18.607,
+          "prompt_tokens": 3336,
+          "eval_tokens": 237,
+          "tokens_per_second": 47.62,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.024,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "concept",
+              "target_schema": "public"
+            },
+            "id": "19ab66c4-8b33-40f9-9d23-bea088c2211a",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"concept\",\n  \"schema\": [\n    {\n      \"column\": \"idc\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"label\",\n      \"type\": \"character varying\",\n      \"nullable\": true\n    },\n    {\n      \"column\": \"concept_pere\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"concept_pere\",\n      \"foreign_table\": \"concept\",\n      \"foreign_column\": \"idc\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 2,
+          "elapsed": 2.725,
+          "prompt_tokens": 3939,
+          "eval_tokens": 80,
+          "tokens_per_second": 49.45,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_get_schema",
+          "elapsed": 0.029,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_get_schema",
+            "args": {
+              "table_name": "a_pour_mot_cle",
+              "target_schema": "public"
+            },
+            "id": "e40e3248-3f51-452b-ab8c-75b8c7259ca8",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"table\": \"a_pour_mot_cle\",\n  \"schema\": [\n    {\n      \"column\": \"ido\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    },\n    {\n      \"column\": \"idc\",\n      \"type\": \"integer\",\n      \"nullable\": false\n    }\n  ],\n  \"relations\": [\n    {\n      \"local_column\": \"ido\",\n      \"foreign_table\": \"ouvrage\",\n      \"foreign_column\": \"ido\"\n    },\n    {\n      \"local_column\": \"idc\",\n      \"foreign_table\": \"concept\",\n      \"foreign_column\": \"idc\"\n    }\n  ]\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 3,
+          "elapsed": 8.058,
+          "prompt_tokens": 4229,
+          "eval_tokens": 350,
+          "tokens_per_second": 49.65,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "tool_mcp_dry_run_query",
+          "elapsed": 0.015,
+          "success": true,
+          "error": null,
+          "tool_call": {
+            "name": "mcp_dry_run_query",
+            "args": {
+              "sql": "SELECT \n    c.idc,\n    COALESCE(c.label, 'Sans étiquette') AS label_concepte,\n    COUNT(DISTINCT ac.ido) AS nombre_ouvrages_associes\nFROM concept c\nLEFT JOIN a_pour_mot_cle ac ON c.idc = ac.idc\nWHERE c.concept_pere IS NULL\nGROUP BY c.idc, COALESCE(c.label, 'Sans étiquette')\nORDER BY nombre_ouvrages_associes DESC;",
+              "target_schema": "public"
+            },
+            "id": "1a1b1ba3-474a-45f2-a6f6-acfc4f88df1a",
+            "type": "tool_call"
+          },
+          "tool_result": "{\n  \"success\": true,\n  \"columns\": [\n    {\n      \"name\": \"idc\",\n      \"type\": \"int4\"\n    },\n    {\n      \"name\": \"label_concepte\",\n      \"type\": \"varchar\"\n    },\n    {\n      \"name\": \"nombre_ouvrages_associes\",\n      \"type\": \"int8\"\n    }\n  ],\n  \"estimated_rows\": 4\n}"
+        },
+        {
+          "node": "agent_loop",
+          "iteration": 4,
+          "elapsed": 8.038,
+          "prompt_tokens": 4904,
+          "eval_tokens": 340,
+          "tokens_per_second": 49.31,
+          "model": "qwen3.5:4b",
+          "context_size": 8192
+        },
+        {
+          "node": "clean_and_finalize",
+          "elapsed": 0.007,
+          "success": true,
+          "row_count": 11
+        }
+      ]
+    }
+  ],
+  "cancelled": false
+}

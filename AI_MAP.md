@@ -223,8 +223,9 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Service Backend ([eval_service.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) : Définition de `FALLBACK_NULL_STRINGS` et mise à jour de `normalize_cell_value` pour traiter les chaînes comme `'Pas de série'`, `'N/A'`, `'Inconnu'`, etc. comme équivalentes à `None`.
 - [x] Suite de tests unitaires TDD ([test_eval.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/tests/test_eval.py)) : Ajout du test `test_compare_query_results_fallback_null_strings`. 59 tests backend validés à 100% (0 échec, 0 régression).
 
-### Phase R24 : Filtrage & Nettoyage des Logs Backend (Validée)
-- [x] Application FastAPI ([main.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/main.py)) : Configuration des loggers `httpx` & `httpcore` au niveau `WARNING` et ajout de `EndpointFilter` sur `uvicorn.access` pour éliminer le bruit de polling (`/api/ollama/status`, `GET /?t=...`). Loggers métier et SQL 100% conservés.
+### Phase R25 : Soft-Matching par Jetons & Invariant Null/Empty (Validée)
+- [x] Service Backend ([eval_service.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) : Implémentation de `_extract_row_tokens` (extraction sélective des mots >= 2 lettres et chiffres en excluant les valeurs `None`, `null`, chaînes vides et `FALLBACK_NULL_STRINGS`) et `_find_distinct_token_matching` pour valider les réponses avec colonnes concaténées.
+- [x] Suite de tests unitaires TDD ([test_eval.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/tests/test_eval.py)) : Ajout des tests `test_compare_query_results_soft_matching_concatenated` et `test_compare_query_results_soft_matching_ignores_nulls`. 65 tests backend validés à 100% (0 échec, 0 régression). Score Execution Accuracy porté de 61.1% à **83.3% (15/18 cas)**.
 
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.

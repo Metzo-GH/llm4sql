@@ -293,4 +293,19 @@ def test_compare_query_results_fallback_null_strings():
     assert compare_query_results(expected, actual) is True
 
 
+def test_compare_query_results_soft_matching_concatenated():
+    """Vérifie que la comparaison réussit si les colonnes attendues sont concaténées dans une seule colonne de la réponse."""
+    expected = [{"nom": "Blain", "prenom": "Christophe"}]
+    actual = [{"auteur": "Blain (Christophe)"}]
+    assert compare_query_results(expected, actual) is True
+
+
+def test_compare_query_results_soft_matching_ignores_nulls():
+    """Vérifie que le soft-matching ignore les valeurs None et ne cherche pas la chaîne 'None' ou 'null'."""
+    expected = [{"nom": "Blain", "prenom": "Christophe", "coloriste": None}]
+    actual = [{"auteur": "Blain (Christophe)"}]
+    assert compare_query_results(expected, actual) is True
+
+
+
 

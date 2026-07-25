@@ -1,3 +1,4 @@
+import re
 import json
 import time
 import logging
@@ -331,13 +332,100 @@ def _check_tuple_match(exp_tuples: List[tuple], proj_tuples: List[tuple], exp_co
         return all(proj_counter[t] >= count for t, count in exp_counter.items())
 
 
+def _extract_row_tokens(row: Any) -> set:
+    """
+    Extrait l'ensemble des jetons significatifs (mots textuels en minuscules de longueur >= 2 et nombres)
+    d'une ligne normalisée, en EXCLUANT STRICTEMENT les valeurs None, null, chaînes vides
+    ou présentes dans FALLBACK_NULL_STRINGS.
+    """
+    tokens = set()
+    if row is None:
+        return tokens
+
+    if isinstance(row, dict):
+        values = row.values()
+    elif isinstance(row, (list, tuple)):
+        values = row
+    else:
+        values = [row]
+
+    for val in values:
+        if val is None:
+            continue
+        val_str = str(val).strip().lower()
+        if not val_str or val_str in FALLBACK_NULL_STRINGS:
+            continue
+
+        raw_tokens = re.findall(r'\w+', val_str)
+        for t in raw_tokens:
+            if not t or t in FALLBACK_NULL_STRINGS or t in {"none", "null"}:
+                continue
+            if t.isdigit() or len(t) >= 2:
+                tokens.add(t)
+
+    return tokens
+
+
+def _find_distinct_token_matching(exp_rows: List[Any], act_rows: List[Any], check_order: bool = False) -> bool:
+    """
+    Vérifie que chaque ligne de exp_rows trouve une correspondance distincte dans act_rows
+    telle que exp_tokens.issubset(act_tokens).
+    
+    Si check_order=True, l'ordre des correspondances dans act_rows doit être strictement croissant.
+    """
+    exp_tokens_list = [_extract_row_tokens(r) for r in exp_rows]
+    act_tokens_list = [_extract_row_tokens(r) for r in act_rows]
+
+    # Une ligne attendue sans aucun jeton valide ne peut pas être validée par soft-matching
+    if any(not exp_toks for exp_toks in exp_tokens_list):
+        return False
+
+    candidates = []
+    for exp_toks in exp_tokens_list:
+        matched_indices = []
+        for j, act_toks in enumerate(act_tokens_list):
+            if exp_toks.issubset(act_toks):
+                matched_indices.append(j)
+        candidates.append(matched_indices)
+
+    if check_order:
+        def find_increasing_sequence(exp_idx: int, last_act_idx: int) -> bool:
+            if exp_idx == len(exp_rows):
+                return True
+            for act_idx in candidates[exp_idx]:
+                if act_idx > last_act_idx:
+                    if find_increasing_sequence(exp_idx + 1, act_idx):
+                        return True
+            return False
+
+        return find_increasing_sequence(0, -1)
+    else:
+        match_actual = {}  # act_j -> exp_i
+
+        def dfs(exp_idx: int, visited: set) -> bool:
+            for act_idx in candidates[exp_idx]:
+                if act_idx not in visited:
+                    visited.add(act_idx)
+                    if act_idx not in match_actual or dfs(match_actual[act_idx], visited):
+                        match_actual[act_idx] = exp_idx
+                        return True
+            return False
+
+        for exp_idx in range(len(exp_rows)):
+            visited = set()
+            if not dfs(exp_idx, visited):
+                return False
+
+        return True
+
+
 def compare_query_results(expected: Any, actual: Any, check_order: bool = False) -> bool:
     """
-    Compare deux ensembles de résultats SQL de manière sémantique métier (Sub-set Column Projection et Multiset Matching).
+    Compare deux ensembles de résultats SQL de manière sémantique métier (Sub-set Column Projection, Multiset Matching, et Soft-Matching par jetons).
     
     Args:
         expected: Résultats attendus de la requête Ground Truth (K colonnes).
-        actual: Résultats produits par la requête générée par l'agent (M >= K colonnes).
+        actual: Résultats produits par la requête générée par l'agent (M colonnes).
         check_order: Si True, exige que l'ordre des lignes concorde.
         
     Returns:
@@ -356,38 +444,40 @@ def compare_query_results(expected: Any, actual: Any, check_order: bool = False)
     if not norm_expected or not norm_actual:
         return False
 
+    if len(norm_actual) < len(norm_expected):
+        return False
+
     exp_tuples = [_row_to_tuple(r) for r in norm_expected]
     act_tuples = [_row_to_tuple(r) for r in norm_actual]
 
-    if not exp_tuples or not act_tuples:
-        return exp_tuples == act_tuples
+    if exp_tuples and act_tuples:
+        K = len(exp_tuples[0])
+        M = len(act_tuples[0])
 
-    K = len(exp_tuples[0])
-    M = len(act_tuples[0])
+        if M >= K:
+            exp_counter = Counter(exp_tuples)
 
-    if M < K or len(act_tuples) < len(exp_tuples):
-        return False
+            # 1. Alignement direct des colonnes si dictionnaire et clés strictement identiques/incluses
+            if isinstance(norm_expected[0], dict) and isinstance(norm_actual[0], dict):
+                exp_keys = list(norm_expected[0].keys())
+                act_keys = list(norm_actual[0].keys())
+                if all(k in act_keys for k in exp_keys):
+                    matching_indices = tuple(act_keys.index(k) for k in exp_keys)
+                    proj_tuples = [tuple(r[i] for i in matching_indices) for r in act_tuples]
+                    if _check_tuple_match(exp_tuples, proj_tuples, exp_counter, check_order):
+                        return True
 
-    exp_counter = Counter(exp_tuples)
+            # 2. Permutations des indices de colonnes pour trouver la projection de K colonnes parmi M
+            col_indices = range(M)
+            for combination in itertools.permutations(col_indices, K):
+                proj_tuples = [tuple(r[i] for i in combination) for r in act_tuples]
+                if _check_tuple_match(exp_tuples, proj_tuples, exp_counter, check_order):
+                    return True
 
-    # 1. Alignement direct des colonnes si dictionnaire et clés strictement identiques/incluses
-    if isinstance(norm_expected[0], dict) and isinstance(norm_actual[0], dict):
-        exp_keys = list(norm_expected[0].keys())
-        act_keys = list(norm_actual[0].keys())
-        if all(k in act_keys for k in exp_keys):
-            matching_indices = tuple(act_keys.index(k) for k in exp_keys)
-            proj_tuples = [tuple(r[i] for i in matching_indices) for r in act_tuples]
-            if _check_tuple_match(exp_tuples, proj_tuples, exp_counter, check_order):
-                return True
+    # 3. Soft-Matching par jetons en cas d'échec de la comparaison stricte (ex: colonnes concaténées, M < K)
+    return _find_distinct_token_matching(norm_expected, norm_actual, check_order=check_order)
 
-    # 2. Permutations des indices de colonnes pour trouver la projection de K colonnes parmi M
-    col_indices = range(M)
-    for combination in itertools.permutations(col_indices, K):
-        proj_tuples = [tuple(r[i] for i in combination) for r in act_tuples]
-        if _check_tuple_match(exp_tuples, proj_tuples, exp_counter, check_order):
-            return True
 
-    return False
 
 
 def execute_raw_sql(sql_query: str, target_schema: str = "public") -> List[Dict[str, Any]]:
