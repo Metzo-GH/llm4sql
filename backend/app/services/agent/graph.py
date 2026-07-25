@@ -59,14 +59,15 @@ def run_agent(
     model: Optional[str] = None,
     temperature: Optional[float] = None,
     context_size: Optional[int] = None,
-    bypass_semantic_cache: bool = False
+    bypass_semantic_cache: bool = False,
+    target_schema: str = "public"
 ) -> Dict[str, Any]:
     """
     Interface simple de haut niveau pour lancer l'agent sur une question utilisateur.
     Elle intègre la vérification du cache sémantique et la mise en cache des réponses.
     """
-    logger.info(f"[DEBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}' (Bypass Cache: {bypass_semantic_cache})")
-    send_agent_event("log", f"[DEBUT AGENT] Lancement du moteur LangGraph (Bypass Cache: {bypass_semantic_cache})")
+    logger.info(f"[DEBUT AGENT] Lancement du moteur LangGraph pour la question : '{question}' (Bypass Cache: {bypass_semantic_cache}, Schema: {target_schema})")
+    send_agent_event("log", f"[DEBUT AGENT] Lancement du moteur LangGraph (Bypass Cache: {bypass_semantic_cache}, Schema: {target_schema})")
     
     # 1. Vérification du cache sémantique (RAG Mémoire)
     active_model = model or settings.OLLAMA_MODEL
@@ -110,6 +111,7 @@ def run_agent(
         "model": model,
         "temperature": temperature,
         "context_size": context_size,
+        "target_schema": target_schema,
         "messages": []
     }
     

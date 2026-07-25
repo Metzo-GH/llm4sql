@@ -54,7 +54,8 @@ async def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
             model=chat_request.model,
             temperature=chat_request.temperature,
             context_size=chat_request.context_size,
-            bypass_semantic_cache=chat_request.bypass_semantic_cache
+            bypass_semantic_cache=chat_request.bypass_semantic_cache,
+            target_schema=chat_request.target_schema or "public"
         )
         
         total_time = time.time() - start_time
@@ -127,7 +128,8 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
                 model=chat_request.model,
                 temperature=chat_request.temperature,
                 context_size=chat_request.context_size,
-                bypass_semantic_cache=chat_request.bypass_semantic_cache
+                bypass_semantic_cache=chat_request.bypass_semantic_cache,
+                target_schema=chat_request.target_schema or "public"
             )
             
             # Envoyer le résultat final consolidé

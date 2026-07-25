@@ -201,6 +201,31 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Résolution des 12 erreurs ESLint (TypeScript strict, `set-state-in-effect` React 19, `no-useless-assignment`, variables de `catch` inutilisées).
 - [x] Validation générale : ESLint 0 erreur, Knip 0 problème, build Vite/TS réussi et 38 tests pytest backend passés avec succès.
 
+### Phase R20 : Benchmark d'Évaluation Automatisé, Éditeur de Cas & Télémétrie LangGraph (Validée)
+- [x] Pytest configuration : Ajout de `pythonpath = ["."]` dans `pyproject.toml`.
+- [x] Service Backend (`eval_service.py`) : Moteur d'évaluation sur 18 cas pratiques avec Execution Accuracy sur PostgreSQL, persistance JSON (`eval_dataset.json`), fonctions CRUD et capture des étapes agentiques (`steps`).
+- [x] Persistance JSON (`eval_dataset.json`) & CRUD backend (`/api/eval/cases`) : REST API pour ajouter, modifier, supprimer un cas de test et réinitialiser au dataset canonique.
+- [x] Télémétrie Agentique LangGraph : Capture et exposition du tableau `steps` (Réflexion, Outils MCP, Self-healing) dans chaque résultat d'évaluation.
+- [x] Interface Frontend (`BenchmarkPanel.tsx` & `App.tsx`) : Onglet "Benchmark 🧪" dans React avec sélection dynamique de modèle local Ollama, suivi SSE en direct, scores synthétiques par difficulté et comparaison accordéon Ground Truth vs SQL IA.
+- [x] Fenêtre de Contexte Optimisée (`context_size = 8192`) : Configuration à 8k tokens par défaut pour le benchmark, évitant la tronquature d'Ollama tout en optimisant l'empreinte mémoire et la vitesse.
+- [x] Suite de tests unitaires TDD (`tests/test_eval.py` & `tests/test_target_schema.py`) : 58 tests backend validés à 100% (0 échec, 0 régression).
+
+### Phase R21 : Comparateur de Pertinence Métier & Directive ORDER BY (Validée)
+- [x] Prompt Système ([prompts.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/agent/prompts.py)) : Ajout de la consigne déterministe d'inclusion d'une clause `ORDER BY` en l'absence de tri explicite dans la question.
+- [x] Comparateur de Pertinence Métier ([eval_service.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) : Implémentation de `normalize_cell_value` (normalisation `None`/`""` et arrondi float/Decimal à 2 décimales) et refonte de `compare_query_results` avec Sub-set Column Projection et Multiset Matching.
+- [x] Validation TDD ([test_eval.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/tests/test_eval.py)) : Ajout des tests unitaires validant les colonnes bonus de l'IA, l'équivalence `COALESCE`/`NULL`/`""`, et la tolérance aux `ROUND(..., 2)`. 56 tests Backend validés à 100% (0 échec, 0 régression).
+
+### Phase R22 : Arrêt Propre du Benchmark (`POST /api/eval/stop` & UI Bouton 🛑) (Validée)
+- [x] Service Backend ([eval_service.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) : Ajout de l'événement thread-safe `_eval_cancel_event`, et des fonctions `request_benchmark_cancel()`, `is_benchmark_cancelled()`, `reset_benchmark_cancel()`. Interruption propre de la boucle dans `run_full_benchmark()`.
+- [x] API FastAPI ([eval.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/routers/eval.py)) : Exposition des endpoints `@router.post("/stop")` et `@router.post("/cancel")`.
+- [x] Interface React ([BenchmarkPanel.tsx](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/frontend/src/components/BenchmarkPanel.tsx)) : Remplacement dynamique du bouton par "Arrêter le Benchmark 🛑" rouge pendant l'exécution, fermeture propre de l'instance `EventSource` et affichage du statut de confirmation *"Benchmark arrêté par l'utilisateur"*.
+### Phase R23 : Normalisation Sémantique des Indicateurs d'Absence (Validée)
+- [x] Service Backend ([eval_service.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) : Définition de `FALLBACK_NULL_STRINGS` et mise à jour de `normalize_cell_value` pour traiter les chaînes comme `'Pas de série'`, `'N/A'`, `'Inconnu'`, etc. comme équivalentes à `None`.
+- [x] Suite de tests unitaires TDD ([test_eval.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/tests/test_eval.py)) : Ajout du test `test_compare_query_results_fallback_null_strings`. 59 tests backend validés à 100% (0 échec, 0 régression).
+
+### Phase R24 : Filtrage & Nettoyage des Logs Backend (Validée)
+- [x] Application FastAPI ([main.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/main.py)) : Configuration des loggers `httpx` & `httpcore` au niveau `WARNING` et ajout de `EndpointFilter` sur `uvicorn.access` pour éliminer le bruit de polling (`/api/ollama/status`, `GET /?t=...`). Loggers métier et SQL 100% conservés.
+
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.

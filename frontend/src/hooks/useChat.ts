@@ -37,6 +37,9 @@ export function useChat() {
   const [bypassSemanticCache, setBypassSemanticCache] = useState<boolean>(() => {
     return localStorage.getItem('llm4sql_bypass_semantic_cache') === 'true';
   });
+  const [selectedSchema, setSelectedSchema] = useState<string>(() => {
+    return localStorage.getItem('selectedSchema') || 'public';
+  });
 
   useEffect(() => {
     localStorage.setItem('llm4sql_model', model);
@@ -53,6 +56,10 @@ export function useChat() {
   useEffect(() => {
     localStorage.setItem('llm4sql_bypass_semantic_cache', bypassSemanticCache.toString());
   }, [bypassSemanticCache]);
+
+  useEffect(() => {
+    localStorage.setItem('selectedSchema', selectedSchema);
+  }, [selectedSchema]);
 
   // Real-time telemetry log lines for the terminal visualizer
   const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -206,7 +213,8 @@ export function useChat() {
         model,
         temperature,
         context_size: contextSize,
-        bypass_semantic_cache: bypassSemanticCache
+        bypass_semantic_cache: bypassSemanticCache,
+        target_schema: selectedSchema
       };
 
       const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
@@ -469,6 +477,8 @@ export function useChat() {
     setContextSize,
     bypassSemanticCache,
     setBypassSemanticCache,
+    selectedSchema,
+    setSelectedSchema,
     liveLogs,
     contextUsage,
     apiOnline,

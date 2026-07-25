@@ -1,6 +1,4 @@
-# Antigravity & AI Map
-/AI_MAP.md
-/MEMORY.md
+# Antigravity
 .antigravity/
 
 # Python Virtual Environment & Config
@@ -10,3 +8,4 @@ backend/.venv/
 backend/.env
 __pycache__/
 *.pyc
+plan_evolution_technique.md

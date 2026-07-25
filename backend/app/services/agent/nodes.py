@@ -27,15 +27,16 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     """
     iteration = state["iteration_count"] + 1
     model_name = state.get("model") or settings.OLLAMA_MODEL
+    target_schema = state.get("target_schema") or "public"
     
-    logger.info(f"[RÉFLEXION] Exécution de l'agent (itération {iteration})...")
-    send_agent_event("log", f"[RÉFLEXION] Exécution de l'agent (itération {iteration})...")
+    logger.info(f"[RÉFLEXION] Exécution de l'agent (itération {iteration}, Schéma: {target_schema})...")
+    send_agent_event("log", f"[RÉFLEXION] Exécution de l'agent (itération {iteration}, Schéma: {target_schema})...")
     
     # 1. Préparer les messages initiaux si c'est la première itération
     messages = list(state.get("messages", []))
     initial_messages_to_save = []
     if not messages:
-        schema_context = state.get("schema_context") or get_database_schema_context()
+        schema_context = state.get("schema_context") or get_database_schema_context(schema=target_schema)
         
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(schema_context=schema_context)
         messages = [
@@ -170,6 +171,7 @@ def node_execute_tools(state: AgentState) -> Dict[str, Any]:
     """
     messages = state.get("messages", [])
     last_message = messages[-1]
+    target_schema = state.get("target_schema") or "public"
     
     tool_messages = []
     steps_info = []
@@ -187,8 +189,10 @@ def node_execute_tools(state: AgentState) -> Dict[str, Any]:
     
     for tool_call in last_message.tool_calls:
         name = tool_call["name"]
-        args = tool_call["args"]
+        args = dict(tool_call["args"])
         call_id = tool_call["id"]
+        if "target_schema" not in args and "schema" not in args:
+            args["target_schema"] = target_schema
         
         logger.info(f"  -> Appel de : {name}({args})")
         send_agent_event("log", f"  [APPEL OUTIL] {name}({args})")
@@ -262,7 +266,7 @@ def get_last_validated_query(messages: List[BaseMessage]) -> Optional[str]:
             tool_results[msg.tool_call_id] = msg.content
             
     for msg in reversed(messages):
-        if msg.__class__.__name__ == "AIMessage" or getattr(msg, "type", None) == "ai":
+        if msg.__class__.__name__ in ("AIMessage", "AIMessageChunk") or getattr(msg, "type", None) == "ai":
             if hasattr(msg, "tool_calls") and msg.tool_calls:
                 for tool_call in reversed(msg.tool_calls):
                     if tool_call.get("name") == "mcp_dry_run_query":
@@ -278,13 +282,29 @@ def get_last_validated_query(messages: List[BaseMessage]) -> Optional[str]:
     return None
 
 
-def _handle_simulation_mode(cleaned_sql: str, messages: List[BaseMessage], last_validated: Optional[str], state: AgentState) -> Dict[str, Any]:
+def get_last_dry_run_query(messages: List[BaseMessage]) -> Optional[str]:
+    """
+    Parcourt l'historique des messages pour retrouver la dernière requête SQL
+    transmise à l'outil mcp_dry_run_query (même si elle n'a pas été validée avec un success=True).
+    """
+    for msg in reversed(messages):
+        if msg.__class__.__name__ in ("AIMessage", "AIMessageChunk") or getattr(msg, "type", None) == "ai":
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tool_call in reversed(msg.tool_calls):
+                    if tool_call.get("name") == "mcp_dry_run_query":
+                        sql_arg = tool_call.get("args", {}).get("sql")
+                        if sql_arg and sql_arg.strip():
+                            return sql_arg.strip()
+    return None
+
+
+def _handle_simulation_mode(cleaned_sql: str, messages: List[BaseMessage], last_validated: Optional[str], state: AgentState, target_schema: str = "public") -> Dict[str, Any]:
     """
     Gère la finalisation en mode simulation pure.
     """
     from app.mcp.mcp_server import dry_run_query
     
-    dry_run_res = json.loads(dry_run_query(cleaned_sql))
+    dry_run_res = json.loads(dry_run_query(cleaned_sql, schema=target_schema))
     fallback_applied = False
     tables_involved = extract_tables_from_sql(cleaned_sql)
     
@@ -310,7 +330,7 @@ def _handle_simulation_mode(cleaned_sql: str, messages: List[BaseMessage], last_
     }
 
 
-def _attempt_fallback(cleaned_sql: str, last_validated: Optional[str], tables_involved: List[str], elapsed: float) -> Optional[Dict[str, Any]]:
+def _attempt_fallback(cleaned_sql: str, last_validated: Optional[str], tables_involved: List[str], elapsed: float, target_schema: str = "public") -> Optional[Dict[str, Any]]:
     """
     Tente une exécution de repli (Self-Healing Fallback) vers la dernière requête validée au dry-run.
     """
@@ -327,7 +347,7 @@ def _attempt_fallback(cleaned_sql: str, last_validated: Optional[str], tables_in
     send_agent_event("log", f"  [REPLI] Échec de la requête finale. Tentative de repli sur la dernière requête validée : {cleaned_fallback}")
     
     fallback_start = time.time()
-    fallback_res_str = execute_query(cleaned_fallback)
+    fallback_res_str = execute_query(cleaned_fallback, schema=target_schema)
     fallback_res = json.loads(fallback_res_str)
     fallback_elapsed = time.time() - fallback_start
     
@@ -353,17 +373,17 @@ def _attempt_fallback(cleaned_sql: str, last_validated: Optional[str], tables_in
     return None
 
 
-def _execute_and_handle(cleaned_sql: str, last_validated: Optional[str], tables_involved: List[str]) -> Dict[str, Any]:
+def _execute_and_handle(cleaned_sql: str, last_validated: Optional[str], tables_involved: List[str], target_schema: str = "public") -> Dict[str, Any]:
     """
     Exécute la requête sur la BDD et traite les éventuelles erreurs ou replis de sécurité.
     """
     from app.mcp.mcp_server import execute_query
     
-    logger.info("  Exécution finale sur PostgreSQL...")
-    send_agent_event("log", "  Exécution finale sur PostgreSQL...")
+    logger.info(f"  Exécution finale sur PostgreSQL (Schéma: {target_schema})...")
+    send_agent_event("log", f"  Exécution finale sur PostgreSQL (Schéma: {target_schema})...")
     
     start_time = time.time()
-    exec_res_str = execute_query(cleaned_sql)
+    exec_res_str = execute_query(cleaned_sql, schema=target_schema)
     exec_res = json.loads(exec_res_str)
     elapsed = time.time() - start_time
     
@@ -389,7 +409,7 @@ def _execute_and_handle(cleaned_sql: str, last_validated: Optional[str], tables_
         send_agent_event("log", f"  [ERROR] Échec de l'exécution final : {db_err}")
         
         # Tentative de repli
-        fallback_state = _attempt_fallback(cleaned_sql, last_validated, tables_involved, elapsed)
+        fallback_state = _attempt_fallback(cleaned_sql, last_validated, tables_involved, elapsed, target_schema=target_schema)
         if fallback_state:
             return fallback_state
             
@@ -430,6 +450,7 @@ def node_clean_and_finalize(state: AgentState) -> Dict[str, Any]:
     logger.info("[FIN] Finalisation de la requête SQL...")
     send_agent_event("log", "[FIN] Finalisation de la requête SQL...")
     
+    target_schema = state.get("target_schema") or "public"
     messages = state.get("messages", [])
     if not messages:
         return {
@@ -442,14 +463,31 @@ def node_clean_and_finalize(state: AgentState) -> Dict[str, Any]:
             }]
         }
         
-    last_text = ""
+    last_validated = get_last_validated_query(messages)
+    last_attempted_dry_run = get_last_dry_run_query(messages)
+    cleaned_sql = None
+    
+    # 1. Parcourir uniquement les messages de l'assistant AI (AIMessage) en partant de la fin
     for msg in reversed(messages):
-        if msg.content:
-            last_text = msg.content
-            break
-            
-    raw_sql = extract_sql_query(last_text)
-    cleaned_sql = clean_sql_query(raw_sql)
+        is_ai = msg.__class__.__name__ in ("AIMessage", "AIMessageChunk") or getattr(msg, "type", None) == "ai"
+        if is_ai and msg.content:
+            raw_sql = extract_sql_query(msg.content)
+            extracted = clean_sql_query(raw_sql)
+            if extracted:
+                cleaned_sql = extracted
+                break
+
+    # 2. Repli Niveau 1 : Dernière requête validée avec succès au dry-run
+    if not cleaned_sql and last_validated:
+        logger.info(f"  [REPLI FINAL N1] Utilisation de la dernière requête validée au dry-run : {last_validated}")
+        send_agent_event("log", f"  [REPLI FINAL] Utilisation de la dernière requête validée par l'outil MCP : {last_validated}")
+        cleaned_sql = clean_sql_query(last_validated)
+        
+    # 3. Repli Niveau 2 : Dernière requête transmise au dry-run (si l'IA s'est arrêtée sans ré-émettre de balise SQL)
+    if not cleaned_sql and last_attempted_dry_run:
+        logger.info(f"  [REPLI FINAL N2] Utilisation de la dernière requête proposée au dry-run : {last_attempted_dry_run}")
+        send_agent_event("log", f"  [REPLI FINAL] Utilisation de la dernière requête testée au dry-run : {last_attempted_dry_run}")
+        cleaned_sql = clean_sql_query(last_attempted_dry_run)
     
     logger.info(f"  Requête finale nettoyée : {cleaned_sql}")
     send_agent_event("log", f"  Requête finale nettoyée : {cleaned_sql}")
@@ -466,9 +504,8 @@ def node_clean_and_finalize(state: AgentState) -> Dict[str, Any]:
         }
         
     tables_involved = extract_tables_from_sql(cleaned_sql)
-    last_validated = get_last_validated_query(messages)
     
     if state.get("simulate_only"):
-        return _handle_simulation_mode(cleaned_sql, messages, last_validated, state)
+        return _handle_simulation_mode(cleaned_sql, messages, last_validated, state, target_schema=target_schema)
         
-    return _execute_and_handle(cleaned_sql, last_validated, tables_involved)
+    return _execute_and_handle(cleaned_sql, last_validated, tables_involved, target_schema=target_schema)

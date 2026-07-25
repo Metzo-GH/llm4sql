@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = Field(None, description="Température de génération (optionnelle).")
     context_size: Optional[int] = Field(None, description="Taille du contexte Ollama (optionnelle).")
     bypass_semantic_cache: bool = Field(False, description="Si vrai, l'agent ignorera le cache sémantique et ré-exécutera le LLM.")
+    target_schema: Optional[str] = Field(default="public", description="Schéma PostgreSQL cible ('public' ou 'user_sandbox').")
 
 
 class ChatResponse(BaseModel):

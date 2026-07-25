@@ -1,13 +1,13 @@
 import json
-from typing import Optional, List
+from typing import Optional, List, Dict
 from app.database.pool import get_db_conn
 from app.mcp.mcp_server import get_schema
 from app.database.queries import GET_ALL_FOREIGN_KEYS_QUERY
 
 import threading
 
-# Cache du schéma en mémoire
-_SCHEMA_CACHE: Optional[str] = None
+# Cache du schéma en mémoire par nom de schéma
+_SCHEMA_CACHE: Dict[str, str] = {}
 _schema_lock = threading.Lock()
 
 
@@ -17,22 +17,25 @@ def invalidate_schema_cache() -> None:
     """
     global _SCHEMA_CACHE
     with _schema_lock:
-        _SCHEMA_CACHE = None
+        _SCHEMA_CACHE.clear()
 
 
-def get_database_schema_context() -> str:
+def get_database_schema_context(schema: str = "public") -> str:
     """
-    Récupère le schéma de toutes les tables en une seule requête (résout le pattern N+1)
+    Récupère le schéma de toutes les tables pour le schéma spécifié en une seule requête
     ainsi que les contraintes de relations (clés étrangères),
     et le met en cache en mémoire pour accélérer les appels futurs.
     
+    Args:
+        schema (str): Le schéma PostgreSQL cible ("public" ou "user_sandbox").
+        
     Returns:
         str: Description structurée du schéma et des relations de la base de données.
     """
     global _SCHEMA_CACHE
     with _schema_lock:
-        if _SCHEMA_CACHE is not None:
-            return _SCHEMA_CACHE
+        if schema in _SCHEMA_CACHE:
+            return _SCHEMA_CACHE[schema]
 
     query = """
         SELECT 
@@ -43,17 +46,17 @@ def get_database_schema_context() -> str:
         FROM 
             information_schema.columns 
         WHERE 
-            table_schema IN ('user_sandbox', 'public')
+            table_schema = %s
         ORDER BY 
             table_name, 
             ordinal_position;
     """
 
     try:
-        with get_db_conn(readonly=True) as conn:
+        with get_db_conn(schema=schema, readonly=True) as conn:
             with conn.cursor() as cur:
                 # 1. Charger les colonnes
-                cur.execute(query)
+                cur.execute(query, (schema,))
                 rows = cur.fetchall()
                 
                 # Organiser par table
@@ -87,8 +90,8 @@ def get_database_schema_context() -> str:
                     schema_str += "\n\n" + "\n".join(relations_block)
                 
                 with _schema_lock:
-                    _SCHEMA_CACHE = schema_str
-                return _SCHEMA_CACHE
+                    _SCHEMA_CACHE[schema] = schema_str
+                return _SCHEMA_CACHE[schema]
     except Exception as e:
         return f"Erreur lors de la récupération du schéma : {str(e)}"
 

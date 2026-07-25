@@ -99,8 +99,10 @@ def get_llm(model: Optional[str] = None, temperature: float = 0.0, context_size:
                 "keep_alive": -1,
                 "reasoning": True
             }
-            if context_size and context_size > 0:
-                kwargs["num_ctx"] = context_size
+            # Si context_size vaut 0 ou n'est pas spécifié, utiliser une fenêtre de contexte de 8192 (8k) par défaut
+            # afin d'éviter la tronquature silencieuse du prompt système par Ollama (défaut à 2048).
+            effective_ctx = context_size if (context_size and context_size > 0) else 8192
+            kwargs["num_ctx"] = effective_ctx
                 
             _llm_cache[cache_key] = ChatOllama(**kwargs)
         return _llm_cache[cache_key]

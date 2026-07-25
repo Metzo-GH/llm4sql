@@ -7,24 +7,37 @@ from sqlglot import exp
 def extract_sql_query(text: str) -> str:
     """
     Extrait la requête SQL brute d'une réponse de LLM.
-    Gère les blocs de code Markdown de type ```sql ... ``` ou ``` ... ```.
+    Gère les blocs de code Markdown ```sql ... ```, ``` ... ``` ainsi que la détection par regex
+    des clauses SELECT et WITH dans du texte brut conversational.
     """
-    # Retirer le bloc de réflexion s'il est présent (gère le bloc fermé ou non)
+    if not text:
+        return ""
+        
     clean_text = text
     if "<think>" in clean_text.lower():
         clean_text = re.sub(r"<think>.*?</think>", "", clean_text, flags=re.DOTALL | re.IGNORECASE)
         clean_text = re.sub(r"<think>.*", "", clean_text, flags=re.DOTALL | re.IGNORECASE)
         
-    # Chercher les blocs ```sql ... ``` sur le texte nettoyé
+    # 1. Chercher les blocs ```sql ... ``` sur le texte nettoyé
     match = re.search(r"```sql(.*?)```", clean_text, re.DOTALL | re.IGNORECASE)
-    if match:
+    if match and match.group(1).strip():
         return match.group(1).strip()
     
-    # Chercher des blocs ``` ... ``` génériques
+    # 2. Chercher des blocs ``` ... ``` génériques contenant SELECT ou WITH
     match_generic = re.search(r"```(.*?)```", clean_text, re.DOTALL)
-    if match_generic:
-        return match_generic.group(1).strip()
+    if match_generic and match_generic.group(1).strip():
+        content = match_generic.group(1).strip()
+        if re.search(r"\b(SELECT|WITH)\b", content, re.IGNORECASE):
+            return content
         
+    # 3. Détection par regex des requêtes SQL réelles (SELECT / WITH) dans le texte brut
+    match_statement = re.search(r"\b((?:WITH\s+[\s\S]+?\s+)?SELECT\b[\s\S]+?;?)", clean_text, re.IGNORECASE)
+    if match_statement:
+        sql_candidate = match_statement.group(1).strip()
+        # Ne garder le candidat que s'il contient au moins une clause FROM
+        if re.search(r"\bFROM\b", sql_candidate, re.IGNORECASE):
+            return sql_candidate
+            
     return clean_text.strip()
 
 

@@ -24,7 +24,7 @@ def _serialize_row(row: dict) -> dict:
 mcp = FastMCP("LLM4SQL-Secure-Postgres")
 
 
-def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[str, Any]]:
+def _execute_readonly_db_query(query: str, params: tuple = None, schema: str = "public") -> List[Dict[str, Any]]:
     """
     Exécute une requête SQL SELECT interne pour récupérer les schémas et métadonnées.
     
@@ -33,6 +33,7 @@ def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[st
     Args:
         query (str): Requête SQL.
         params (tuple, optional): Paramètres de requête de type tuple.
+        schema (str): Le schéma PostgreSQL cible ("public" ou "user_sandbox").
         
     Returns:
         List[Dict[str, Any]]: Les résultats sous forme de dictionnaire.
@@ -41,7 +42,7 @@ def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[st
         RuntimeError: En cas d'erreur de base de données.
     """
     try:
-        with get_db_conn(readonly=True) as conn:
+        with get_db_conn(schema=schema, readonly=True) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, params)
                 return cur.fetchall()
@@ -50,9 +51,9 @@ def _execute_readonly_db_query(query: str, params: tuple = None) -> List[Dict[st
 
 
 @mcp.tool()
-def list_tables() -> str:
+def list_tables(schema: str = "public") -> str:
     """
-    Liste toutes les tables utilisateur présentes dans le schéma public de la base de données.
+    Liste toutes les tables utilisateur présentes dans le schéma spécifié de la base de données.
     
     Returns:
         str: Liste formatée en JSON des tables existantes.
@@ -60,12 +61,12 @@ def list_tables() -> str:
     query = """
         SELECT table_name 
         FROM information_schema.tables 
-        WHERE table_schema IN ('user_sandbox', 'public')
+        WHERE table_schema = %s
           AND table_type = 'BASE TABLE'
         ORDER BY table_name;
     """
     try:
-        tables = _execute_readonly_db_query(query)
+        tables = _execute_readonly_db_query(query, (schema,), schema=schema)
         table_names = [row["table_name"] for row in tables]
         return json.dumps({"tables": table_names}, indent=2)
     except Exception as e:
@@ -73,28 +74,28 @@ def list_tables() -> str:
 
 
 @mcp.tool()
-def get_schema(table_name: str) -> str:
+def get_schema(table_name: str, schema: str = "public") -> str:
     """
     Récupère le schéma détaillé d'une table spécifique (colonnes, types, contraintes null et clés étrangères).
     
     Args:
         table_name (str): Nom de la table dont on veut obtenir le schéma.
+        schema (str): Le schéma PostgreSQL cible.
         
     Returns:
         str: Schéma et relations formatés en JSON.
     """
     query = """
-        SELECT column_name, data_type, is_nullable
+        SELECT column_name, data_type, is_nullable, ordinal_position
         FROM information_schema.columns 
-        WHERE table_schema IN ('user_sandbox', 'public')
-          AND table_name = %s
+        WHERE table_schema = %s AND table_name = %s
         ORDER BY ordinal_position;
     """
 
     try:
-        columns = _execute_readonly_db_query(query, (table_name,))
+        columns = _execute_readonly_db_query(query, (schema, table_name), schema=schema)
         if not columns:
-            return json.dumps({"error": f"La table '{table_name}' n'existe pas ou n'a pas de colonnes."}, indent=2)
+            return json.dumps({"error": f"La table '{table_name}' n'existe pas ou n'a pas de colonnes dans '{schema}'."}, indent=2)
         
         schema_info = []
         for col in columns:
@@ -104,7 +105,7 @@ def get_schema(table_name: str) -> str:
                 "nullable": col["is_nullable"] == "YES"
             })
             
-        relations = _execute_readonly_db_query(GET_TABLE_FOREIGN_KEYS_QUERY, (table_name,))
+        relations = _execute_readonly_db_query(GET_TABLE_FOREIGN_KEYS_QUERY, (table_name,), schema=schema)
         relations_info = []
         for rel in relations:
             relations_info.append({
@@ -123,12 +124,13 @@ def get_schema(table_name: str) -> str:
 
 
 @mcp.tool()
-def search_value(term: str) -> str:
+def search_value(term: str, schema: str = "public") -> str:
     """
     Recherche un mot-clé ou une valeur dans toutes les colonnes de type texte de la base de données.
     
     Args:
         term (str): Le terme à rechercher.
+        schema (str): Le schéma PostgreSQL cible.
         
     Returns:
         str: Liste formatée en JSON des correspondances (table, colonne, valeur).
@@ -139,12 +141,12 @@ def search_value(term: str) -> str:
     find_cols_query = """
         SELECT table_name, column_name 
         FROM information_schema.columns 
-        WHERE table_schema IN ('user_sandbox', 'public')
+        WHERE table_schema = %s
           AND data_type IN ('character varying', 'text', 'character')
         ORDER BY table_name, column_name;
     """
     try:
-        columns = _execute_readonly_db_query(find_cols_query)
+        columns = _execute_readonly_db_query(find_cols_query, (schema,), schema=schema)
         matches = []
         
         for col in columns:
@@ -153,7 +155,7 @@ def search_value(term: str) -> str:
             
             search_q = f'SELECT DISTINCT "{c_name}" FROM "{t_name}" WHERE "{c_name}"::text ILIKE %s LIMIT 3;'
             try:
-                with get_db_conn(readonly=True) as conn:
+                with get_db_conn(schema=schema, readonly=True) as conn:
                     with conn.cursor() as cur:
                         cur.execute(search_q, (f"%{term}%",))
                         rows = cur.fetchall()
@@ -172,18 +174,19 @@ def search_value(term: str) -> str:
 
 
 @mcp.tool()
-def get_sample_data(table_name: str, limit: int = 3) -> str:
+def get_sample_data(table_name: str, limit: int = 3, schema: str = "public") -> str:
     """
     Récupère quelques lignes d'exemples d'une table pour voir le format des données réelles.
     
     Args:
         table_name (str): Le nom de la table.
         limit (int, optional): Nombre de lignes à récupérer (3 par défaut, maximum 10).
+        schema (str): Le schéma PostgreSQL cible.
         
     Returns:
         str: Lignes formatées en JSON.
     """
-    tables_json = list_tables()
+    tables_json = list_tables(schema=schema)
     try:
         all_tables = json.loads(tables_json).get("tables", [])
     except Exception:
@@ -196,7 +199,7 @@ def get_sample_data(table_name: str, limit: int = 3) -> str:
     query = f'SELECT * FROM "{table_name}" LIMIT %s;'
     
     try:
-        with get_db_conn(readonly=True) as conn:
+        with get_db_conn(schema=schema, readonly=True) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(query, (limit,))
                 results = cur.fetchall()
@@ -208,12 +211,13 @@ def get_sample_data(table_name: str, limit: int = 3) -> str:
 
 
 @mcp.tool()
-def dry_run_query(sql: str) -> str:
+def dry_run_query(sql: str, schema: str = "public") -> str:
     """
     Valide la syntaxe d'une requête SQL sans l'exécuter physiquement (simulation via EXPLAIN).
     
     Args:
         sql (str): La requête SQL SELECT à valider.
+        schema (str): Le schéma PostgreSQL cible.
         
     Returns:
         str: Message de succès ou erreur détaillée.
@@ -224,7 +228,7 @@ def dry_run_query(sql: str) -> str:
         
     explain_sql = f"EXPLAIN {sql}"
     try:
-        with get_db_conn(readonly=True) as conn:
+        with get_db_conn(schema=schema, readonly=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(explain_sql)
                 return json.dumps({"success": True, "message": "SQL query is syntactically valid (EXPLAIN passed)."}, indent=2)
@@ -233,7 +237,7 @@ def dry_run_query(sql: str) -> str:
 
 
 @mcp.tool()
-def execute_query(sql: str) -> str:
+def execute_query(sql: str, schema: str = "public") -> str:
     """
     Exécute une requête SQL SELECT de manière hautement sécurisée sur la base de données.
     
@@ -243,6 +247,7 @@ def execute_query(sql: str) -> str:
     
     Args:
         sql (str): La requête SQL SELECT à exécuter.
+        schema (str): Le schéma PostgreSQL cible ("public" ou "user_sandbox").
         
     Returns:
         str: Les résultats formatés en JSON en cas de succès, ou le message d'erreur.
@@ -254,7 +259,7 @@ def execute_query(sql: str) -> str:
         
     # 2. Exécution de la requête
     try:
-        with get_db_conn(readonly=True) as conn:
+        with get_db_conn(schema=schema, readonly=True) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(sql)
                 results = cur.fetchall()

@@ -21,6 +21,10 @@ interface SettingsDropdownProps {
   bypassSemanticCache: boolean;
   /** Callback to update the bypass semantic cache state. */
   setBypassSemanticCache: (bypass: boolean) => void;
+  /** The currently selected target database schema. */
+  selectedSchema: string;
+  /** Callback to update the target database schema. */
+  setSelectedSchema: (schema: string) => void;
   /** List of all installed Ollama models. */
   installedModels: string[];
   /** State indicating if the settings dropdown is open. */
@@ -41,6 +45,8 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = React.memo(({
   setContextSize,
   bypassSemanticCache,
   setBypassSemanticCache,
+  selectedSchema,
+  setSelectedSchema,
   installedModels,
   isSettingsOpen,
   setIsSettingsOpen,
@@ -77,6 +83,18 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = React.memo(({
                   ))}
                 </>
               )}
+            </select>
+          </div>
+
+          <div className="settings-field-group">
+            <label className="settings-label">Base de données cible</label>
+            <select
+              value={selectedSchema}
+              onChange={(e) => setSelectedSchema(e.target.value)}
+              className="input-field settings-select font-medium"
+            >
+              <option value="public">public (BDD Ouvrages 📚)</option>
+              <option value="user_sandbox">user_sandbox (Bac à sable 🧪)</option>
             </select>
           </div>
           

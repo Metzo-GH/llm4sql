@@ -19,3 +19,9 @@ dependencies = [
     "sqlglot>=30.8.0",
     "uvicorn>=0.48.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+

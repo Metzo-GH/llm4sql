@@ -4,13 +4,30 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.database.pool import init_db_pool, close_db_pool
-from app.routers import chat, schema, sandbox, monitoring
+from app.routers import chat, schema, sandbox, monitoring, eval as eval_router
 
 from app.core.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 logger = logging.getLogger("llm4sql.api")
+
+# Silencer les requêtes HTTP internes d'Ollama (httpx / httpcore)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+# Filtre personnalisé pour masquer le polling répétitif du frontend dans uvicorn.access
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(endpoint in msg for endpoint in [
+            "/api/ollama/status", 
+            "/api/ollama/models", 
+            "GET /?t=",
+            "GET / HTTP"
+        ])
+
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,3 +65,5 @@ app.include_router(monitoring.router)
 app.include_router(chat.router)
 app.include_router(schema.router)
 app.include_router(sandbox.router)
+app.include_router(eval_router.router)
+

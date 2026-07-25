@@ -81,7 +81,8 @@ def test_api_chat_success(mock_run_agent):
         model="test-model",
         temperature=None,
         context_size=None,
-        bypass_semantic_cache=False
+        bypass_semantic_cache=False,
+        target_schema="public"
     )
 
 
@@ -114,7 +115,8 @@ def test_api_chat_bypass_cache(mock_run_agent):
         model="test-model",
         temperature=None,
         context_size=None,
-        bypass_semantic_cache=True
+        bypass_semantic_cache=True,
+        target_schema="public"
     )
 
 

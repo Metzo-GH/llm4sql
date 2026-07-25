@@ -1,5 +1,9 @@
+import json
+import logging
 from langgraph.graph import END
 from app.services.agent.state import AgentState
+
+logger = logging.getLogger("llm4sql.agent.routing")
 
 def should_continue(state: AgentState) -> str:
     """
@@ -23,6 +27,18 @@ def should_continue_react(state: AgentState) -> str:
         
     last_message = messages[-1]
     
+    # 1. Si le dernier message est un ToolMessage de mcp_dry_run_query et qu'il a réussi, finaliser immédiatement !
+    if last_message.__class__.__name__ == "ToolMessage" or getattr(last_message, "type", None) == "tool":
+        if getattr(last_message, "name", None) == "mcp_dry_run_query":
+            try:
+                res_json = json.loads(last_message.content)
+                if res_json.get("success") is True:
+                    logger.info("  [ROUTING] mcp_dry_run_query a réussi avec succès. Passage immédiat à clean_and_finalize !")
+                    return "clean_and_finalize"
+            except Exception:
+                pass
+    
+    # 2. Si l'IA demande d'exécuter des outils
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
         # Garde-fou (Loop Guard)
         if state.get("iteration_count", 0) >= 30:

@@ -47,40 +47,48 @@ def close_db_pool() -> None:
                 _pool = None
 
 
-def get_db_connection(readonly: bool = False) -> Any:
+def get_db_connection(schema: str = "public", readonly: bool = False) -> Any:
     """
     Crée et retourne une nouvelle connexion à la base de données PostgreSQL (hors pool, pour scripts isolés).
     
     Args:
+        schema (str): Le schéma PostgreSQL cible ("public" ou "user_sandbox").
         readonly (bool): Si True, la connexion sera marquée en lecture seule.
         
     Returns:
         psycopg2.extensions.connection: L'objet connexion PostgreSQL.
         
     Raises:
+        ValueError: Si le schéma n'est ni 'public' ni 'user_sandbox'.
         RuntimeError: En cas d'échec de la connexion à la base de données.
     """
+    if schema not in ("public", "user_sandbox"):
+        raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
     try:
         conn = psycopg2.connect(**settings.get_db_params())
         if readonly:
             conn.readonly = True
+        with conn.cursor() as cur:
+            cur.execute(f"SET search_path TO {schema};")
         return conn
     except Exception as e:
         raise RuntimeError(f"Échec de la connexion à PostgreSQL sur {settings.DB_HOST}:{settings.DB_PORT} - Erreur : {str(e)}")
 
 
 @contextlib.contextmanager
-def get_db_conn(readonly: bool = False) -> Generator[Any, None, None]:
+def get_db_conn(schema: str = "public", readonly: bool = False) -> Generator[Any, None, None]:
     """
     Context manager pour obtenir et libérer une connexion du pool.
-    Configure automatiquement le search_path sur 'user_sandbox, public' et le mode lecture seule.
+    Configure automatiquement le search_path sur le schéma spécifié et le mode lecture seule.
     """
+    if schema not in ("public", "user_sandbox"):
+        raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
     pool = get_pool()
     conn = pool.getconn()
     try:
         conn.readonly = readonly
         with conn.cursor() as cur:
-            cur.execute("SET search_path TO user_sandbox, public;")
+            cur.execute(f"SET search_path TO {schema};")
         yield conn
     except Exception:
         conn.rollback()

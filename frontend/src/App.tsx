@@ -2,12 +2,13 @@ import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react
 import { ChatInterface } from './components/ChatInterface';
 import { useSandbox } from './hooks/useSandbox';
 import { useChat } from './hooks/useChat';
-import { Terminal } from 'lucide-react';
+import { Terminal, MessageSquare, FlaskConical } from 'lucide-react';
 import { SettingsDropdown } from './components/settings/SettingsDropdown';
 
 // Importation paresseuse des panneaux lourds pour le code splitting (performance)
 const SandboxPanel = lazy(() => import('./components/sandbox/SandboxPanel').then(module => ({ default: module.SandboxPanel })));
 const DataExplorerPanel = lazy(() => import('./components/explorer/DataExplorerPanel').then(module => ({ default: module.DataExplorerPanel })));
+const BenchmarkPanel = lazy(() => import('./components/BenchmarkPanel').then(module => ({ default: module.BenchmarkPanel })));
 
 /**
  * Composant de chargement squelette pour les panneaux chargés à la demande.
@@ -26,6 +27,7 @@ const LoadingPanel = () => (
  * layout and passing custom-hook operations to individual sub-panels.
  */
 export default function App() {
+  const [mainTab, setMainTab] = useState<'chat' | 'benchmark'>('chat');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   /**
@@ -81,6 +83,8 @@ export default function App() {
     setContextSize,
     bypassSemanticCache,
     setBypassSemanticCache,
+    selectedSchema,
+    setSelectedSchema,
     liveLogs,
     contextUsage,
     apiOnline,
@@ -119,6 +123,29 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        {/* Dynamic Navigation Tabs: Chat vs Benchmark */}
+        <div className="sandbox-tabs" role="tablist" aria-label="Navigation principale">
+          <button
+            onClick={() => setMainTab('chat')}
+            className={`sandbox-tab-btn ${mainTab === 'chat' ? 'sandbox-tab-btn-active' : ''}`}
+            role="tab"
+            aria-selected={mainTab === 'chat'}
+          >
+            <MessageSquare size={14} />
+            <span>Chat Agent 💬</span>
+          </button>
+          <button
+            onClick={() => setMainTab('benchmark')}
+            className={`sandbox-tab-btn ${mainTab === 'benchmark' ? 'sandbox-tab-btn-active' : ''}`}
+            role="tab"
+            aria-selected={mainTab === 'benchmark'}
+          >
+            <FlaskConical size={14} />
+            <span>Benchmark 🧪</span>
+          </button>
+        </div>
+
         <div className="app-header-actions">
           {/* Real-time Ollama status */}
           {loadedModelStatus ? (
@@ -150,6 +177,8 @@ export default function App() {
             setContextSize={setContextSize}
             bypassSemanticCache={bypassSemanticCache}
             setBypassSemanticCache={setBypassSemanticCache}
+            selectedSchema={selectedSchema}
+            setSelectedSchema={setSelectedSchema}
             installedModels={installedModels}
             isSettingsOpen={isSettingsOpen}
             setIsSettingsOpen={(open) => {
@@ -170,55 +199,67 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Layout: Balanced Desktop 3-Column Grid */}
-      <main className="main-grid">
-        {/* Column 1 : SQL Sandbox & Interactive DDL Visualizer (Lazy Loaded) */}
-        <Suspense fallback={<LoadingPanel />}>
-          <SandboxPanel
-            sandboxTab={sandboxTab}
-            setSandboxTab={setSandboxTab}
-            schemaSql={schemaSql}
-            setSchemaSql={setSchemaSql}
-            insertSql={insertSql}
-            setInsertSql={setInsertSql}
-            mermaidCode={mermaidCode}
-            isSandboxLoading={isSandboxLoading}
-            isVisualizing={isVisualizing}
-            handleApplySandbox={handleApplySandbox}
-            handleGenerateDiagram={handleGenerateDiagram}
-          />
-        </Suspense>
+      {/* Main Content Layout */}
+      {mainTab === 'chat' ? (
+        <main className="main-grid">
+          {/* Column 1 : SQL Sandbox & Interactive DDL Visualizer (Lazy Loaded) */}
+          <Suspense fallback={<LoadingPanel />}>
+            <SandboxPanel
+              sandboxTab={sandboxTab}
+              setSandboxTab={setSandboxTab}
+              schemaSql={schemaSql}
+              setSchemaSql={setSchemaSql}
+              insertSql={insertSql}
+              setInsertSql={setInsertSql}
+              mermaidCode={mermaidCode}
+              isSandboxLoading={isSandboxLoading}
+              isVisualizing={isVisualizing}
+              handleApplySandbox={handleApplySandbox}
+              handleGenerateDiagram={handleGenerateDiagram}
+            />
+          </Suspense>
 
-        {/* Column 2 : Chat Interface */}
-        <section className="panel-chat">
-          <ChatInterface
-            messages={messages}
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            isLoading={isLoading}
-            onSendMessage={handleSendMessage}
-            onStopRequest={handleStopRequest}
-            onEditMessage={handleEditMessage}
-            onSelectMessageData={handleSelectMessageData}
-            onClearHistory={handleClearHistory}
-            activeMessageDataId={activeMessageId}
-            liveLogs={liveLogs}
-            contextUsage={contextUsage}
-            loadedModelStatus={loadedModelStatus}
-          />
-        </section>
+          {/* Column 2 : Chat Interface */}
+          <section className="panel-chat">
+            <ChatInterface
+              messages={messages}
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              isLoading={isLoading}
+              onSendMessage={handleSendMessage}
+              onStopRequest={handleStopRequest}
+              onEditMessage={handleEditMessage}
+              onSelectMessageData={handleSelectMessageData}
+              onClearHistory={handleClearHistory}
+              activeMessageDataId={activeMessageId}
+              liveLogs={liveLogs}
+              contextUsage={contextUsage}
+              loadedModelStatus={loadedModelStatus}
+            />
+          </section>
 
-        {/* Column 3 : Data Grid Explorer & Charts (Lazy Loaded) */}
-        <Suspense fallback={<LoadingPanel />}>
-          <DataExplorerPanel
-            activeMessageId={activeMessageId}
-            activeView={activeView}
-            setActiveView={setActiveView}
-            activeData={activeData}
-            activeSQL={activeSQL}
-          />
-        </Suspense>
-      </main>
+          {/* Column 3 : Data Grid Explorer & Charts (Lazy Loaded) */}
+          <Suspense fallback={<LoadingPanel />}>
+            <DataExplorerPanel
+              activeMessageId={activeMessageId}
+              activeView={activeView}
+              setActiveView={setActiveView}
+              activeData={activeData}
+              activeSQL={activeSQL}
+            />
+          </Suspense>
+        </main>
+      ) : (
+        <main className="p-4 h-[calc(100vh-80px)] overflow-hidden">
+          <Suspense fallback={<LoadingPanel />}>
+            <BenchmarkPanel
+              currentModel={model}
+              installedModels={installedModels}
+              selectedSchema={selectedSchema}
+            />
+          </Suspense>
+        </main>
+      )}
 
       {/* Toast Notification Box */}
       {toast && (

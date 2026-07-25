@@ -237,7 +237,7 @@ def test_node_clean_and_finalize_fallback(mock_execute):
     from langchain_core.messages import AIMessage, ToolMessage
     
     # Mock de l'exécution : la première (broken) échoue, la seconde (fallback) réussit
-    def side_effect(sql):
+    def side_effect(sql, *args, **kwargs):
         if "goood" in sql:
             return json.dumps({"success": False, "db_error": "table 'goood' does not exist"})
         elif "good" in sql:

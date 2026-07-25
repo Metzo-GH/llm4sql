@@ -37,4 +37,5 @@ class AgentState(TypedDict):
     model: Optional[str]
     temperature: Optional[float]
     context_size: Optional[int]
+    target_schema: Optional[str]
     messages: Annotated[List[BaseMessage], operator.add]
