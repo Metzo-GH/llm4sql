@@ -308,6 +308,11 @@ export function useChat() {
                 }));
               }
 
+              const llmExplanation = parseThinking(rawLLMText).answer
+                .replace(/```sql[\s\S]*?```/g, '')
+                .replace(/```[\s\S]*?```/g, '')
+                .trim();
+
               let finalContent = '';
               if (data.error_message) {
                 if (data.error_message.includes('Alerte de Sécurité') || data.error_message.includes('Alerte de Securite')) {
@@ -315,6 +320,8 @@ export function useChat() {
                 } else {
                   finalContent = "❌ Je rencontre des difficultés à exécuter la requête sur PostgreSQL après plusieurs essais d'auto-correction. Veuillez reformuler votre demande.";
                 }
+              } else if (llmExplanation) {
+                finalContent = llmExplanation;
               } else if (hasData) {
                 finalContent = `J'ai trouvé ${data.query_results.length} ligne(s) répondant à votre demande. Vous pouvez explorer les résultats dans le panneau de droite !`;
               } else {

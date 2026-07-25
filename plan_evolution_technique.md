@@ -37,17 +37,17 @@ Plutôt que de compter uniquement sur la capacité brute d'un LLM, l'application
   * **Validation & Qualité** : Suite TDD de 65 tests pytest validés à 100% (0 échec, 0 régression) et génération du rapport de benchmark `eval_report_soft_matching.json` avec un taux de réussite de **83.3%**.
 * **Bénéfice** : Le LLM dispose de toutes les clés de jointure et de la structure de sortie directement dans les retours d'outils avec un temps d'exécution < 0.03s.
 
----éfice** : Le LLM dispose de toutes les clés de jointure et de la structure de sortie directement dans les retours d'outils avec un temps d'exécution < 0.03s.
-
 ---
 
-### 🧹 3. Refonte Épurée & Naturelle du Prompt (`prompts.py`) — [ ] EN ATTENTE
-* **Le Problème** : Obligation rigide des CTE (`WITH ... AS`), balise `<think>` secondaire forcée dans le texte, répétition excessive de consignes négatives ("NEVER / DO NOT"), et interdiction stricte du filtrage par ID.
-* **La Solution** :
+### 🧹 3. Refonte Épurée & Naturelle du Prompt (`prompts.py`) — [x] COMPLÉTÉ (Phase 3 Validée à 100%)
+* **Le Problème** : Obligation rigide des CTE (`WITH ... AS`), balise `<think>` secondaire forcée dans le texte, répétition excessive de consignes négatives ("NEVER / DO NOT"), et suppression accidentelle de la préservation de l'explication du LLM dans le frontend `useChat.ts`.
+* **La Solution Implémentée** :
   * **Raisonnement naturel** : Suppression du second bloc `<think>` forcé. Le modèle utilise son flux de réflexion natif (`reasoning_content`).
-  * **Flexibilité SQL** : Autorisation des `SELECT ... FROM ... JOIN` directs pour les requêtes simples/moyennes.
-  * **Directives positively-framed** : Consignes claires et directes sans sur-répétition d'interdictions.
-* **Bénéfice** : Allègement de la charge cognitive du modèle et suppression des blocages UI.
+  * **Flexibilité SQL** : Autorisation et recommandation des `SELECT ... FROM ... JOIN` directs pour les requêtes simples/moyennes, et réservation des CTE pour les agrégations complexes.
+  * **Prompt Anglais + Restitution Français** : Directives techniques en anglais directif pour maximiser l'efficacité de Qwen 3.5, avec consigne de réponse explicative à l'utilisateur en Français.
+  * **Préservation de l'explication dans l'UI** : Correction du bug dans [useChat.ts](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/frontend/src/hooks/useChat.ts) qui écrasait l'explication du LLM par une phrase statique.
+  * **Boîte à outils complète** : Présentation claire et neutre des 5 outils MCP numérotés 1 à 5 sans consignes négatives.
+* **Bénéfice** : Allègement de la charge cognitive du modèle (prompt réduit de 147 à 40 lignes), affichage fluide des explications dans l'interface React, et 65 tests pytest validés à 100%.
 
 ---
 
@@ -95,9 +95,9 @@ Pour l'équipe / les agents qui prendront en charge les phases 2 à 5, voici les
    ↓
 [x] Étape 2 (Pilier 2 - Outils MCP Enrichis) ➔ 100% Implémenté & Validé (Phase 2)
    ↓
-[ ] Étape 3 (Pilier 3 - Refonte Prompt Naturel) ➔ Prochaine étape (Mesure de l'impact via Benchmark)
+[x] Étape 3 (Pilier 3 - Refonte Prompt Naturel) ➔ 100% Implémenté & Validé (Phase 3)
    ↓
-[ ] Étape 4 (Pilier 4 - Gabarits Abstraits RAG) ➔ Mesure de l'impact via Benchmark
+[ ] Étape 4 (Pilier 4 - Gabarits Abstraits RAG) ➔ Prochaine étape (Mesure de l'impact via Benchmark)
    ↓
 [ ] Étape 5 (Pilier 5 - Double-Validation UI) ➔ Intégration Finale
 ```

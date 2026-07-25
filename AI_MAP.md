@@ -227,6 +227,14 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Service Backend ([eval_service.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) : Implémentation de `_extract_row_tokens` (extraction sélective des mots >= 2 lettres et chiffres en excluant les valeurs `None`, `null`, chaînes vides et `FALLBACK_NULL_STRINGS`) et `_find_distinct_token_matching` pour valider les réponses avec colonnes concaténées.
 - [x] Suite de tests unitaires TDD ([test_eval.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/tests/test_eval.py)) : Ajout des tests `test_compare_query_results_soft_matching_concatenated` et `test_compare_query_results_soft_matching_ignores_nulls`. 65 tests backend validés à 100% (0 échec, 0 régression). Score Execution Accuracy porté de 61.1% à **83.3% (15/18 cas)**.
 
+### Phase R26 : Refonte Épurée & Naturelle du Prompt System (Pilier 3 - Validée)
+- [x] Refonte de `SYSTEM_PROMPT_TEMPLATE` en anglais dans [prompts.py](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/agent/prompts.py) avec restitution utilisateur en français.
+- [x] Documentation explicite des patterns d'usage des 5 outils MCP (exploitation de `foreign_key_suggestion` et gestion native des erreurs PostgreSQL).
+- [x] Raisonnement unifié : suppression du forcing de second bloc `<think>` textuel au profit du flux natif `reasoning_content`.
+- [x] Assouplissement SQL : autorisation des jointures directes `SELECT ... JOIN` et réservation des CTE (`WITH ... AS`) pour la complexité multi-niveaux.
+- [x] Allègement cognitif : suppression du bloc d'exemple fictif de 50 lignes `orders`/`customers`.
+- [x] Validation TDD (65 tests pytest passés à 100% au vert).
+
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
