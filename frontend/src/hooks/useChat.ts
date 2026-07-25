@@ -385,7 +385,7 @@ export function useChat() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [model, installedModels, temperature, contextSize, bypassSemanticCache]);
+  }, [model, installedModels, temperature, contextSize, bypassSemanticCache, selectedSchema]);
 
   /**
    * Submits the user's natural language question.

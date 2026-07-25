@@ -123,6 +123,7 @@ export const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCases();
   }, [fetchCases]);
 
@@ -741,7 +742,7 @@ export const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({
                 <label className="text-gray-300 font-medium">Niveau de difficulté :</label>
                 <select
                   value={formDifficulty}
-                  onChange={(e) => setFormDifficulty(e.target.value as any)}
+                  onChange={(e) => setFormDifficulty(e.target.value as 'Facile' | 'Moyen' | 'Difficile' | 'Avancé')}
                   className="bg-gray-950 border border-gray-700 rounded-md p-2 text-gray-200 focus:outline-none focus:border-emerald-500"
                 >
                   <option value="Facile">Facile</option>

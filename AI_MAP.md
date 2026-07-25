@@ -32,14 +32,14 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Validation de la connexion PostgreSQL locale et de la génération SQL avec Ollama (Qwen 3.5 9B).
 - [x] Automatisation de la configuration avec `start_backend.ps1` (Windows) et `start_backend.sh` (Linux), avec documentation complète des optimisations (Turbo Quant KV Cache 4-bit & Flash Attention).
 
-### Phase 2 : Moteur Agentique (LangGraph & MCP) (En cours)
+### Phase 2 : Moteur Agentique & Outils MCP Enrichis (Pilier 2 — Validée)
 - [x] Implémentation d'un serveur MCP Python sur-mesure (Option B - sécurisé en lecture seule, bloquant toute altération).
-- [x] Développement du graphe LangGraph :
-    - [x] Nœud 1 : Compréhension & Génération SQL (avec RAG Few-Shot).
-    - [x] Nœud 2 : Exécution sécurisée sur PostgreSQL.
-    - [x] Edge conditionnel : Si erreur SQL -> Retour Nœud 1 avec l'erreur.
+- [x] Développement du graphe LangGraph ReAct sous forme de boucle ReAct avec `bind_tools`.
 - [x] Validation de la boucle de correction (Self-healing).
-- [x] Implémentation d'un système de Cache Sémantique ultra-léger (RAG Mémoire) dans le backend FastAPI (`main.py` et `cache.py`) pour intercepter et accélérer les requêtes SQL similaires.
+- [x] Implémentation d'un système de Cache Sémantique ultra-léger (RAG Mémoire).
+- [x] Refonte de `mcp_search_value` avec requête dynamique `UNION ALL` et suggestions de jointures clés étrangères (`foreign_key_suggestion`).
+- [x] Enrichissement de `mcp_dry_run_query` avec typage & noms des colonnes de sortie, estimation de lignes, et détails d'erreurs PostgreSQL natifs (`error`, `detail`, `hint`).
+- [x] Validation TDD (63 tests pytest passés avec succès).
 
 ### Phase 3 : L'Écosystème API & Web (Validée)
 - [x] Encapsulation du moteur LangGraph dans des routes `FastAPI`.

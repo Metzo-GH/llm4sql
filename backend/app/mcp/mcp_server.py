@@ -1,3 +1,5 @@
+import re
+import psycopg2
 from psycopg2.extras import RealDictCursor
 from mcp.server.fastmcp import FastMCP
 import json
@@ -127,16 +129,17 @@ def get_schema(table_name: str, schema: str = "public") -> str:
 def search_value(term: str, schema: str = "public") -> str:
     """
     Recherche un mot-clé ou une valeur dans toutes les colonnes de type texte de la base de données.
+    Consolidé via UNION ALL avec suggestions de clés étrangères associées.
     
     Args:
         term (str): Le terme à rechercher.
         schema (str): Le schéma PostgreSQL cible.
         
     Returns:
-        str: Liste formatée en JSON des correspondances (table, colonne, valeur).
+        str: Liste formatée en JSON des correspondances (table, column, matched_value, foreign_key_suggestion).
     """
     if not term or len(term.strip()) < 2:
-        return json.dumps({"error": "Le terme de recherche doit faire au moins 2 caractères."})
+        return json.dumps({"matches": []}, indent=2)
         
     find_cols_query = """
         SELECT table_name, column_name 
@@ -147,30 +150,54 @@ def search_value(term: str, schema: str = "public") -> str:
     """
     try:
         columns = _execute_readonly_db_query(find_cols_query, (schema,), schema=schema)
-        matches = []
-        
+        if not columns:
+            return json.dumps({"matches": []}, indent=2)
+
+        select_clauses = []
+        params = []
+        term_pattern = f"%{term.strip()}%"
+
         for col in columns:
             t_name = col["table_name"]
             c_name = col["column_name"]
-            
-            search_q = f'SELECT DISTINCT "{c_name}" FROM "{t_name}" WHERE "{c_name}"::text ILIKE %s LIMIT 3;'
-            try:
-                with get_db_conn(schema=schema, readonly=True) as conn:
-                    with conn.cursor() as cur:
-                        cur.execute(search_q, (f"%{term}%",))
-                        rows = cur.fetchall()
-                        for row in rows:
-                            matches.append({
-                                "table": t_name,
-                                "column": c_name,
-                                "matched_value": row[0]
-                            })
-            except Exception:
-                continue
-                
+            select_clauses.append(
+                f'SELECT \'{t_name}\' AS table_name, \'{c_name}\' AS column_name, "{c_name}"::text AS matched_value '
+                f'FROM "{t_name}" WHERE "{c_name}"::text ILIKE %s'
+            )
+            params.append(term_pattern)
+
+        union_query = f"SELECT DISTINCT table_name, column_name, matched_value FROM ({' UNION ALL '.join(select_clauses)}) AS search_union LIMIT 20;"
+
+        with get_db_conn(schema=schema, readonly=True) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(union_query, tuple(params))
+                raw_matches = cur.fetchall()
+
+        fk_cache = {}
+        matches = []
+        for m in raw_matches:
+            t_name = m["table_name"]
+            if t_name not in fk_cache:
+                fk_relations = _execute_readonly_db_query(GET_TABLE_FOREIGN_KEYS_QUERY, (t_name,), schema=schema)
+                fk_cache[t_name] = [
+                    {
+                        "local_column": rel["local_column"],
+                        "foreign_table": rel["foreign_table"],
+                        "foreign_column": rel["foreign_column"]
+                    }
+                    for rel in fk_relations
+                ]
+
+            matches.append({
+                "table": t_name,
+                "column": m["column_name"],
+                "matched_value": m["matched_value"],
+                "foreign_key_suggestion": fk_cache[t_name]
+            })
+
         return json.dumps({"matches": matches}, indent=2)
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps({"error": str(e)}, indent=2)
 
 
 @mcp.tool()
@@ -213,25 +240,73 @@ def get_sample_data(table_name: str, limit: int = 3, schema: str = "public") -> 
 @mcp.tool()
 def dry_run_query(sql: str, schema: str = "public") -> str:
     """
-    Valide la syntaxe d'une requête SQL sans l'exécuter physiquement (simulation via EXPLAIN).
+    Valide la syntaxe d'une requête SQL sans l'exécuter physiquement (simulation EXPLAIN et dry-run LIMIT 0).
     
     Args:
         sql (str): La requête SQL SELECT à valider.
         schema (str): Le schéma PostgreSQL cible.
         
     Returns:
-        str: Message de succès ou erreur détaillée.
+        str: Message de succès avec colonnes et lignes estimées, ou erreur PostgreSQL détaillée.
     """
     is_safe, message = validate_sql_query(sql)
     if not is_safe:
         return json.dumps({"success": False, "security_error": message}, indent=2)
         
-    explain_sql = f"EXPLAIN {sql}"
+    sql_clean = sql.strip().rstrip(';')
     try:
         with get_db_conn(schema=schema, readonly=True) as conn:
+            # 1. EXPLAIN pour valider et extraire estimated_rows
+            estimated_rows = 0
             with conn.cursor() as cur:
-                cur.execute(explain_sql)
-                return json.dumps({"success": True, "message": "SQL query is syntactically valid (EXPLAIN passed)."}, indent=2)
+                cur.execute(f"EXPLAIN {sql_clean}")
+                explain_lines = cur.fetchall()
+                for line_tuple in explain_lines:
+                    line_str = str(line_tuple[0]) if line_tuple else ""
+                    m = re.search(r"rows=(\d+)", line_str)
+                    if m:
+                        estimated_rows = int(m.group(1))
+                        break
+
+            # 2. SELECT * FROM (...) AS _dry_run LIMIT 0 pour inspecter cur.description
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT * FROM ({sql_clean}) AS _dry_run LIMIT 0;")
+                description = cur.description or []
+                columns_info = []
+                if description:
+                    type_oids = tuple(set(col.type_code for col in description))
+                    cur.execute("SELECT oid, typname FROM pg_type WHERE oid IN %s;", (type_oids,))
+                    type_rows = cur.fetchall()
+                    type_map = {r[0]: r[1] for r in type_rows}
+                    columns_info = [
+                        {
+                            "name": col.name,
+                            "type": type_map.get(col.type_code, str(col.type_code))
+                        }
+                        for col in description
+                    ]
+
+            return json.dumps({
+                "success": True,
+                "columns": columns_info,
+                "estimated_rows": estimated_rows
+            }, indent=2)
+            
+    except psycopg2.Error as e:
+        db_err = e.pgerror.strip() if e.pgerror else str(e)
+        diag = getattr(e, 'diag', None)
+        detail = getattr(diag, 'message_detail', None) if diag else None
+        hint = getattr(diag, 'message_hint', None) if diag else None
+        
+        err_res = {
+            "success": False,
+            "db_error": db_err
+        }
+        if detail:
+            err_res["detail"] = detail
+        if hint:
+            err_res["hint"] = hint
+        return json.dumps(err_res, indent=2)
     except Exception as e:
         return json.dumps({"success": False, "db_error": str(e)}, indent=2)
 

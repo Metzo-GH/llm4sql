@@ -25,7 +25,8 @@ def mcp_get_schema(table_name: str, target_schema: str = "public") -> str:
 @tool
 def mcp_search_value(term: str, target_schema: str = "public") -> str:
     """
-    Recherche un mot-clé ou une valeur dans toutes les colonnes de type texte de la base de données.
+    Recherche un mot-clé ou une valeur dans toutes les colonnes de type texte de la base de données via UNION ALL.
+    Retourne les correspondances (table, colonne, valeur) enrichies de suggestions de jointures de clés étrangères.
     Utile pour localiser la bonne table et colonne quand la question contient un nom propre, une catégorie, ou un code textuel.
     
     Args:
@@ -53,7 +54,8 @@ def mcp_get_sample_data(table_name: str, limit: int = 3, target_schema: str = "p
 @tool
 def mcp_dry_run_query(sql: str, target_schema: str = "public") -> str:
     """
-    Valide la syntaxe d'une requête SQL SELECT sans l'exécuter physiquement (simulation via EXPLAIN).
+    Valide la syntaxe d'une requête SQL SELECT sans l'exécuter physiquement (simulation EXPLAIN et dry-run LIMIT 0).
+    Retourne la structure typée des colonnes de sortie, l'estimation du nombre de lignes ou les erreurs PostgreSQL détaillées.
     Vous DEVEZ appeler cet outil pour valider votre SQL généré avant de soumettre la réponse finale.
     
     Args:
