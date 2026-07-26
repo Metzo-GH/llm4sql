@@ -30,15 +30,13 @@ def extract_sql_query(text: str) -> str:
         if re.search(r"\b(SELECT|WITH)\b", content, re.IGNORECASE):
             return content
         
-    # 3. Détection par regex des requêtes SQL réelles (SELECT / WITH) dans le texte brut
-    match_statement = re.search(r"\b((?:WITH\s+[\s\S]+?\s+)?SELECT\b[\s\S]+?;?)", clean_text, re.IGNORECASE)
+    # 3. Détection par regex des requêtes SQL réelles (SELECT / WITH ... FROM) dans le texte brut
+    match_statement = re.search(r"\b((?:WITH\s+[\s\S]+?\s+)?SELECT\b[\s\S]+?\bFROM\b[\s\S]*?(?:;|$))", clean_text, re.IGNORECASE)
     if match_statement:
-        sql_candidate = match_statement.group(1).strip()
-        # Ne garder le candidat que s'il contient au moins une clause FROM
-        if re.search(r"\bFROM\b", sql_candidate, re.IGNORECASE):
-            return sql_candidate
+        return match_statement.group(1).strip()
             
-    return clean_text.strip()
+    # Si aucun motif SQL valide (SELECT/WITH avec FROM ou bloc markdown) n'est identifié, retourner une chaîne vide
+    return ""
 
 
 def clean_sql_query(sql: str) -> str:

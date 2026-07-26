@@ -41,10 +41,17 @@ def _is_dangerous_function(node: exp.Expression) -> Tuple[bool, Optional[str]]:
     Returns:
         Tuple[bool, Optional[str]]: (est_interdit, nom_de_la_fonction)
     """
-    if isinstance(node, exp.Func):
-        func_name = node.name.lower() if isinstance(node, exp.Anonymous) else type(node).__name__.lower()
-        if func_name in FORBIDDEN_PG_FUNCTIONS:
-            return True, func_name
+    if isinstance(node, (exp.Func, exp.Anonymous)):
+        names_to_check = set()
+        if hasattr(node, "name") and node.name:
+            names_to_check.add(node.name.lower())
+        if hasattr(node, "this") and node.this:
+            names_to_check.add(str(node.this).lower())
+        names_to_check.add(type(node).__name__.lower())
+
+        for name in names_to_check:
+            if name in FORBIDDEN_PG_FUNCTIONS:
+                return True, name
     return False, None
 
 

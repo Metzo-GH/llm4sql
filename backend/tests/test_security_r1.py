@@ -134,3 +134,15 @@ def test_validate_sql_query_with_comment():
     is_safe, message = validate_sql_query(query)
     assert is_safe is True, f"Devrait être valide : {query}. Message : {message}"
 
+
+def test_validate_sql_query_all_forbidden_functions():
+    """
+    Vérifie que 100% des fonctions système PostgreSQL interdites sont bien rejetées par validate_sql_query.
+    """
+    for func in FORBIDDEN_PG_FUNCTIONS:
+        query = f"SELECT {func}() FROM ouvrage;"
+        is_safe, message = validate_sql_query(query)
+        assert is_safe is False, f"La fonction interdite '{func}' n'a pas été bloquée par validate_sql_query."
+        assert "Sécurité" in message or "interdit" in message
+
+

@@ -182,13 +182,16 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Résolution de l'amnésie de l'agent : Correction d'une fuite de mémoire critique dans LangGraph (réinjection du contexte initial) et renforcement cognitif (ancrage ⭐ ALIGNMENT) évitant l'effondrement de l'attention (Attention Collapse).
 - [x] Validation par le passage au vert de la suite de tests complète (35 tests validés).
 
-### Phase R16 : Double Validation & Gabarits Abstraits (Planifiée)
-- [ ] Conception et enregistrement du nœud de double validation sémantique (`node_explain_sql`).
-- [ ] Propagation de l'explication dans le schéma `ChatResponse`, le cache sémantique et le flux SSE.
-- [ ] Affichage premium de la description comprise de la requête dans l'interface utilisateur.
-- [ ] Création du catalogue de gabarits abstraits JSON (`templates.json`) et du module de substitution (`templates.py`).
+### Phase R16 : Double Validation Sémantique Automatisée & Guardrail UI (Invalidée / Abandonnée)
+- [x] Tentative d'implémentation du traducteur AST ➔ Français et du calcul de score de similarité sémantique en %.
+- [x] **Décision d'Architecture & Invalidation** : Annulation et nettoyage complet du code suite à la démonstration de son impertinence technique. Tenter de déduire un score % heuristique entre du langage naturel et un AST SQL est intrinsèquement fragile (faux négatifs à 0% ou 57% sur des requêtes SQL 100% exactes et valides).
+- [x] **Principe d'Architecture retenu** : L'évaluation exacte et fiable repose à 100% sur l'**Execution Accuracy** sur PostgreSQL ([`eval_service.py`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) et le filtrage AST de sécurité (`security.py`).
+
+### Phase R27 : Catalogue RAG par Gabarits Abstraits (Planifiée)
+- [ ] Création du catalogue de gabarits abstraits JSON (`templates.json`) pour les motifs SQL complexes (Top N, Auto-jointure, Anti-join).
+- [ ] Développement du module d'instanciation dynamique (`templates.py`) contextualisant les variables avec les tables/colonnes réelles de la BDD active.
 - [ ] Intégration du routage d'intention LangGraph pour alimenter les prompts avec des few-shot contextualisés dynamiques.
-- [ ] Validation générale par des tests unitaires et intégrations pytest.
+- [ ] Validation générale par des tests unitaires et mesure d'impact sur le benchmark.
 
 ### Phase R17 : Correction Sandbox, Actualisation LLMs & Arrêt Rapide (Validée)
 - [x] Correction de l'analyse SQL du Sandbox face aux commentaires avec tirets (filtration des nœuds `Semicolon` et désactivation des commentaires lors de la reconstruction).

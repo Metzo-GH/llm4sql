@@ -62,6 +62,16 @@ def test_extract_sql_query_raw():
     assert extracted == "SELECT COUNT(*) FROM personne;"
 
 
+def test_extract_sql_query_non_sql_prose():
+    """
+    Vérifie qu'un texte conversationnel sans requête SQL produit une chaîne vide.
+    """
+    raw_response = "Désolé, je n'ai trouvé aucune information sur cette table dans la base."
+    extracted = extract_sql_query(raw_response)
+    assert extracted == ""
+
+
+
 def test_get_database_schema_context():
     """
     Vérifie que la construction du contexte de schéma retourne les tables attendues.

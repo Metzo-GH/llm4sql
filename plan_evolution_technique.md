@@ -51,23 +51,19 @@ Plutôt que de compter uniquement sur la capacité brute d'un LLM, l'application
 
 ---
 
-### 🧩 4. RAG par Gabarits Abstraits (`templates.json` + `templates.py`) — [ ] EN ATTENTE
-* **Le Problème** : L'exemple Few-Shot statique actuel utilise des tables fictives (`orders`, `customers`) qui polluent l'attention du modèle et génèrent des hallucinations.
-* **La Solution** :
-  * Suppression définitive de l'exemple fictif `orders`/`customers`.
-  * Catalogue JSON de gabarits logiques abstraits (ex: *Top N avec agrégation*, *Auto-jointure*, *Sous-requête*).
-  * Module Python `templates.py` qui contextualise le gabarit en remplaçant dynamiquement les variables par les **vraies tables de la Sandbox active**.
-* **Bénéfice** : Exemples Few-Shot 100% conformes au schéma réel de la base active.
+### 💡 4. Double Validation & Guardrail Sémantique — [x] ABANDONNÉ / INVALIDÉ
+* **Le Problème** : Tenter d'attribuer un score de similarité en % entre la question en langage naturel et une retraduction AST/LLM s'est révélé impertinent et intrinsèquement fragile (faux négatifs à 0% ou 57% sur des requêtes SQL pourtant 100% valides).
+* **Décision d'Architecture** : Abandon et suppression du code lié à la double validation sémantique par score %. La validation scientifique repose à 100% sur l'**Execution Accuracy** de notre moteur de Benchmark ([`eval_service.py`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) et l'analyse statique AST de sécurité.
 
 ---
 
-### 💡 5. La Double-Validation Sémantique (`node_explain_sql` + UI) — [ ] EN ATTENTE
-* **Le Problème** : L'utilisateur reçoit un tableau SQL sans moyen simple de vérifier si l'IA a bien compris l'intention de la question.
+### 🧩 5. RAG par Gabarits Abstraits (`templates.json` + `templates.py`) — [ ] EN ATTENTE
+* **Le Problème** : L'exemple Few-Shot statique actuel utilise des tables fictives (`orders`, `customers`) qui polluent l'attention du modèle et génèrent des hallucinations.
 * **La Solution** :
-  * Nœud d'inversion LangGraph `node_explain_sql` exécuté dès la validation SQL.
-  * Re-traduction de la requête en une phrase explicative en français (*"Ce que l'assistant va chercher : ..."*).
-  * Affichage sous la requête dans l'interface React.
-* **Bénéfice** : Boucle de rétroaction visuelle instantanée (*Human-in-the-loop*).
+  * Suppression définitive de l'exemple fictif `orders`/`customers`.
+  * Catalogue JSON de gabarits logiques abstraits (ex: *Top N avec agrégation*, *Auto-jointure*, *Sous-requête*, *Anti-join*).
+  * Module Python `templates.py` qui contextualise le gabarit en remplaçant dynamiquement les variables par les **vraies tables de la BDD active**.
+* **Bénéfice** : Exemples Few-Shot 100% conformes au schéma réel de la base active.
 
 ---
 
@@ -97,7 +93,7 @@ Pour l'équipe / les agents qui prendront en charge les phases 2 à 5, voici les
    ↓
 [x] Étape 3 (Pilier 3 - Refonte Prompt Naturel) ➔ 100% Implémenté & Validé (Phase 3)
    ↓
-[ ] Étape 4 (Pilier 4 - Gabarits Abstraits RAG) ➔ Prochaine étape (Mesure de l'impact via Benchmark)
+[ ] Étape 4 (Pilier 4 - Double Validation & Guardrail Sémantique UI) ➔ Prochaine étape
    ↓
-[ ] Étape 5 (Pilier 5 - Double-Validation UI) ➔ Intégration Finale
+[ ] Étape 5 (Pilier 5 - RAG par Gabarits Abstraits) ➔ Étape suivante
 ```
