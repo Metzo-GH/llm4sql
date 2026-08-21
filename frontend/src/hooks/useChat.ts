@@ -395,17 +395,20 @@ export function useChat() {
   }, [model, installedModels, temperature, contextSize, bypassSemanticCache, selectedSchema]);
 
   /**
-   * Submits the user's natural language question.
+   * Submits the user's natural language question (via form event or direct string).
    * 
-   * @param e - React Form Event
+   * @param e - Optional React Form Event
+   * @param customQuestion - Optional string prompt (e.g. from Starter Chips)
    */
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+  const handleSendMessage = useCallback(async (e?: React.FormEvent, customQuestion?: string) => {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    const textToSend = (customQuestion || inputValue).trim();
+    if (!textToSend || isLoading) return;
 
-    const userQuestion = inputValue.trim();
     setInputValue('');
-    await executeMessageRequest(userQuestion);
+    await executeMessageRequest(textToSend);
   }, [inputValue, isLoading, executeMessageRequest]);
 
   /**
@@ -451,6 +454,67 @@ export function useChat() {
   }, []);
 
   /**
+   * Directly executes a user-edited SQL query on PostgreSQL without LLM re-prompting.
+   * 
+   * @param messageId - Target assistant message ID
+   * @param customSql - Modified SQL query
+   */
+  const handleExecuteRawSql = useCallback(async (messageId: string, customSql: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/execute-raw`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sql_query: customSql,
+          target_schema: selectedSchema || 'public',
+        }),
+      });
+
+      const resData = await response.json();
+      if (resData.success && resData.data) {
+        // Mettre à jour le cache de données
+        setResultsStore((prev) => ({
+          ...prev,
+          [messageId]: resData.data,
+        }));
+        // Mettre à jour le message
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  sqlQuery: customSql,
+                  hasData: resData.data.length > 0,
+                  errorMessage: undefined,
+                }
+              : msg
+          )
+        );
+        // Activer automatiquement ce message dans l'explorateur
+        setActiveMessageId(messageId);
+        return true;
+      } else {
+        const errorMsg = resData.error || "Erreur lors de l'exécution SQL.";
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  sqlQuery: customSql,
+                  errorMessage: errorMsg,
+                }
+              : msg
+          )
+        );
+        return false;
+      }
+    } catch (e) {
+      console.error("Échec d'exécution directe du SQL :", e);
+      return false;
+    }
+  }, [selectedSchema]);
+
+  /**
    * Resets/wipes the entire chat conversation, active query states and telemetry logs.
    */
   const handleClearHistory = useCallback(() => {
@@ -475,6 +539,7 @@ export function useChat() {
     handleStopRequest,
     handleEditMessage,
     handleSelectMessageData,
+    handleExecuteRawSql,
     handleClearHistory,
     model,
     setModel,

@@ -1,6 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { Download, Search, ChevronLeft, ChevronRight, Table } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Download, Search, ChevronLeft, ChevronRight, Table, ArrowUpDown, ArrowUp, ArrowDown, Calculator } from 'lucide-react';
 import type { SqlResultRow } from '../types/chat';
+
+export type SortDirection = 'default' | 'asc' | 'desc';
+export type PageSizeMode = 'auto' | 10 | 25 | 50 | 'all';
+
+interface SortConfig {
+  column: string | null;
+  direction: SortDirection;
+}
 
 interface DataTableProps {
   data: SqlResultRow[];
@@ -8,27 +16,136 @@ interface DataTableProps {
 }
 
 /**
- * Composant DataTable fournissant l'affichage paginé, filtré de tableaux SQL
- * et un export CSV natif utilisant l'API Blob.
+ * Composant DataTable fournissant l'affichage avec pagination dynamique (adaptée
+ * automatiquement à la hauteur du conteneur via ResizeObserver), tri multi-états,
+ * barre de statistiques résumées et export CSV natif.
  * 
  * @param props - Component properties containing tabular SQL data
  */
 export const DataTable: React.FC<DataTableProps> = ({ data }) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 5;
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ column: null, direction: 'default' });
+  const [pageSizeMode, setPageSizeMode] = useState<PageSizeMode>('auto');
+  const [autoPageSize, setAutoPageSize] = useState(8);
 
   const columns = useMemo(() => Object.keys((data && data[0]) || {}), [data]);
 
-  // Filtrer les données en fonction du terme de recherche
+  // Observer réactif de la hauteur du conteneur pour adapter dynamiquement le nombre de lignes
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.contentRect.height;
+        // Déduire l'espace requis pour la toolbar (45px), l'en-tête (40px), la barre stats (32px) et la pagination (45px)
+        const availableHeight = height - 160;
+        const rowHeight = 40;
+        const calculated = Math.max(3, Math.floor(availableHeight / rowHeight));
+        setAutoPageSize(calculated);
+      }
+    });
+
+    observer.observe(wrapperRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Résolution du nombre de lignes effectif par page
+  const rowsPerPage = useMemo(() => {
+    if (pageSizeMode === 'all') return Math.max(1, (data || []).length);
+    if (pageSizeMode === 'auto') return autoPageSize;
+    return pageSizeMode;
+  }, [pageSizeMode, autoPageSize, data]);
+
+  /**
+   * Bascule l'état de tri pour une colonne donnée :
+   * Cycle : Défaut (ordre SQL d'origine) ➔ ASC ➔ DESC ➔ Défaut
+   */
+  const handleSort = (col: string) => {
+    setSortConfig((prev) => {
+      if (prev.column !== col) {
+        return { column: col, direction: 'asc' };
+      }
+      if (prev.direction === 'asc') {
+        return { column: col, direction: 'desc' };
+      }
+      if (prev.direction === 'desc') {
+        return { column: null, direction: 'default' };
+      }
+      return { column: col, direction: 'asc' };
+    });
+    setCurrentPage(1);
+  };
+
+  // Filtrer les données en fonction du terme de recherche puis appliquer le tri
   const filteredData = useMemo(() => {
     if (!data) return [];
-    return data.filter((row) =>
+    
+    // 1. Filtrage par recherche textuelle
+    const matches = data.filter((row) =>
       columns.some((col) =>
         String(row[col] ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     );
-  }, [data, columns, searchTerm]);
+
+    // 2. Si aucun tri actif (ou ordre par défaut), préserver l'ordre SQL d'origine
+    if (!sortConfig.column || sortConfig.direction === 'default') {
+      return matches;
+    }
+
+    const col = sortConfig.column;
+    const isAsc = sortConfig.direction === 'asc';
+
+    // 3. Tri stable en mémoire
+    return [...matches].sort((a, b) => {
+      const valA = a[col];
+      const valB = b[col];
+
+      // Gestion des valeurs nulles / indéfinies (toujours à la fin)
+      if (valA === null || valA === undefined) return 1;
+      if (valB === null || valB === undefined) return -1;
+
+      // Comparaison numérique si les deux valeurs sont des nombres
+      const numA = Number(valA);
+      const numB = Number(valB);
+      if (!isNaN(numA) && !isNaN(numB) && typeof valA !== 'boolean' && typeof valB !== 'boolean') {
+        return isAsc ? numA - numB : numB - numA;
+      }
+
+      // Comparaison textuelle insensible à la casse
+      const comp = String(valA).localeCompare(String(valB), undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      return isAsc ? comp : -comp;
+    });
+  }, [data, columns, searchTerm, sortConfig]);
+
+  // Calcul des statistiques résumées sur les colonnes numériques
+  const stats = useMemo(() => {
+    if (!filteredData || filteredData.length === 0) return null;
+
+    const numericStats: Record<string, { sum: number; avg: number; min: number; max: number }> = {};
+    for (const col of columns) {
+      const validNumbers = filteredData
+        .map((r) => r[col])
+        .filter((val) => val !== null && val !== undefined && val !== '' && !isNaN(Number(val)) && typeof val !== 'boolean')
+        .map(Number);
+
+      if (validNumbers.length > 0 && validNumbers.length === filteredData.length) {
+        const sum = validNumbers.reduce((a, b) => a + b, 0);
+        const avg = sum / validNumbers.length;
+        const min = Math.min(...validNumbers);
+        const max = Math.max(...validNumbers);
+        numericStats[col] = { sum, avg, min, max };
+      }
+    }
+    return {
+      totalRows: filteredData.length,
+      numericStats,
+    };
+  }, [filteredData, columns]);
 
   if (!data || data.length === 0) {
     return (
@@ -90,7 +207,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
   };
 
   return (
-    <div className="data-table-wrapper">
+    <div ref={wrapperRef} className="data-table-wrapper">
       {/* Barre d'outils (Recherche + Export) */}
       <div className="data-table-toolbar">
         <div className="data-table-search-group">
@@ -122,14 +239,43 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
         <table className="data-table">
           <thead>
             <tr className="data-table-header-row">
-              {columns.map((col) => (
-                <th
-                  key={col}
-                  className="data-table-th"
-                >
-                  {col}
-                </th>
-              ))}
+              {columns.map((col) => {
+                const isCurrentCol = sortConfig.column === col;
+                const dir = isCurrentCol ? sortConfig.direction : 'default';
+                const ariaSortValue = dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none';
+
+                return (
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
+                    className="data-table-th data-table-th-sortable"
+                    aria-sort={ariaSortValue}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSort(col);
+                      }
+                    }}
+                    title={`Trier par ${col} (actuel : ${
+                      dir === 'asc' ? 'Croissant' : dir === 'desc' ? 'Décroissant' : 'Ordre SQL d\'origine'
+                    })`}
+                  >
+                    <div className="data-table-th-content">
+                      <span>{col}</span>
+                      <span className="data-table-sort-icon">
+                        {dir === 'asc' ? (
+                          <ArrowUp size={13} className="text-accent-primary" />
+                        ) : dir === 'desc' ? (
+                          <ArrowDown size={13} className="text-accent-primary" />
+                        ) : (
+                          <ArrowUpDown size={13} className="opacity-40 hover:opacity-100" />
+                        )}
+                      </span>
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -161,35 +307,78 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="data-table-pagination">
-          <span className="data-table-pagination-info">
-            Lignes {startIndex + 1} à {Math.min(startIndex + rowsPerPage, filteredData.length)} sur {filteredData.length}
-          </span>
-          <div className="data-table-pagination-actions">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="btn-secondary data-table-pagination-btn"
-              aria-label="Page précédente"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span className="data-table-pagination-current">
-              Page {currentPage} sur {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="btn-secondary data-table-pagination-btn"
-              aria-label="Page suivante"
-            >
-              <ChevronRight size={14} />
-            </button>
+      {/* Barre de statistiques résumées (KPIs) */}
+      {stats && (
+        <div className="data-table-stats-bar">
+          <div className="data-table-stats-item font-semibold text-accent-primary">
+            <Calculator size={13} />
+            <span>{stats.totalRows} ligne{stats.totalRows > 1 ? 's' : ''}</span>
           </div>
+          {Object.entries(stats.numericStats).slice(0, 3).map(([col, s]) => (
+            <div key={col} className="data-table-stats-item">
+              <span className="text-muted">{col} :</span>
+              <span>Moy. {Number.isInteger(s.avg) ? s.avg : s.avg.toFixed(1)}</span>
+              <span className="text-muted opacity-40">•</span>
+              <span>Min {s.min}</span>
+              <span className="text-muted opacity-40">•</span>
+              <span>Max {s.max}</span>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Pagination & Sélecteur de mode de taille */}
+      <div className="data-table-pagination">
+        <div className="data-table-pagination-left">
+          <span className="data-table-pagination-info">
+            {filteredData.length === 0
+              ? '0 ligne'
+              : `Lignes ${startIndex + 1}-${Math.min(startIndex + rowsPerPage, filteredData.length)} sur ${filteredData.length}`}
+          </span>
+          <select
+            value={pageSizeMode}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === 'auto' || val === 'all') {
+                setPageSizeMode(val);
+              } else {
+                setPageSizeMode(Number(val) as PageSizeMode);
+              }
+              setCurrentPage(1);
+            }}
+            className="data-table-pagesize-select"
+            aria-label="Affichage par page"
+          >
+            <option value="auto">Auto ({autoPageSize} lignes)</option>
+            <option value="10">10 lignes</option>
+            <option value="25">25 lignes</option>
+            <option value="50">50 lignes</option>
+            <option value="all">Tout afficher</option>
+          </select>
+        </div>
+
+        <div className="data-table-pagination-actions">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="btn-secondary data-table-pagination-btn"
+            aria-label="Page précédente"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="data-table-pagination-current">
+            Page {currentPage} sur {Math.max(1, totalPages)}
+          </span>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="btn-secondary data-table-pagination-btn"
+            aria-label="Page suivante"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

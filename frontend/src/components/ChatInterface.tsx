@@ -1,15 +1,22 @@
-import React, { useRef, useEffect } from 'react';
-import { Bot, Terminal, Send, Square, Trash2 } from 'lucide-react';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { Bot, Terminal, Send, Square, Trash2, Sparkles } from 'lucide-react';
 import type { Message, ContextUsage, LoadedModelStatus } from '../types/chat';
 import { ChatMessage } from './chat/ChatMessage';
 import { getEffectiveContextLimit } from '../utils/context';
+
+const PUBLIC_STARTER_QUESTIONS = [
+  "Quels sont les 5 albums les plus récents ?",
+  "Nombre d'ouvrages par auteur",
+  "Liste des scénaristes et leurs albums",
+  "Combien y a-t-il d'éditeurs différents ?",
+];
 
 interface ChatInterfaceProps {
   messages: Message[];
   inputValue: string;
   setInputValue: (value: string) => void;
   isLoading: boolean;
-  onSendMessage: (e: React.FormEvent) => void;
+  onSendMessage: (e?: React.FormEvent, customQuestion?: string) => void;
   onSelectMessageData: (messageId: string) => void;
   onClearHistory: () => void;
   activeMessageDataId: string | null;
@@ -18,11 +25,15 @@ interface ChatInterfaceProps {
   onStopRequest?: () => void;
   onEditMessage?: (messageId: string, newContent: string) => void;
   loadedModelStatus?: LoadedModelStatus | null;
+  onExecuteRawSql?: (messageId: string, customSql: string) => Promise<boolean>;
+  onSelectView?: (view: 'table' | 'chart') => void;
+  selectedSchema?: string;
+  schemaSql?: string;
 }
 
 /**
  * Composant ChatInterface offrant l'interface de messagerie fluide avec
- * défilement automatique et affichage enrichi des métadonnées SQL/Erreurs.
+ * défilement automatique, Starter Hints contextuels et affichage enrichi des métadonnées SQL/Erreurs.
  * 
  * @param props - Component properties for managing the chat state
  */
@@ -40,10 +51,56 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onStopRequest,
   onEditMessage,
   loadedModelStatus,
+  onExecuteRawSql,
+  onSelectView,
+  selectedSchema = 'public',
+  schemaSql = '',
 }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const terminalBodyRef = useRef<HTMLDivElement>(null);
   const [isTerminalOpen, setIsTerminalOpen] = React.useState(false);
+
+  // Calcul dynamique des Starter Hints selon la base sélectionnée (BD Ouvrages vs Sandbox DDL)
+  const starterQuestions = useMemo(() => {
+    if (selectedSchema === 'public') {
+      return PUBLIC_STARTER_QUESTIONS;
+    }
+
+    // Extraction des tables créées dans le schéma DDL du Sandbox utilisateur
+    const tableMatches = Array.from(
+      schemaSql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:user_sandbox\.)?["`]?(\w+)["`]?/gi)
+    ).map((m) => m[1]);
+
+    const uniqueTables = Array.from(new Set(tableMatches)).filter(
+      (t) => t.toLowerCase() !== 'flyway_schema_history'
+    );
+
+    if (uniqueTables.length === 0) {
+      return [
+        "Afficher la liste des tables du sandbox",
+        "Combien de lignes contient chaque table ?",
+        "Aperçu général des données",
+      ];
+    }
+
+    const t0 = uniqueTables[0];
+    const t1 = uniqueTables[1];
+
+    const questions: string[] = [
+      `Afficher les 10 premières lignes de la table ${t0}`,
+      `Combien y a-t-il d'enregistrements dans ${t0} ?`,
+    ];
+
+    if (t1) {
+      questions.push(`Quelles sont les données liées entre ${t0} et ${t1} ?`);
+      questions.push(`Nombre de lignes dans ${t1}`);
+    } else {
+      questions.push(`Statistiques et résumé des colonnes de ${t0}`);
+      questions.push(`Quelles sont les valeurs distinctes dans ${t0} ?`);
+    }
+
+    return questions;
+  }, [selectedSchema, schemaSql]);
 
   const effectiveLimit = React.useMemo(() => {
     if (!contextUsage) return 2048;
@@ -135,11 +192,26 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="chat-messages-area" role="log" aria-live="polite">
         {messages.length === 0 ? (
           <div className="chat-empty-state">
-            <Bot size={48} className="chat-empty-icon" />
+            <Bot size={44} className="chat-empty-icon" />
             <h3 className="chat-empty-title">Prêt à interroger la base ?</h3>
             <p className="chat-empty-desc">
-              Posez votre question en français. L'agent va extraire le schéma, générer le SQL SELECT, l'exécuter et s'auto-corriger en cas de besoin !
+              Posez votre question en langage naturel ou cliquez sur une suggestion pour lancer une analyse immédiate :
             </p>
+            <div className="chat-starter-chips" role="group" aria-label="Suggestions de requêtes de démarrage">
+              {starterQuestions.map((question, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onSendMessage(undefined, question)}
+                  disabled={isLoading}
+                  className="chat-starter-chip"
+                  title={`Exécuter : "${question}"`}
+                >
+                  <Sparkles size={13} className="chat-starter-chip-icon" />
+                  <span>{question}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((msg) => (
@@ -151,6 +223,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               onSelectMessageData={onSelectMessageData}
               liveLogs={liveLogs}
               onEditMessage={onEditMessage}
+              onExecuteRawSql={onExecuteRawSql}
+              onSelectView={onSelectView}
             />
           ))
         )}

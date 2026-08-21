@@ -254,8 +254,6 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Création du `docker-compose.yml` unifié à la racine (services `db`, `backend`, `frontend`, liaison `host.docker.internal` vers Ollama hôte).
 - [x] Création des lanceurs d'orchestration `start.ps1`, `start.bat`, `start.sh` avec détection et redémarrage automatique d'Ollama si les optimisations matérielles (`q4_0`, `Flash Attention`, `0.0.0.0:11434`) sont absentes.
 - [x] Mise en place de scripts d'arrêt propre `stop.ps1`, `stop.bat`, `stop.sh` (`docker compose down`).
-- [x] Validation TDD backend (68 tests pytest passés à 100% au vert) et validation build frontend.
-
 ### Phase R30 : Resynchronisation Globale de la Documentation & Alignement Standards 2026 (Validée)
 - [x] Mise à jour de `Docs.md` avec le Module 4 : Banc de Test & Benchmark d'Évaluation (Moteur d'Execution Accuracy, Soft-Matching par Jetons, Télémétrie LangGraph, CRUD Datasets).
 - [x] Mise à jour de `frontend/README.md` avec l'intégration du composant `BenchmarkPanel.tsx`, l'orchestration de navigation bi-modale dans `App.tsx` et l'architecture complète.
@@ -263,9 +261,27 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Mise à jour de `README.md` racine avec l'arborescence documentaire structurée selon le cadre Diátaxis (Tutorials, How-To, Reference, Explanation).
 - [x] Validation de non-régression et cohérence globale de l'ensemble de la documentation technique.
 
+### Phase R31 : Ergonomie & Flexibilité de l'Espace de Travail - Lot 1 (Validée)
+- [x] **Starter Chips** : Suggestions d'interrogations dynamiques d'accueil dans `ChatInterface.tsx` avec lancement en 1 clic.
+- [x] **Tri Interactif de Tableau** : Tri multi-états en mémoire dans `DataTable.tsx` avec cycle `Ordre SQL par défaut ➔ ASC ➔ DESC ➔ Ordre SQL par défaut` et indicateurs d'accessibilité.
+- [x] **Panneaux Rétractables** : Repliement/Déploiement dynamique des colonnes Sandbox DDL et Explorateur de données dans `App.tsx` pour adapter l'espace de travail.
+- [x] **Mode Plein Écran / Focus** : Agrandissement maximisé du panneau Explorateur de données (Tableau / Graphique) dans `DataExplorerPanel.tsx`.
+- [x] **Design & CSS Fluide** : Stylisation soignée dans `index.css` (transitions douces, effets hover glow, adaptabilité responsive).
+- [x] **Validation Globale** : Non-régression complète (suite pytest backend 68 tests au vert, build TypeScript strict Vite réussi).
+
+### Phase R32 : Ergonomie Avancée, Hauteur Dynamique & Édition SQL Directe - Lot 2 (Validée)
+- [x] **Starter Hints Dynamiques & Contextuels** : Suggestions d'accueil calculées dynamiquement selon le schéma actif (questions BD Ouvrages pour `public`, questions adaptées aux tables réelles créées pour `user_sandbox`).
+- [x] **Pagination Adaptative par ResizeObserver** : Ajustement automatique du nombre de lignes de `DataTable.tsx` selon la hauteur réelle disponible (normale vs plein écran) et sélecteur de mode.
+- [x] **Barre de KPIs & Statistiques** : Synthèse automatique sous le tableau (Total lignes, Somme, Moyenne, Min, Max des colonnes numériques).
+- [x] **Endpoint Backend SQL Direct** : Création de `POST /api/chat/execute-raw` sécurisé par `validate_sql_query` (SELECT-only) sur pool PostgreSQL en lecture seule.
+- [x] **Édition SQL Directe ("Human-in-the-Loop")** : Interface d'édition inline dans `SqlCodeBlock.tsx` et exécution en 1 clic sans passer par le LLM.
+- [x] **Auto-Détection Intelligente du Graphique** : Sélection automatique du type de graphique dans `DataVisualization.tsx` (Courbes pour séries chronologiques, Barres pour catégories).
+- [x] **Follow-Up Chips** : Suggestions d'actions de suivi contextualisées dans `ChatMessage.tsx`.
+- [x] **Validation Globale** : Non-régression complète (suite pytest backend 71 tests au vert, build TypeScript strict Vite réussi).
 
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
 - **Source de Vérité** : Ce fichier `#AI_MAP.md` est la seule référence de l'état du projet et doit être mis à jour après chaque complétion.
+
 

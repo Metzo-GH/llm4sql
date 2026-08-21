@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, LayoutTemplate, Braces, Eye, Play } from 'lucide-react';
+import { Database, LayoutTemplate, Braces, Eye, Play, PanelLeftClose } from 'lucide-react';
 import { SchemaVisualizer } from '../SchemaVisualizer';
 
 /**
@@ -28,6 +28,8 @@ interface SandboxPanelProps {
   handleApplySandbox: () => void;
   /** Action handler to generate the Mermaid diagram. */
   handleGenerateDiagram: () => Promise<void>;
+  /** Callback to collapse the left panel. */
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -45,6 +47,7 @@ export const SandboxPanel: React.FC<SandboxPanelProps> = React.memo(({
   isVisualizing,
   handleApplySandbox,
   handleGenerateDiagram,
+  onToggleCollapse,
 }) => {
   return (
     <section className="glass-panel sandbox-panel panel-schema">
@@ -54,14 +57,26 @@ export const SandboxPanel: React.FC<SandboxPanelProps> = React.memo(({
             <Database size={18} className="sandbox-icon" />
             <h2 className="sandbox-title m-0">Laboratoire SQL</h2>
           </div>
-          <button 
-            onClick={handleApplySandbox}
-            disabled={isSandboxLoading || !schemaSql.trim()}
-            className="btn-primary sandbox-apply-btn"
-            style={{ opacity: (isSandboxLoading || !schemaSql.trim()) ? 0.5 : 1 }}
-          >
-            {isSandboxLoading ? <span className="animate-pulse">Génération...</span> : <><Play size={12} /> Appliquer</>}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleApplySandbox}
+              disabled={isSandboxLoading || !schemaSql.trim()}
+              className="btn-primary sandbox-apply-btn"
+              style={{ opacity: (isSandboxLoading || !schemaSql.trim()) ? 0.5 : 1 }}
+            >
+              {isSandboxLoading ? <span className="animate-pulse">Génération...</span> : <><Play size={12} /> Appliquer</>}
+            </button>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="panel-header-action-btn hidden lg:flex"
+                title="Masquer le laboratoire SQL"
+                aria-label="Masquer le laboratoire SQL"
+              >
+                <PanelLeftClose size={14} />
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Sandbox Visual tabs selection */}

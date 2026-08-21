@@ -5,8 +5,10 @@ import logging
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from app.schemas import ChatRequest, ChatResponse
+from app.schemas import ChatRequest, ChatResponse, ExecuteRawSqlRequest, ExecuteRawSqlResponse
 from app.core.limiter import limiter
+from app.core.security import validate_sql_query
+from app.database.pool import get_db_conn
 
 logger = logging.getLogger("llm4sql.chat")
 
@@ -180,5 +182,68 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
     )
 
 
+@router.post("/execute-raw", response_model=ExecuteRawSqlResponse)
+@limiter.limit("30/minute")
+async def execute_raw_sql_endpoint(request: Request, raw_request: ExecuteRawSqlRequest) -> ExecuteRawSqlResponse:
+    """
+    Exécute directement une requête SQL SELECT modifiée par l'utilisateur de manière sécurisée.
+    """
+    sql_query = raw_request.sql_query.strip()
+    if not sql_query:
+        return ExecuteRawSqlResponse(
+            success=False,
+            error="La requête SQL fournie est vide."
+        )
+
+    # 1. Validation de sécurité AST (SELECT-only, pas de mutation ni fonctions dangereuses)
+    is_valid, reason = validate_sql_query(sql_query)
+    if not is_valid:
+        return ExecuteRawSqlResponse(
+            success=False,
+            error=f"Sécurité : {reason}"
+        )
+
+    # 2. Exécution dans un thread worker
+    target_schema = raw_request.target_schema or "public"
+    
+    def _run_query():
+        start = time.time()
+        with get_db_conn(schema=target_schema, readonly=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_query)
+                cols = [desc[0] for desc in cur.description] if cur.description else []
+                rows = cur.fetchall()
+                data = []
+                for row in rows:
+                    row_dict = {}
+                    for col_name, val in zip(cols, row):
+                        if hasattr(val, "isoformat"):
+                            row_dict[col_name] = val.isoformat()
+                        elif isinstance(val, (int, float, str, bool)) or val is None:
+                            row_dict[col_name] = val
+                        else:
+                            row_dict[col_name] = str(val)
+                    data.append(row_dict)
+                elapsed_ms = round((time.time() - start) * 1000, 2)
+                return data, elapsed_ms
+
+    try:
+        data, elapsed_ms = await asyncio.to_thread(_run_query)
+        logger.info(f"[API RAW SQL] Exécution réussie en {elapsed_ms:.1f}ms ({len(data)} lignes)")
+        return ExecuteRawSqlResponse(
+            success=True,
+            data=data,
+            row_count=len(data),
+            execution_time_ms=elapsed_ms
+        )
+    except Exception as e:
+        logger.error(f"[Execute Raw SQL Error] {str(e)}")
+        return ExecuteRawSqlResponse(
+            success=False,
+            error=f"Erreur d'exécution PostgreSQL : {str(e)}"
+        )
+
+
 # Pour permettre l'importation de run_agent tardivement
 from app.services.agent import run_agent
+

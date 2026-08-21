@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react
 import { ChatInterface } from './components/ChatInterface';
 import { useSandbox } from './hooks/useSandbox';
 import { useChat } from './hooks/useChat';
-import { Terminal, MessageSquare, FlaskConical } from 'lucide-react';
+import { Terminal, MessageSquare, FlaskConical, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 import { SettingsDropdown } from './components/settings/SettingsDropdown';
 
 // Importation paresseuse des panneaux lourds pour le code splitting (performance)
@@ -29,6 +29,11 @@ const LoadingPanel = () => (
 export default function App() {
   const [mainTab, setMainTab] = useState<'chat' | 'benchmark'>('chat');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Ergonomie - États de visibilité et d'expansion des panneaux
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+  const [isDataMaximized, setIsDataMaximized] = useState(false);
 
   /**
    * Triggers a temporary visual Toast message on the UI.
@@ -44,6 +49,17 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Raccourci Échap pour quitter le mode plein écran des données
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDataMaximized) {
+        setIsDataMaximized(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDataMaximized]);
 
   // Delegate DDL Sandbox operations to useSandbox hook
   const {
@@ -74,6 +90,7 @@ export default function App() {
     handleStopRequest,
     handleEditMessage,
     handleSelectMessageData,
+    handleExecuteRawSql,
     handleClearHistory,
     model,
     setModel,
@@ -105,6 +122,14 @@ export default function App() {
       ? messages.find(m => m.id === activeMessageId)?.sqlQuery 
       : undefined;
   }, [activeMessageId, messages]);
+
+  // Classe dynamique pour la grille asymétrique selon les panneaux repliés
+  const gridLayoutClass = useMemo(() => {
+    if (isLeftCollapsed && isRightCollapsed) return 'main-grid-both-collapsed';
+    if (isLeftCollapsed) return 'main-grid-left-collapsed';
+    if (isRightCollapsed) return 'main-grid-right-collapsed';
+    return '';
+  }, [isLeftCollapsed, isRightCollapsed]);
 
   return (
     <div className="app-layout">
@@ -201,23 +226,39 @@ export default function App() {
 
       {/* Main Content Layout */}
       {mainTab === 'chat' ? (
-        <main className="main-grid">
+        <main className={`main-grid ${gridLayoutClass}`}>
+          {/* Bandelette de réouverture du Laboratoire SQL si replié */}
+          {isLeftCollapsed && (
+            <button
+              onClick={() => setIsLeftCollapsed(false)}
+              className="sidebar-expand-strip sidebar-expand-strip-left"
+              title="Déplier le Laboratoire SQL"
+              aria-label="Déplier le Laboratoire SQL"
+            >
+              <PanelLeftOpen size={16} className="sidebar-expand-icon" />
+              <span className="sidebar-expand-text">Laboratoire SQL</span>
+            </button>
+          )}
+
           {/* Column 1 : SQL Sandbox & Interactive DDL Visualizer (Lazy Loaded) */}
-          <Suspense fallback={<LoadingPanel />}>
-            <SandboxPanel
-              sandboxTab={sandboxTab}
-              setSandboxTab={setSandboxTab}
-              schemaSql={schemaSql}
-              setSchemaSql={setSchemaSql}
-              insertSql={insertSql}
-              setInsertSql={setInsertSql}
-              mermaidCode={mermaidCode}
-              isSandboxLoading={isSandboxLoading}
-              isVisualizing={isVisualizing}
-              handleApplySandbox={handleApplySandbox}
-              handleGenerateDiagram={handleGenerateDiagram}
-            />
-          </Suspense>
+          {!isLeftCollapsed && (
+            <Suspense fallback={<LoadingPanel />}>
+              <SandboxPanel
+                sandboxTab={sandboxTab}
+                setSandboxTab={setSandboxTab}
+                schemaSql={schemaSql}
+                setSchemaSql={setSchemaSql}
+                insertSql={insertSql}
+                setInsertSql={setInsertSql}
+                mermaidCode={mermaidCode}
+                isSandboxLoading={isSandboxLoading}
+                isVisualizing={isVisualizing}
+                handleApplySandbox={handleApplySandbox}
+                handleGenerateDiagram={handleGenerateDiagram}
+                onToggleCollapse={() => setIsLeftCollapsed(true)}
+              />
+            </Suspense>
+          )}
 
           {/* Column 2 : Chat Interface */}
           <section className="panel-chat">
@@ -235,19 +276,41 @@ export default function App() {
               liveLogs={liveLogs}
               contextUsage={contextUsage}
               loadedModelStatus={loadedModelStatus}
+              onExecuteRawSql={handleExecuteRawSql}
+              onSelectView={setActiveView}
+              selectedSchema={selectedSchema}
+              schemaSql={schemaSql}
             />
           </section>
 
           {/* Column 3 : Data Grid Explorer & Charts (Lazy Loaded) */}
-          <Suspense fallback={<LoadingPanel />}>
-            <DataExplorerPanel
-              activeMessageId={activeMessageId}
-              activeView={activeView}
-              setActiveView={setActiveView}
-              activeData={activeData}
-              activeSQL={activeSQL}
-            />
-          </Suspense>
+          {(!isRightCollapsed || isDataMaximized) && (
+            <Suspense fallback={<LoadingPanel />}>
+              <DataExplorerPanel
+                activeMessageId={activeMessageId}
+                activeView={activeView}
+                setActiveView={setActiveView}
+                activeData={activeData}
+                activeSQL={activeSQL}
+                isMaximized={isDataMaximized}
+                onToggleMaximize={() => setIsDataMaximized((prev) => !prev)}
+                onToggleCollapse={() => setIsRightCollapsed(true)}
+              />
+            </Suspense>
+          )}
+
+          {/* Bandelette de réouverture de l'Explorateur si replié */}
+          {isRightCollapsed && !isDataMaximized && (
+            <button
+              onClick={() => setIsRightCollapsed(false)}
+              className="sidebar-expand-strip sidebar-expand-strip-right"
+              title="Déplier l'Explorateur de Données"
+              aria-label="Déplier l'Explorateur de Données"
+            >
+              <PanelRightOpen size={16} className="sidebar-expand-icon" />
+              <span className="sidebar-expand-text">Explorateur</span>
+            </button>
+          )}
         </main>
       ) : (
         <main className="p-4 h-[calc(100vh-80px)] overflow-hidden">

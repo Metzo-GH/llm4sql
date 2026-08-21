@@ -39,3 +39,32 @@ class ChatResponse(BaseModel):
     steps: List[Dict[str, Any]] = Field(default=[], description="Trace des étapes d'exécution de l'agent.")
     cache_hit: bool = Field(default=False, description="Indique si la réponse provient du cache sémantique.")
     tables: List[str] = Field(default=[], description="Liste des tables impliquées dans la requête.")
+
+
+class ExecuteRawSqlRequest(BaseModel):
+    """
+    Modèle de validation pour l'exécution directe d'une requête SQL modifiée.
+    """
+    sql_query: str = Field(
+        ...,
+        max_length=5000,
+        description="La requête SQL SELECT modifiée par l'utilisateur.",
+        examples=["SELECT * FROM public.ouvrages LIMIT 10;"]
+    )
+    target_schema: Optional[str] = Field(
+        default="public",
+        max_length=100,
+        description="Schéma PostgreSQL cible ('public' ou 'user_sandbox')."
+    )
+
+
+class ExecuteRawSqlResponse(BaseModel):
+    """
+    Modèle de validation pour le résultat d'exécution SQL directe.
+    """
+    success: bool = Field(..., description="Vrai si l'exécution a réussi, Faux sinon.")
+    data: Optional[List[Dict[str, Any]]] = Field(default=None, description="Lignes retournées par la requête SQL.")
+    row_count: int = Field(default=0, description="Nombre de lignes retournées.")
+    execution_time_ms: float = Field(default=0.0, description="Temps d'exécution en millisecondes.")
+    error: Optional[str] = Field(default=None, description="Message d'erreur si échec.")
+

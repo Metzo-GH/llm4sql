@@ -59,13 +59,19 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, x
  * @param props - Component properties containing results dataset
  */
 export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({ data }) => {
-  const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
+  const [userChartType, setUserChartType] = useState<'bar' | 'line' | 'area' | null>(null);
   const [userXAxisKey, setUserXAxisKey] = useState('');
   const [userYAxisKey, setUserYAxisKey] = useState('');
 
-  const { numericCols, textualCols, defaultXAxisKey, defaultYAxisKey } = useMemo(() => {
+  const { numericCols, textualCols, defaultXAxisKey, defaultYAxisKey, suggestedChartType } = useMemo(() => {
     if (!data || data.length === 0) {
-      return { numericCols: [], textualCols: [], defaultXAxisKey: '', defaultYAxisKey: '' };
+      return { 
+        numericCols: [], 
+        textualCols: [], 
+        defaultXAxisKey: '', 
+        defaultYAxisKey: '',
+        suggestedChartType: 'bar' as const
+      };
     }
 
     const sample = data[0];
@@ -86,14 +92,28 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
     const defaultX = textual.length > 0 ? textual[0] : (columns[0] || '');
     const defaultY = numeric.length > 0 ? numeric[0] : (columns[1] || columns[0] || '');
 
+    // Heuristique de détection du type de graphique :
+    // 1. Si l'axe X ou une colonne temporelle est détectée (nom contenant date, annee, year, mois, etc.) -> Courbe (Line)
+    const isTemporal = columns.some((c) => /date|annee|year|mois|jour|created|published|parution|time/i.test(c)) ||
+      (sample[defaultX] && (/^\d{4}(-\d{2})?/.test(String(sample[defaultX]))));
+
+    let detected: 'bar' | 'line' | 'area' = 'bar';
+    if (isTemporal) {
+      detected = 'line';
+    } else if (data.length > 20) {
+      detected = 'area';
+    }
+
     return {
       numericCols: numeric,
       textualCols: textual,
       defaultXAxisKey: defaultX,
       defaultYAxisKey: defaultY,
+      suggestedChartType: detected,
     };
   }, [data]);
 
+  const chartType = userChartType || suggestedChartType;
   const xAxisKey = userXAxisKey || defaultXAxisKey;
   const yAxisKey = userYAxisKey || defaultYAxisKey;
 
@@ -200,7 +220,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
         {/* Toggle type de graphe */}
         <div className="data-vis-chart-toggles">
           <button
-            onClick={() => setChartType('bar')}
+            onClick={() => setUserChartType('bar')}
             className={`p-2 rounded-md transition-all ${chartType === 'bar' ? 'btn-primary' : 'btn-secondary'}`}
             title="Histogramme"
             aria-label="Histogramme"
@@ -208,7 +228,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             <BarChart3 size={15} />
           </button>
           <button
-            onClick={() => setChartType('line')}
+            onClick={() => setUserChartType('line')}
             className={`p-2 rounded-md transition-all ${chartType === 'line' ? 'btn-primary' : 'btn-secondary'}`}
             title="Courbe"
             aria-label="Courbe"
@@ -216,7 +236,7 @@ export const DataVisualization: React.FC<DataVisualizationProps> = React.memo(({
             <LineIcon size={15} />
           </button>
           <button
-            onClick={() => setChartType('area')}
+            onClick={() => setUserChartType('area')}
             className={`p-2 rounded-md transition-all ${chartType === 'area' ? 'btn-primary' : 'btn-secondary'}`}
             title="Aire Remplie"
             aria-label="Aire Remplie"

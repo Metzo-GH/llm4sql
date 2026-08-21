@@ -168,3 +168,52 @@ def test_api_chat_stream_no_model_returns_400():
     response = client.post("/api/chat/stream", json=payload_empty_model)
     assert response.status_code == 400
     assert "Aucun modèle LLM sélectionné" in response.json()["detail"]
+
+
+def test_api_execute_raw_sql_success():
+    """
+    Vérifie que /api/chat/execute-raw exécute correctement une requête SELECT valide.
+    """
+    payload = {
+        "sql_query": "SELECT COUNT(*) as total FROM public.ouvrage;",
+        "target_schema": "public"
+    }
+    response = client.post("/api/chat/execute-raw", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["row_count"] >= 1
+    assert "total" in data["data"][0]
+    assert data["error"] is None
+
+
+def test_api_execute_raw_sql_forbidden_mutation():
+    """
+    Vérifie que /api/chat/execute-raw bloque strictement toute requête de mutation (sécurité AST).
+    """
+    payload = {
+        "sql_query": "DELETE FROM public.ouvrages WHERE id = 1;",
+        "target_schema": "public"
+    }
+    response = client.post("/api/chat/execute-raw", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert "Sécurité" in data["error"]
+    assert data["data"] is None
+
+
+def test_api_execute_raw_sql_empty():
+    """
+    Vérifie que /api/chat/execute-raw gère proprement les requêtes vides.
+    """
+    payload = {
+        "sql_query": "   ",
+        "target_schema": "public"
+    }
+    response = client.post("/api/chat/execute-raw", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert "vide" in data["error"]
+

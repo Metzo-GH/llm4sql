@@ -15,6 +15,8 @@ interface ChatMessageProps {
   onSelectMessageData: (messageId: string) => void;
   liveLogs?: string[];
   onEditMessage?: (messageId: string, newContent: string) => void;
+  onExecuteRawSql?: (messageId: string, customSql: string) => Promise<boolean>;
+  onSelectView?: (view: 'table' | 'chart') => void;
 }
 
 interface UserMessageContentProps {
@@ -171,6 +173,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
   onSelectMessageData,
   liveLogs = [],
   onEditMessage,
+  onExecuteRawSql,
+  onSelectView,
 }) => {
   const isUser = msg.sender === 'user';
 
@@ -223,7 +227,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
 
         {/* Generated SQL query block */}
         {msg.sqlQuery && (
-          <SqlCodeBlock sqlQuery={msg.sqlQuery} />
+          <SqlCodeBlock 
+            sqlQuery={msg.sqlQuery} 
+            onExecuteRawSql={onExecuteRawSql ? (sql) => onExecuteRawSql(msg.id, sql) : undefined}
+          />
         )}
 
         {/* Error message block */}
@@ -246,6 +253,32 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({
           <div className="message-success-healing">
             <RefreshCw size={12} className="message-healing-icon animate-spin" />
             <span>Auto-corrigé avec succès (en {msg.iterationCount} tentative(s) !)</span>
+          </div>
+        )}
+
+        {/* Follow-up Action Chips */}
+        {!isUser && msg.hasData && !isLoading && (
+          <div className="message-followup-chips" role="group" aria-label="Actions rapides">
+            <button
+              onClick={() => {
+                onSelectMessageData(msg.id);
+                if (onSelectView) onSelectView('table');
+              }}
+              className="message-followup-chip"
+              title="Ouvrir les données dans le tableau"
+            >
+              <span>📋 Tableau de données</span>
+            </button>
+            <button
+              onClick={() => {
+                onSelectMessageData(msg.id);
+                if (onSelectView) onSelectView('chart');
+              }}
+              className="message-followup-chip message-followup-chip-accent"
+              title="Ouvrir la visualisation graphique Recharts"
+            >
+              <span>📊 Vue Graphique</span>
+            </button>
           </div>
         )}
 
