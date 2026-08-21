@@ -17,13 +17,21 @@ La plateforme résout la complexité d'interrogation des bases de données relat
 
 ## 2. Découpage Fonctionnel des Modules
 
-L'interface de travail est structurée en trois panneaux synchronisés :
+L'interface de travail est structurée en deux modes principaux et quatre modules synchronisés :
 
 ```
-+-------------------+-----------------------------+-------------------------------+
-|  1. LABORATOIRE   |     2. ASSISTANT SQL        |      3. EXPLORATEUR           |
-|      (Sandbox)    |          (Chat)             |         DE DONNÉES            |
-+-------------------+-----------------------------+-------------------------------+
++---------------------------------------------------------------------------------------------------------+
+|                                        MODE 1 : CHAT & WORKSPACE                                        |
+|  +---------------------------+---------------------------------+-------------------------------------+  |
+|  |     1. LABORATOIRE        |        2. ASSISTANT SQL         |          3. EXPLORATEUR             |  |
+|  |        (Sandbox)          |             (Chat)              |            DE DONNÉES               |  |
+|  +---------------------------+---------------------------------+-------------------------------------+  |
++---------------------------------------------------------------------------------------------------------+
+|                                        MODE 2 : QUALITÉ & ÉVALUATION                                    |
+|  +---------------------------------------------------------------------------------------------------+  |
+|  |                    4. BANC DE TEST & BENCHMARK D'ÉVALUATION AUTOMATISÉ                            |  |
+|  +---------------------------------------------------------------------------------------------------+  |
++---------------------------------------------------------------------------------------------------------+
 ```
 
 ### 2.1 Module 1 : Laboratoire SQL & Bac à Sable DDL (Sandbox)
@@ -45,6 +53,15 @@ Le module Sandbox permet d'isoler l'expérimentation de schémas personnalisés 
 ### 2.3 Module 3 : Exploration & Restitution Analytique
 - **Grille Tabulaire (`DataTable`)** : Navigation paginée, filtrage multi-colonnes, tri déterministe et export de données CSV au format UTF-8 BOM (compatibilité tableurs d'entreprise).
 - **Restitution Graphique (`DataVisualization`)** : Tracé dynamique (BarChart, LineChart, PieChart) avec détection automatique des axes dimensionnels et métriques.
+
+### 2.4 Module 4 : Banc de Test & Benchmark d'Évaluation Automatisé
+Le module Benchmark (`BenchmarkPanel` & `eval_service.py`) assure l'assurance qualité continue du système Text-to-SQL :
+- **Mesure d'Execution Accuracy Multi-Axes** : Exécution comparée en miroir de la requête SQL de vérité terrain (*Ground Truth*) et de la requête générée par l'agent sur PostgreSQL réel.
+- **Normalisation Sémantique des Absences (`FALLBACK_NULL_STRINGS`)** : Équivalence automatique entre valeurs `NULL`, `None`, chaînes vides et libellés textuels (`'Pas de série'`, `'N/A'`, `'Inconnu'`) pour éviter tout faux négatif heuristique.
+- **Soft-Matching par Jetons Distincts** : Validation des requêtes multi-colonnes ou concaténées via l'algorithme `_find_distinct_token_matching` sans imposer un formatage de colonne arbitraire.
+- **Télémétrie Agentique LangGraph** : Capture détaillée et inspection pour chaque cas de test des étapes de réflexion (`<think>`), des appels d'outils MCP, des temps d'inférence et des boucles d'auto-correction (Self-Healing).
+- **Gestionnaire de Jeux de Données (CRUD)** : Édition, ajout, suppression et réinitialisation du dataset canonique de 18 cas pratiques (`eval_dataset.json`).
+
 
 ---
 

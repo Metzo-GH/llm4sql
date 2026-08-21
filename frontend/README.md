@@ -32,6 +32,7 @@ frontend/
 │   │   │   └── SandboxPanel.tsx       # Formulaire de structure DDL et d'insertions
 │   │   ├── settings/          # Composants de configuration de l'application
 │   │   │   └── SettingsDropdown.tsx   # Liste de sélection du modèle et paramètres
+│   │   ├── BenchmarkPanel.tsx # Panneau du banc d'évaluation et télémétrie de benchmark
 │   │   ├── ChatInterface.tsx  # Conteneur principal du chat
 │   │   ├── DataTable.tsx      # Grille interactive paginée avec export CSV
 │   │   ├── DataVisualization.tsx # Graphiques adaptatifs (Recharts)
@@ -100,6 +101,11 @@ Pour conserver des composants graphiques purs et maintenables, la logique métie
 - **Gestion Sandbox** : Gère l'initialisation du schéma isolé et l'exécution de requêtes personnalisées.
 - **Optimisation** : Émet des alertes toast personnalisées lors du succès ou de l'échec de la création du schéma sans recourir à des boîtes de dialogue bloquantes.
 
+### Navigation Bi-Modale & Architecture Racine (`App.tsx`)
+Le composant racine orchestre le basculement instantané entre deux modes principaux via un système d'onglets ARIA et le chargement paresseux (`React.lazy` + `Suspense`) :
+- **Mode Chat & Exploration (`chat`)** : Grille modulaire à 3 colonnes réunissant le Laboratoire Sandbox (`SandboxPanel`), le Chat ReAct (`ChatInterface`), et l'Explorateur analytique (`DataExplorerPanel`).
+- **Mode Banc d'Évaluation (`benchmark`)** : Espace dédié plein écran piloté par `BenchmarkPanel` pour l'évaluation automatisée de modèles LLM.
+
 ---
 
 ## 🎨 Design System & Esthétique Glassmorphic
@@ -113,6 +119,11 @@ Le style visuel est centralisé dans **`index.css`** (sans CSS en ligne dans les
 
 ## 📊 Moteurs de Rendu et Visualisations
 
+### Banc d'Évaluation & Télémétrie (`BenchmarkPanel.tsx`)
+- **Streaming SSE Temps Réel** : Consommation de l'endpoint `/api/eval/stream` via `EventSource`, avec affichage progressif de la jauge et des cartes de résultats au fil de l'évaluation.
+- **Gestionnaire d'Arrêt Réactif** : Bouton d'interruption immédiat déclenchant `POST /api/eval/stop` avec fermeture propre de la connexion réseau.
+- **CRUD Dataset & Télémétrie LangGraph** : Formulaire d'ajout/modification/suppression de cas de test (`/api/eval/cases`) et accordéons dépliables dévoilant la chaîne de pensée (`<think>`), les outils MCP appelés et la comparaison en miroir Ground Truth vs SQL IA.
+
 ### Rendu de Schéma (`SchemaVisualizer.tsx`)
 - **Vue Cartes** : Analyse les scripts DDL et génère des cartes interactives avec navigation au clavier (`tabIndex={0}`). Un système de surbrillance met en valeur les relations de clés étrangères au survol.
 - **Vue Diagramme Mermaid** : Intègre `mermaid.js` de manière stable. Pour éviter les conflits de DOM lors des re-rendus React, le composant utilise un identifiant unique aléatoire (`key`) et bloque les mises à jour asynchrones concurrentes via un drapeau de cycle de vie (`active`).
@@ -120,6 +131,7 @@ Le style visuel est centralisé dans **`index.css`** (sans CSS en ligne dans les
 ### Tableau et Data Viz (`DataTable.tsx` & `DataVisualization.tsx`)
 - **Tableau** : Affiche les résultats paginés, mémorise les colonnes calculées (`useMemo`) et intègre un bouton d'export CSV encodé avec un marqueur UTF-8 BOM (`\uFEFF`) pour une compatibilité Excel native.
 - **Graphiques** : Rendu adaptatif propulsé par **Recharts** (Aires, Courbes, Barres) adaptant automatiquement ses axes en fonction des types de données détectés.
+
 
 ---
 

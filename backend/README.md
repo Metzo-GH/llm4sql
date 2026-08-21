@@ -49,9 +49,11 @@ backend/
 │   ├── test_agent.py          # Tests de l'agent LangGraph et boucle de Self-Healing
 │   ├── test_api.py            # Tests de validation des routes FastAPI
 │   ├── test_health.py         # Test unitaire de l'endpoint /api/health (Docker probe)
-│   ├── test_eval.py           # Tests du moteur d'évaluation et normalisation sémantique
-│   ├── test_mcp_security.py   # Tests unitaires du validateur SQL sécurité
-│   └── test_security_r1.py    # Tests d'intégration et de non-régression de sécurité
+│   ├── test_eval.py           # Tests du moteur d'évaluation, normalisation sémantique et soft-matching
+│   ├── test_target_schema.py  # Tests d'isolation des schémas PostgreSQL ('public' vs 'user_sandbox')
+│   ├── test_mcp.py            # Tests des outils MCP de découverte de schéma et suggestions FK
+│   ├── test_mcp_security.py   # Tests unitaires du validateur SQL sécurité AST
+│   └── test_security_r1.py    # Tests d'intégration et protection des connexions readonly
 ├── Dockerfile                 # Image conteneurisée Python 3.12-slim avec uv
 ├── entrypoint.sh              # Attente DB, seed automatique et démarrage Uvicorn
 ├── pyproject.toml             # Configuration et dépendances de l'environnement virtuel Python
@@ -156,12 +158,15 @@ flowchart TD
 ```
 
 ### 1. La Boîte à Outils MCP (Model Context Protocol) exposée au LLM
-Grâce au mécanisme de **Tool Calling**, le LLM n'a pas à deviner la structure de la base de données. Il peut décider de lui-même d'appeler un ou plusieurs outils de son serveur MCP pour s'orienter :
-- **`mcp_list_tables`** : Fournit la liste de toutes les tables existant dans la base de données active.
-- **`mcp_get_schema`** : Donne le schéma DDL complet (`CREATE TABLE`) de tables ciblées. Cela évite d'inonder le contexte du modèle avec des tables inutiles (stratégie "Diviser pour Régner").
-- **`mcp_search_value`** : Permet de faire une recherche textuelle sémantique dans la base pour identifier le code ou l'identifiant exact correspondant à une valeur saisie par l'utilisateur (ex: trouver l'identifiant d'un auteur par son nom).
-- **`mcp_get_sample_data`** : Récupère les 3 premières lignes d'une table pour aider le modèle à comprendre la forme concrète des données.
-- **`mcp_dry_run_query`** : Exécute un `EXPLAIN` sur la requête SQL générée. Cela permet au LLM de tester la validité syntaxique de sa requête auprès de PostgreSQL sans réellement l'exécuter.
+Grâce au mécanisme de **Tool Calling**, le LLM n'a pas à deviner la structure de la base de données. Il utilise les outils de son serveur MCP pour inspecter et valider ses requêtes en lecture seule :
+
+| Outil MCP | Signature / Paramètres | Rôle & Comportement |
+| :--- | :--- | :--- |
+| **`mcp_list_tables`** | `()` | Retourne la liste exhaustive des tables du schéma actif (`public` ou `user_sandbox`). |
+| **`mcp_get_schema`** | `table_name: str` | Fournit le DDL exact (`CREATE TABLE`) de la table ciblée avec types, contraintes PK/FK (approche "Diviser pour Régner"). |
+| **`mcp_search_value`** | `search_term: str` | Recherche textuelle insensible à la casse (`ILIKE`) sur toutes les colonnes textuelles. Retourne les correspondances exactes et suggère les clés étrangères associées (`foreign_key_suggestion`). |
+| **`mcp_get_sample_data`** | `table_name: str, limit: int = 3` | Extrait un échantillon de 3 lignes pour éclairer le format des données et la sémantique des colonnes. |
+| **`mcp_dry_run_query`** | `query: str` | Exécute un `EXPLAIN` PostgreSQL sur la requête candidate. Retourne le plan d'exécution, les colonnes projetées ou le message d'erreur natif (`error`, `detail`, `hint`) sans effet de bord. |
 
 ### 2. Détail des nœuds du graphe LangGraph :
 
@@ -171,6 +176,29 @@ Grâce au mécanisme de **Tool Calling**, le LLM n'a pas à deviner la structure
 - **`node_clean_and_finalize`** : Se lance lorsque le LLM estime avoir rédigé la requête finale. Ce nœud applique le nettoyage par Regex, valide la requête avec l'AST `SQLGlot` pour interdire toute modification de données, et l'exécute de manière sécurisée en lecture seule.
 - **Boucle d'Auto-Correction (Self-Healing)** : Si l'exécution lève une erreur de base de données, l'erreur exacte est transformée en `HumanMessage` et renvoyée dans le contexte du LLM. L'agent retourne au nœud `agent_loop` pour tenter de corriger sa syntaxe. Cette boucle est limitée à **3 tentatives**.
 - **Mécanisme de Repli (Fallback)** : Si la boucle d'auto-correction s'épuise sans succès, le système récupère dans l'historique la dernière requête SQL ayant passé avec succès le test d'outil `mcp_dry_run_query`, assurant qu'une requête syntaxiquement fonctionnelle soit toujours fournie.
+
+---
+
+## 🌐 Endpoints de l'API REST FastAPI
+
+| Domaine | Méthode | Route | Description |
+| :--- | :--- | :--- | :--- |
+| **Chat** | `POST` | `/api/chat` | Traitement de question en langage naturel avec streaming SSE des étapes et tokens. |
+| **Sandbox** | `POST` | `/api/sandbox/init` | Initialisation DDL & DML du schéma isolé `user_sandbox`. |
+| **Sandbox** | `GET` | `/api/sandbox/schema` | Récupération du schéma et métadonnées du bac à sable. |
+| **Schéma** | `GET` | `/api/schema` | Extraction du schéma de référence actif (`public`). |
+| **Monitoring** | `GET` | `/api/health` | Sonde de santé applicative (utilisée par Docker Compose). |
+| **Monitoring** | `GET` | `/api/ollama/status` | Statut GPU/CPU et VRAM des modèles chargés dans Ollama. |
+| **Monitoring** | `GET` | `/api/ollama/models` | Liste des modèles locaux disponibles. |
+| **Benchmark** | `GET` | `/api/eval/cases` | Liste des cas de test du dataset d'évaluation. |
+| **Benchmark** | `POST` | `/api/eval/cases` | Ajout d'un cas de test personnalisé. |
+| **Benchmark** | `PUT` | `/api/eval/cases/{id}` | Modification d'un cas de test existant. |
+| **Benchmark** | `DELETE` | `/api/eval/cases/{id}` | Suppression d'un cas de test. |
+| **Benchmark** | `POST` | `/api/eval/cases/reset`| Réinitialisation aux 18 cas canoniques par défaut. |
+| **Benchmark** | `POST` | `/api/eval/run` | Lancement asynchrone du benchmark complet. |
+| **Benchmark** | `GET` | `/api/eval/stream` | Flux SSE de suivi temps réel cas par cas. |
+| **Benchmark** | `POST` | `/api/eval/stop` | Interruption immédiate et propre du benchmark. |
+| **Benchmark** | `GET` | `/api/eval/history` | Historique des derniers rapports de benchmark en mémoire. |
 
 ---
 
@@ -189,17 +217,22 @@ Le backend intègre un cache sémantique en mémoire pour accélérer les requê
 
 ---
 
-## 🧪 Suite de Tests Automatisés
+## 🧪 Suite Complète de Tests Automatisés
 
-Le backend intègre une suite de tests robustes pour garantir la non-régression de l'application.
+Le backend intègre une suite exhaustive de tests unitaires et d'intégration garantissant une non-régression absolue de l'application.
 
 ### Lancement des tests :
 ```powershell
 uv run pytest
 ```
 
-### Description des fichiers de test :
-- `test_mcp_security.py` : Valide que le validateur AST bloque correctement les requêtes non autorisées (ex: `DROP`, `UPDATE`) et vérifie le comportement des outils MCP.
-- `test_security_r1.py` : Valide la protection physique en lecture seule des connexions à la base de données.
-- `test_agent.py` : Valide le graphe LangGraph, la boucle de Self-Healing face à des erreurs SQL simulées et le fonctionnement du Fallback de sécurité.
-- `test_api.py` : Teste la réactivité et la conformité des routes de l'API FastAPI.
+### Description des 8 fichiers de test :
+- **`test_agent.py`** : Valide le graphe LangGraph ReAct, la boucle de Self-Healing face à des erreurs SQL simulées et le mécanisme de repli (Fallback) vers `mcp_dry_run_query`.
+- **`test_api.py`** : Valide la conformité des routes principales FastAPI, les payloads Pydantic et le rate limiting.
+- **`test_health.py`** : Valide l'endpoint de santé `/api/health` et son intégration avec les healthchecks Docker Compose.
+- **`test_eval.py`** : Valide le moteur d'évaluation, le calcul d'Execution Accuracy, la normalisation des chaînes d'absence (`FALLBACK_NULL_STRINGS`) et le soft-matching par jetons distincts.
+- **`test_target_schema.py`** : Valide le cloisonnement strict des schémas PostgreSQL (`public` vs `user_sandbox`) et le rejet des schémas non autorisés.
+- **`test_mcp.py`** : Valide les outils MCP de découverte de schéma, la recherche dynamique et les suggestions de clés étrangères (`foreign_key_suggestion`).
+- **`test_mcp_security.py`** : Valide le blocage strict des requêtes mutatrices (`DROP`, `UPDATE`, `DELETE`, `ALTER`) par le validateur AST SQLGlot.
+- **`test_security_r1.py`** : Valide la protection transactionnelle physique en lecture seule (`readonly=True`) sur les connexions PostgreSQL.
+

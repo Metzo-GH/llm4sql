@@ -120,14 +120,17 @@ Les variables d'environnement sont déclarées dans `.env` à la racine ou injec
 
 ---
 
-## 6. Structure de la Documentation Technique
+## 6. Structure de la Documentation Technique (Standard Diátaxis)
 
-La documentation technique détaillée est répartie selon les standards de l'architecture logicielle :
+La documentation de **LLM4SQL** est organisée selon le standard architectural **Diátaxis**, optimisé pour les développeurs et l'ingestion par les agents IA :
 
-* **[Spécifications Fonctionnelles & Modèle Métier (Docs.md)](./Docs.md)** : Schéma relationnel "BD Ouvrages", règles métier et flux fonctionnels.
-* **[Manuel Technique Backend (backend/README.md)](./backend/README.md)** : Clean Architecture, serveur MCP, graphe LangGraph, sécurité AST SQLGlot et pool de connexions.
-* **[Manuel Technique Frontend (frontend/README.md)](./frontend/README.md)** : Architecture React 19, code-splitting, Nginx reverse proxy et accessibilité (a11y).
-* **[Registre d'Évolution & Traçabilité (AI_MAP.md)](./AI_MAP.md)** : Registre chronologique et état de validation des sprints et décisions d'architecture.
+| Quadrant Diátaxis | Rôle & Contenu | Fichiers de Référence |
+| :--- | :--- | :--- |
+| **🚀 Tutorials (Prise en main)** | Démarrage rapide 1-clic, prérequis et découverte du flux d'inférence en moins de 3 minutes. | [README.md (Sec. 4)](./README.md#4-d%C3%A9ploiement--cycle-de-vie), [start_backend.ps1](./backend/start_backend.ps1) |
+| **🛠️ How-To Guides (Guides pratiques)** | Procédures pas-à-pas : configuration de modèle Ollama, création de schéma isolé Sandbox, exécution du benchmark. | [backend/README.md](./backend/README.md), [frontend/README.md](./frontend/README.md) |
+| **📖 Reference (Spécifications & Faits)** | Modèle relationnel BD Ouvrages, catalogue des outils MCP, variables `.env`, endpoints REST OpenAPI. | [Docs.md](./Docs.md), [backend/README.md (Sec. MCP & Endpoints)](./backend/README.md) |
+| **💡 Explanation (Architecture & Choix)** | Graphe de décision LangGraph ReAct, Défense en profondeur AST, registre des décisions d'architecture (ADRs). | [Docs.md (Sec. 4-5)](./Docs.md) |
+
 
 ---
 

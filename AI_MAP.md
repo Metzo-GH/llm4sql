@@ -256,7 +256,16 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Mise en place de scripts d'arrêt propre `stop.ps1`, `stop.bat`, `stop.sh` (`docker compose down`).
 - [x] Validation TDD backend (68 tests pytest passés à 100% au vert) et validation build frontend.
 
+### Phase R30 : Resynchronisation Globale de la Documentation & Alignement Standards 2026 (Validée)
+- [x] Mise à jour de `Docs.md` avec le Module 4 : Banc de Test & Benchmark d'Évaluation (Moteur d'Execution Accuracy, Soft-Matching par Jetons, Télémétrie LangGraph, CRUD Datasets).
+- [x] Mise à jour de `frontend/README.md` avec l'intégration du composant `BenchmarkPanel.tsx`, l'orchestration de navigation bi-modale dans `App.tsx` et l'architecture complète.
+- [x] Mise à jour de `backend/README.md` avec l'exhaustivité des 8 suites de tests pytest, la documentation détaillée du routeur `/api/eval/*` et la spécification formelle des 5 outils du serveur MCP.
+- [x] Mise à jour de `README.md` racine avec l'arborescence documentaire structurée selon le cadre Diátaxis (Tutorials, How-To, Reference, Explanation).
+- [x] Validation de non-régression et cohérence globale de l'ensemble de la documentation technique.
+
+
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
 - **Source de Vérité** : Ce fichier `#AI_MAP.md` est la seule référence de l'état du projet et doit être mis à jour après chaque complétion.
+
