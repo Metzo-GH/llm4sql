@@ -1,10 +1,12 @@
 import json
+import logging
+import threading
 from typing import Optional, List, Dict
 from app.database.pool import get_db_conn
 from app.mcp.mcp_server import get_schema
 from app.database.queries import GET_ALL_FOREIGN_KEYS_QUERY
 
-import threading
+logger = logging.getLogger("llm4sql.agent.schema")
 
 # Cache du schéma en mémoire par nom de schéma
 _SCHEMA_CACHE: Dict[str, str] = {}
@@ -128,9 +130,9 @@ def get_dynamic_schema_context(selected_tables: List[str]) -> str:
                             f"  - Table '{t_name}' colonne '{rel['local_column']}' référence '{rel['foreign_table']}({rel['foreign_column']})'"
                         )
             else:
-                print(f"  [WARNING] get_schema pour '{t_name}' a retourné : {schema_str}")
+                logger.warning(f"  [WARNING] get_schema pour '{t_name}' a retourné : {schema_str}")
         except Exception as e:
-            print(f"  [ERROR] Erreur lors de la récupération du schéma pour '{t_name}' : {e}")
+            logger.error(f"  [ERROR] Erreur lors de la récupération du schéma pour '{t_name}' : {e}")
             
     if not schema_blocks:
         return get_database_schema_context()

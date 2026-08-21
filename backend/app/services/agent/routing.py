@@ -1,19 +1,8 @@
 import json
 import logging
-from langgraph.graph import END
 from app.services.agent.state import AgentState
 
 logger = logging.getLogger("llm4sql.agent.routing")
-
-def should_continue(state: AgentState) -> str:
-    """
-    Ancienne fonction de routage conditionnel conservée pour la compatibilité des tests.
-    """
-    if state.get("error_message") is None:
-        return END
-    if state.get("iteration_count", 0) >= 3:
-        return END
-    return "generate_sql"
 
 
 def should_continue_react(state: AgentState) -> str:

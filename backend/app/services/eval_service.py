@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional, Callable
 import itertools
 from collections import Counter
 
-from app.database.pool import get_db_connection
+from app.database.pool import get_db_conn
 from app.services.agent.graph import run_agent
 
 logger = logging.getLogger("llm4sql.eval_service")
@@ -481,27 +481,31 @@ def compare_query_results(expected: Any, actual: Any, check_order: bool = False)
 
 
 def execute_raw_sql(sql_query: str, target_schema: str = "public") -> List[Dict[str, Any]]:
-    """Exécute une requête SQL brute sur PostgreSQL et retourne le résultat sous forme de liste de dicts."""
-    conn = None
-    cur = None
+    """
+    Exécute une requête SQL brute de manière sécurisée (lecture seule) sur PostgreSQL via le pool.
+    
+    Args:
+        sql_query (str): La requête SQL brute à exécuter.
+        target_schema (str): Le schéma PostgreSQL cible ('public' ou 'user_sandbox').
+        
+    Returns:
+        List[Dict[str, Any]]: Liste des lignes retournées sous forme de dictionnaires {colonne: valeur}.
+        
+    Raises:
+        RuntimeError: En cas d'erreur lors de l'exécution SQL.
+    """
     try:
-        conn = get_db_connection(schema=target_schema)
-        cur = conn.cursor()
-        cur.execute(sql_query)
-        if cur.description:
-            columns = [desc[0] for desc in cur.description]
-            rows = cur.fetchall()
-            return [dict(zip(columns, row)) for row in rows]
-        conn.commit()
-        return []
+        with get_db_conn(schema=target_schema, readonly=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_query)
+                if cur.description:
+                    columns = [desc[0] for desc in cur.description]
+                    rows = cur.fetchall()
+                    return [dict(zip(columns, row)) for row in rows]
+                return []
     except Exception as e:
         logger.error(f"Erreur d'exécution SQL dans eval_service : {str(e)}")
         raise RuntimeError(f"SQL Execution Error: {str(e)}")
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 def run_benchmark_case(case_input: Any, model: Optional[str] = None, target_schema: str = "public") -> Dict[str, Any]:

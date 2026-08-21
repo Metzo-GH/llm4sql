@@ -131,8 +131,8 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     if eval_tokens > 0 and eval_duration > 0:
         tokens_per_sec = round(eval_tokens / (eval_duration * 1e-9), 2)
         
-    # Refresh context size dynamically from Ollama session
-    active_ctx_len = get_model_context_length(model_name, force_refresh=True)
+    # Refresh context size dynamically from Ollama session (cached)
+    active_ctx_len = get_model_context_length(model_name, force_refresh=False)
     if ctx_size == 0:
         reported_ctx_size = active_ctx_len
     elif active_ctx_len > 0 and active_ctx_len != 2048:

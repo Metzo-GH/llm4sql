@@ -187,11 +187,14 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] **Décision d'Architecture & Invalidation** : Annulation et nettoyage complet du code suite à la démonstration de son impertinence technique. Tenter de déduire un score % heuristique entre du langage naturel et un AST SQL est intrinsèquement fragile (faux négatifs à 0% ou 57% sur des requêtes SQL 100% exactes et valides).
 - [x] **Principe d'Architecture retenu** : L'évaluation exacte et fiable repose à 100% sur l'**Execution Accuracy** sur PostgreSQL ([`eval_service.py`](file:///c:/Users/Metzo/Documents/projet%20ia/llm4sql/backend/app/services/eval_service.py)) et le filtrage AST de sécurité (`security.py`).
 
-### Phase R27 : Catalogue RAG par Gabarits Abstraits (Planifiée)
-- [ ] Création du catalogue de gabarits abstraits JSON (`templates.json`) pour les motifs SQL complexes (Top N, Auto-jointure, Anti-join).
-- [ ] Développement du module d'instanciation dynamique (`templates.py`) contextualisant les variables avec les tables/colonnes réelles de la BDD active.
-- [ ] Intégration du routage d'intention LangGraph pour alimenter les prompts avec des few-shot contextualisés dynamiques.
-- [ ] Validation générale par des tests unitaires et mesure d'impact sur le benchmark.
+### Phase R27 : Catalogue RAG par Gabarits Abstraits & Dynamic Few-Shot Utilisateur (Invalidée / Abandonnée)
+- [x] Implémentation initiale du catalogue de gabarits abstraits JSON (`templates.json`) et du module d'instanciation (`templates.py`).
+- [x] **Décision d'Architecture & Invalidation** : Invalidation et annulation de l'approche par gabarits synthétiques RAG suite à la démonstration de son impertinence technique :
+  1. **Fragilité de la Sémantique Heuristique** : Deviner le rôle métier d'une colonne (`label`, `score`, `statut`) par des listes de mots-clés est intrinsèquement fragile et échoue sur des schémas BDD arbitraires.
+  2. **Risque de Pollution Prompt (Attention Collapse)** : Sur les BDD personnalisées du Sandbox (`user_sandbox`), l'injection d'un exemple synthétique mal instancié ou trompeur pollue le prompt et dégrade le raisonnement autonome des petits modèles (`qwen3.5:4b`).
+  3. **Redondance avec le Cache Sémantique** : Interroger des exemples sur des questions récurrentes est déjà pris en charge à 100% par le Cache Sémantique en mémoire (0ms) avec un filtrage strict par schéma BDD (`target_schema`).
+- [x] **Principe d'Architecture retenu** : L'agent fonctionne à 100% en **Zero-Shot Déterministe** guidé par l'exploration dynamique du schéma BDD via les outils MCP (`mcp_get_schema`), la validation synthétique par `mcp_dry_run_query`, et l'isolation stricte des schémas BDD.
+
 
 ### Phase R17 : Correction Sandbox, Actualisation LLMs & Arrêt Rapide (Validée)
 - [x] Correction de l'analyse SQL du Sandbox face aux commentaires avec tirets (filtration des nœuds `Semicolon` et désactivation des commentaires lors de la reconstruction).
@@ -237,6 +240,13 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Assouplissement SQL : autorisation des jointures directes `SELECT ... JOIN` et réservation des CTE (`WITH ... AS`) pour la complexité multi-niveaux.
 - [x] Allègement cognitif : suppression du bloc d'exemple fictif de 50 lignes `orders`/`customers`.
 - [x] Validation TDD (65 tests pytest passés à 100% au vert).
+
+### Phase R28 : Consolidation DB Pool, Propreté Logs & Optimisation Inférence (Validée)
+- [x] Migration de `execute_raw_sql` dans `eval_service.py` vers le pool thread-safe `get_db_conn(schema=..., readonly=True)`.
+- [x] Remplacement des `print()` résiduels dans `schema.py` par le module `logging`.
+- [x] Optimisation de la résolution de taille de contexte dans `nodes.py` (utilisation du cache Ollama sans `force_refresh` bloquant).
+- [x] Suppression du routage legacy mort `should_continue` dans `routing.py` et mise à jour des exports dans `__init__.py`.
+- [x] Validation TDD (67 tests backend passés à 100% au vert, 0 régression, build Vite/TS réussi).
 
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
