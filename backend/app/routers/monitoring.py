@@ -24,6 +24,20 @@ async def read_root() -> Dict[str, str]:
     }
 
 
+@router.get("/api/health")
+async def healthcheck() -> Dict[str, str]:
+    """
+    Endpoint de santé pour Docker Compose et les sondes de disponibilité.
+    
+    Returns:
+        Dict[str, str]: Statut de l'application.
+    """
+    return {
+        "status": "ok",
+        "app": "llm4sql"
+    }
+
+
 @router.get("/api/ollama/models")
 async def get_ollama_models(response: Response) -> Dict[str, Any]:
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"

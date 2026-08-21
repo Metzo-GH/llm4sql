@@ -1,0 +1,26 @@
+{
+  "name": "llm4sql-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Assistant SQL Agentique Local 100% Privé (FastAPI + LangGraph + React + PostgreSQL + Ollama)",
+  "scripts": {
+    "start": "docker compose up --build",
+    "start:detached": "docker compose up --build -d",
+    "stop": "docker compose down",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "test:backend": "cd backend && uv run pytest",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "llm",
+    "sql",
+    "langgraph",
+    "fastapi",
+    "react",
+    "ollama",
+    "docker"
+  ],
+  "author": "LLM4SQL Team",
+  "license": "MIT"
+}

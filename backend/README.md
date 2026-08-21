@@ -38,7 +38,9 @@ backend/
 │   │   └── sandbox.py         # Modèles pour l'initialisation de la Sandbox
 │   ├── routers/               # APIRouters FastAPI découpés par domaine
 │   │   ├── chat.py            # Route `/api/chat` (agent intelligent SSE)
-│   │   ├── monitoring.py      # Route `/api/monitoring` (métriques système)
+│   │   ├── monitoring.py      # Route `/api/monitoring` (métriques système et /api/health)
+│   │   ├── schema.py          # Route `/api/schema` (extraction du schéma PostgreSQL)
+│   │   ├── eval.py            # Route `/api/eval` (benchmark d'évaluation automatisé)
 │   │   └── sandbox.py         # Routes `/api/sandbox` (DDL & visualiseur déterministe)
 │   ├── mcp/                   # Implémentation du Model Context Protocol (MCP)
 │   │   └── mcp_server.py      # Serveur MCP exposant les outils de lecture de schéma et requête
@@ -46,8 +48,12 @@ backend/
 ├── tests/                     # Suite complète de tests unitaires et intégration (pytest)
 │   ├── test_agent.py          # Tests de l'agent LangGraph et boucle de Self-Healing
 │   ├── test_api.py            # Tests de validation des routes FastAPI
+│   ├── test_health.py         # Test unitaire de l'endpoint /api/health (Docker probe)
+│   ├── test_eval.py           # Tests du moteur d'évaluation et normalisation sémantique
 │   ├── test_mcp_security.py   # Tests unitaires du validateur SQL sécurité
 │   └── test_security_r1.py    # Tests d'intégration et de non-régression de sécurité
+├── Dockerfile                 # Image conteneurisée Python 3.12-slim avec uv
+├── entrypoint.sh              # Attente DB, seed automatique et démarrage Uvicorn
 ├── pyproject.toml             # Configuration et dépendances de l'environnement virtuel Python
 ├── uv.lock                    # Fichier de verrouillage des versions exactes
 ├── .env                       # Fichier de secrets locaux
@@ -84,28 +90,29 @@ ollama run <nom_du_modele>
 ```
 
 ### 3. Démarrer et initialiser automatiquement le backend
-Rendez-vous dans le dossier `backend/` et lancez le script correspondant à votre système :
+Depuis le répertoire `backend/`, exécuter le script correspondant à l'environnement :
 
-- **Sous Windows** (PowerShell) :
+- **Sous Windows (PowerShell)** :
   ```powershell
   .\start_backend.ps1
   ```
-- **Sous Linux** (Bash) :
+- **Sous Linux (Bash)** :
   ```bash
   chmod +x start_backend.sh
   ./start_backend.sh
   ```
 
-*Ce script s'occupe de tout : il applique les optimisations d'Ollama, synchronise votre environnement virtuel Python, démarre la base PostgreSQL dans Docker, peuple les données avec le schéma d'exercice, et lance le serveur FastAPI.*
+Le script effectue automatiquement la configuration matérielle d'Ollama, synchronise l'environnement virtuel Python via `uv`, démarre l'instance PostgreSQL conteneurisée, applique le seed initial et lance le serveur Uvicorn.
 
 ---
 
-## ⚙️ Détails des Optimisations Appliquées (Pour information)
-Les scripts `start_backend` configurent automatiquement les variables d'environnement suivantes pour maximiser les performances d'Ollama :
-- `OLLAMA_KV_CACHE_TYPE="q4_0"` : Active le cache KV quantifié en 4-bit, économisant environ 30% de mémoire VRAM.
-- `OLLAMA_FLASH_ATTENTION="1"` : Active Flash Attention pour accélérer l'inférence.
-- `OLLAMA_KEEP_ALIVE="-1"` : Force Ollama à garder le modèle en mémoire (RAM/VRAM) indéfiniment après la première requête.
-- `OLLAMA_NUM_PARALLEL="1"` : Limite le traitement parallèle à un seul slot pour optimiser le débit sur GPU grand public.
+## ⚙️ Paramètres d'Accélération Matérielle Ollama
+Les lanceurs injectent les variables d'environnement suivantes pour optimiser l'empreinte mémoire et la latence d'inférence :
+- `OLLAMA_KV_CACHE_TYPE="q4_0"` : Quantification 4-bit du cache Key-Value (réduction de ~30% de l'empreinte VRAM sans dégradation qualitative).
+- `OLLAMA_FLASH_ATTENTION="1"` : Activation du calcul Flash Attention sur accélérateurs compatibles.
+- `OLLAMA_KEEP_ALIVE="-1"` : Maintien persistant du modèle en VRAM/RAM (élimination du temps de rechargement à chaud).
+- `OLLAMA_NUM_PARALLEL="1"` : Allocation d'un slot unique d'inférence pour maximiser la bande passante mémoire.
+- `OLLAMA_HOST="0.0.0.0:11434"` : Liaison réseau ouverte permettant la communication avec les conteneurs Docker.
 
 ---
 

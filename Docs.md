@@ -1,66 +1,56 @@
-# LLM4SQL - Spécifications Fonctionnelles & Walkthrough Applicatif 📘
+# LLM4SQL - Spécifications Techniques & Fonctionnelles d'Architecture
 
-Ce document constitue le cahier des charges, la spécification d'architecture fonctionnelle et le manuel de référence du modèle de données métier du projet **LLM4SQL**.
-
----
-
-## 1. Contexte, Problématique et Objectifs
-
-L'interrogation de bases de données relationnelles complexes en SQL reste une barrière pour de nombreux utilisateurs métiers ou analystes. Les solutions basées sur des modèles d'Intelligence Artificielle hébergés dans le cloud (SaaS) résolvent ce problème mais introduisent des risques majeurs :
-- **Fuite de données et métadonnées** : exposition des schémas de table, des relations métiers et des données confidentielles à des tiers.
-- **Dépendance et coûts** : latences variables, instabilité d'API et coûts d'infrastructure récurrents.
-
-**LLM4SQL** apporte une réponse à ces défis en combinant la puissance de l'IA générative et de l'orchestration locale :
-- **Confidentialité absolue** : L'intégralité du traitement (modèle de langage local via Ollama, base PostgreSQL et application web) s'exécute localement et sans connexion externe.
-- **Fiabilité opérationnelle** : Un mécanisme d'auto-correction (*Self-Healing*) capture et résout de manière autonome les erreurs de syntaxe SQL avant affichage.
-- **Visualisation dynamique** : Un bac à sable (Sandbox) permet de tester et visualiser graphiquement des schémas SQL à la volée.
+Ce document spécifie les exigences d'ingénierie, la topologie fonctionnelle, le modèle conceptuel de données et les règles de gouvernance de la plateforme **LLM4SQL**.
 
 ---
 
-## 2. Walkthrough Fonctionnel & Parcours Utilisateur
+## 1. Objectifs & Cadre Fonctionnel
 
-L'interface de l'application est découpée en trois zones majeures agencées en grille plein écran asymétrique :
+La plateforme résout la complexité d'interrogation des bases de données relationnelles en entreprise en fournissant une interface de traduction Langage Naturel ➔ SQL opérant en environnement hermétique local (*air-gapped*).
+
+### 1.1 Exigences Fondamentales :
+- **Souveraineté des Données** : Exécution exclusive sur l'infrastructure de l'organisation sans transmission externe vers des API SaaS tierces.
+- **Auto-Correction Récursive (Self-Healing)** : Résolution autonome des erreurs de syntaxe ou de schéma via boucle de rétroaction agentique (LangGraph / MCP).
+- **Contrôle & Validation Déterministe** : Séparation stricte entre le moteur d'inférence non-déterministe (LLM) et la validation syntaxique/sécurité déterministe (AST SQLGlot, contraintes transactionnelles `read-only`).
+
+---
+
+## 2. Découpage Fonctionnel des Modules
+
+L'interface de travail est structurée en trois panneaux synchronisés :
 
 ```
 +-------------------+-----------------------------+-------------------------------+
-|                   |                             |                               |
 |  1. LABORATOIRE   |     2. ASSISTANT SQL        |      3. EXPLORATEUR           |
 |      (Sandbox)    |          (Chat)             |         DE DONNÉES            |
-|                   |                             |                               |
 +-------------------+-----------------------------+-------------------------------+
 ```
 
-### 2.1 Zone 1 : Le Laboratoire SQL (Sandbox)
-La Sandbox permet de tester des requêtes sur un schéma temporaire isolé.
-- **Onglet Structure (DDL)** : Champ de texte libre permettant de saisir du code SQL de structure (`CREATE TABLE`).
-- **Onglet Données (DML)** : Permet de saisir des instructions d'insertion de données de test (`INSERT INTO`).
-- **Onglet Visuel (Double mode)** :
-  - **Vue Cartes 🎴 (Modélisation Client)** : Analyse instantanément le code DDL pour dessiner des fiches pour chaque table, listant ses colonnes et types SQL associés avec des badges de contraintes (`🔑 PK` pour clé primaire, `🔗 FK` pour clé étrangère). Cliquer sur une table met en surbrillance ses dépendances.
-  - **Vue Diagramme ER 📊 (Mermaid)** : Rendu graphique stable Mermaid.js généré instantanément (<1ms) de façon déterministe grâce au parser Python du backend.
-- **Actions** : 
-  - **Initialiser la Sandbox** : Réinitialise et peuple le schéma isolé `user_sandbox` sur PostgreSQL.
-  - **Réinitialiser par défaut** : Restaure le schéma "BD Ouvrages" par défaut dans le schéma `public`.
+### 2.1 Module 1 : Laboratoire SQL & Bac à Sable DDL (Sandbox)
+Le module Sandbox permet d'isoler l'expérimentation de schémas personnalisés :
+- **Édition DDL & DML** : Saisie et exécution d'instructions `CREATE TABLE` et `INSERT INTO` dirigées vers le schéma isolé `user_sandbox`.
+- **Modélisation Graphique Déterministe** :
+  - **Vue Cartes Dynamiques** : Analyse structurelle des contraintes (`PRIMARY KEY`, `FOREIGN KEY`) et mise en évidence des dépendances relationnelles.
+  - **Diagramme ER (Mermaid.js)** : Génération instantanée (<1ms) via parser syntaxique Python backend sans dépendance LLM.
+- **Restauration** : Réinitialisation instantanée vers le schéma de référence (`public.ouvrage`).
 
-### 2.2 Zone 2 : L'Assistant SQL (Chat-like)
-Cette zone est dédiée à la formulation des requêtes en langage naturel et au suivi de la réflexion de l'IA.
-- **Champ de saisie** : L'utilisateur formule sa question (ex : *"Quels albums ont une note supérieure à 4 ?"*).
-- **Suivi d'exécution en direct** : Une checklist s'anime en temps réel, montrant les étapes parcourues par l'agent (ex: Sélection des tables -> Génération SQL -> Validation syntaxique -> Exécution).
-- **Streaming de la réflexion** : Un accordéon pliable affiche en temps réel la pensée brute de l'IA (`<think>`) pendant la phase de réflexion, garantissant une observabilité complète.
-- **Restitution de la réponse** :
-  - **Bloc de code SQL** : Affiche la requête SQL exécutée avec un bouton "Copier" rapide.
-  - **Badge d'auto-correction (Self-Healing)** : Indique si la requête a dû être corrigée et en combien d'itérations.
-  - **Console de logs SSE** : Un volet rétractable en bas de l'écran diffuse en temps réel les logs d'activité du backend.
+### 2.2 Module 2 : Moteur Agentique & Dialogue (Assistant SQL)
+- **Traitement Asynchrone & Télémétrie** : Réception de la requête utilisateur et diffusion en continu (*Server-Sent Events - SSE*) des étapes de décision :
+  1. Exploration sélective de schéma (`mcp_get_schema`).
+  2. Recherche sémantique de valeurs réelles (`mcp_search_value`).
+  3. Validation à blanc sans effet de bord (`mcp_dry_run_query`).
+  4. Auto-correction itérative en cas d'erreur PostgreSQL.
+- **Transparence de Raisonnement (XAI)** : Streaming jeton par jeton de la réflexion interne du modèle (`<think>`) dans un accordéon rétractable.
 
-### 2.3 Zone 3 : L'Explorateur de Données
-Cette zone présente le résultat brut extrait de la base sous deux formes :
-- **Mode Tableau 📋** : Grille de données paginée et triable, munie d'une barre de recherche locale. Elle intègre un bouton d'export CSV encodé en UTF-8 BOM, garantissant une ouverture sans altération de caractères dans Excel.
-- **Mode Graphique 📈** : Construit des tracés (Histogrammes, Courbes, Aires) avec détection et adaptation dynamique des axes de coordonnées (axe X pour les dimensions textuelles/temporelles, axe Y pour les mesures numériques).
+### 2.3 Module 3 : Exploration & Restitution Analytique
+- **Grille Tabulaire (`DataTable`)** : Navigation paginée, filtrage multi-colonnes, tri déterministe et export de données CSV au format UTF-8 BOM (compatibilité tableurs d'entreprise).
+- **Restitution Graphique (`DataVisualization`)** : Tracé dynamique (BarChart, LineChart, PieChart) avec détection automatique des axes dimensionnels et métriques.
 
 ---
 
-## 3. Modèle Conceptuel de Données : "BD Ouvrages"
+## 3. Modèle de Données Canonique : "BD Ouvrages"
 
-L'application est pré-configurée avec une base de données de test simulant une bibliothèque de bandes dessinées (albums, auteurs, séries et critiques). Elle comprend **6 tables** interconnectées :
+Le schéma relationnel de référence modélise une bibliothèque éditoriale structurée en **6 relations** :
 
 ```mermaid
 erDiagram
@@ -110,30 +100,55 @@ erDiagram
     OUVRAGE ||--o{ AVIS : "recoit"
 ```
 
-### 3.1 Description Métier des Tables
-1. **`personne`** : Contient les auteurs de BD. Un auteur peut cumuler plusieurs rôles (scénariste pour une œuvre, dessinateur ou coloriste pour une autre).
-2. **`serie`** : Regroupe des albums thématiques (ex : *Astérix*, *Lanfeust de Troy*).
-3. **`ouvrage`** : Table pivot représentant un album physique de BD. Elle lie l'œuvre à sa série de rattachement, ses auteurs (trois clés étrangères référençant `personne`), son ordre d'apparition et sa date de parution.
-4. **`concept`** : Représente une ontologie hiérarchique de thèmes (ex : `Science-Fiction` est parent de `Space-Opera`). Le champ `concept_pere` est une relation auto-référencée.
-5. **`a_pour_mot_cle`** : Table de liaison (relation Plusieurs-à-Plusieurs) associant chaque album à des concepts sémantiques clés.
-6. **`avis`** : Enregistre les scores de satisfaction saisis par des lecteurs identifiés par leur pseudonyme.
+### 3.1 Dictionnaire des Relations
+1. **`personne`** : Auteurs, dessinateurs, scénaristes et coloristes.
+2. **`serie`** : Collections et séries d'œuvres éditoriales.
+3. **`ouvrage`** : Entité centrale représentant chaque album publié (relations clés étrangères multiples vers `personne` et `serie`).
+4. **`concept`** : Ontologie thématique hiérarchique avec auto-référence (`concept_pere`).
+5. **`a_pour_mot_cle`** : Table de jonction N:M associant les ouvrages aux concepts.
+6. **`avis`** : Évaluations quantitatives associées aux ouvrages.
 
 ---
 
-## 4. Principes Transverses d'Architecture & Sécurité
+## 4. Sécurité & Gouvernance (Defense in Depth)
 
-Pour maintenir une sécurité et une robustesse de niveau production, plusieurs contraintes et mécanismes transverses sont appliqués :
+### 4.1 Ségrégation des Privilèges & Validation Syntaxique
+- **Validation AST Stricte (SQLGlot)** : Toute commande SQL générée fait l'objet d'un parsing syntaxique en arbre AST. Toute opération non-idempotente ou mutatrice (`DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `GRANT`, `REVOKE`) est immédiatement rejetée avec levée d'exception de sécurité.
+- **Isolation de Connexion** : Les requêtes analytiques sont exécutées via des curseurs transactionnels en mode `readonly=True` au niveau du pilote PostgreSQL.
+- **Protection XSS** : Assainissement systématique des rendus Mermaid et données textuelles via `DOMPurify`.
 
-### 4.1 Sécurité des Données (Defense in Depth)
-- **Validation AST (SQLGlot)** : Toute requête SQL générée par l'IA ou soumise par un client est convertie en arbre syntaxique (AST) et analysée par `SQLGlot`. Les commandes autres que `SELECT` (comme `DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`) sont immédiatement interceptées et bloquées.
-- **Lecture Seule au Niveau Pilote** : Les connexions de requêtes de l'assistant sont instanciées avec le flag `readonly = True` au niveau du pilote de base de données.
-- **Sandbox Isolé** : L'initialisation du laboratoire SQL s'effectue dans un schéma PostgreSQL dédié (`user_sandbox`) isolé du schéma principal, limitant la portée de toute commande DDL.
+### 4.2 Optimisation du Contexte & Cache Sémantique
+- **Cache Sémantique Vectoriel** : Mise en cache LRU en mémoire des requêtes passées calculée par similarité cosinus (Ollama embeddings) avec fallback textuel de Jaccard (temps de réponse 0ms sur requêtes récurrentes).
+- **Bypass Dynamique** : Capacité de forcer le ré-entraînement de l'agent sans interruption de service.
+- **Asynchronisme & Gestion de Pool** : Découplage de la boucle événementielle FastAPI (`asyncio.to_thread`) et mutualisation des connexions PostgreSQL (`psycopg2.pool.ThreadedConnectionPool`).
 
-### 4.2 Optimisation du Flux de Requête (Performance)
-- **Exploration de Schéma Dynamique (MCP & Tool Calling)** : Le modèle interroge de lui-même et de manière sélective les outils du serveur MCP (ex: `mcp_get_schema`) pour charger dynamiquement le schéma des tables nécessaires au traitement de la question, évitant de saturer inutilement sa jauge de contexte. Pour ce faire, l'utilisation d'un modèle capable d'appels d'outils (*Tool Calling*) est indispensable.
-- **Cache Sémantique Double Couche & Contrôles** :
-  - **Embedding Cosinus** : Calcule la proximité de la question avec les questions passées en base vectorielle locale via l'API Ollama.
-  - **Distance de Jaccard** : En cas de latence sur les embeddings, un calcul sémantique basé sur l'intersection des mots-clés est appliqué en repli. Une question similaire renvoie instantanément le résultat mis en cache (0ms).
-  - **Bypass de Cache Dynamique** : Une option dans les paramètres de l'UI permet à l'utilisateur de désactiver à la volée le cache sémantique pour forcer l'agent à ré-exécuter le modèle local (utile si une mauvaise réponse a été mémorisée). Le statut du bypass (`Bypass Cache: True/False`) s'affiche en temps réel dans les logs de l'assistant.
-  - **Effacement de l'Historique** : L'en-tête du chat dispose d'un bouton d'effacement de l'historique permettant de vider le fil des messages et de réinitialiser le cache des résultats de l'explorateur.
-- **Asynchronisme Non Bloquant** : Toutes les requêtes d'accès au dictionnaire de données de PostgreSQL sont déportées dans un pool de threads d'arrière-plan (`asyncio.to_thread`) pour garantir que la boucle d'événements principale du serveur FastAPI ne subisse aucune latence.
+---
+
+## 5. Topologie de Déploiement Conteneurisé
+
+La plateforme applique une topologie hybride standardisée :
+
+```mermaid
+flowchart TD
+    subgraph Host ["Machine Hôte (Windows / macOS / Linux)"]
+        GPU["Accélération Matérielle (CUDA / Metal / DirectML)"] --- OllamaHost["Serveur Ollama (Port 11434)<br>Turbo Quant q4_0 & Flash Attention"]
+        BrowserHost["Navigateur Web (http://localhost:5173)"]
+    end
+
+    subgraph DockerNetwork ["Réseau Docker Compose (llm4sql)"]
+        DBContainer[("PostgreSQL 16 (Port 5433)<br>Volume persistant: postgres_data")]
+        BackendContainer["FastAPI Backend (Port 8000)<br>LangGraph • MCP • AST Validator"]
+        FrontendContainer["Nginx / React SPA (Port 5173)<br>Reverse Proxy /api/ (SSE Unbuffered)"]
+
+        FrontendContainer -->|Reverse Proxy /api/| BackendContainer
+        BackendContainer -->|Connexion Poolée| DBContainer
+    end
+
+    BackendContainer -->|"host.docker.internal:11434"| OllamaHost
+    BrowserHost --> FrontendContainer
+```
+
+### 5.1 Spécifications Opérationnelles :
+1. **Zéro Configuration Hôte** : Les conteneurs encapsulent l'ensemble des runtimes (Python 3.12, `uv`, Node 22, Nginx, PostgreSQL 16).
+2. **Performance GPU Préservée** : Le moteur d'inférence s'exécute directement sur l'OS hôte, évitant la latence de virtualisation WSL2/Docker GPU.
+3. **Cycle de Vie Automatisé** : Détection et application automatique des variables d'accélération d'Ollama (`q4_0`, `Flash Attention`, écoute sur `0.0.0.0:11434`) avec redémarrage transparent si nécessaire.

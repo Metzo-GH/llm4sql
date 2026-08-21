@@ -1,0 +1,70 @@
+# ==============================================================================
+# Docker Compose Orchestrator - LLM4SQL (Standards 2026)
+# ==============================================================================
+services:
+  # 1. Base de données relationnelle PostgreSQL 16
+  db:
+    image: postgres:16-alpine
+    container_name: llm4sql-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-llm4sql_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-llm4sql_password}
+      POSTGRES_DB: ${DB_NAME:-llm4sql_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-llm4sql_user} -d ${DB_NAME:-llm4sql_db}"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 2s
+    restart: unless-stopped
+
+  # 2. Moteur Agentique & API FastAPI (Python 3.12 + LangGraph + uv)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: llm4sql-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-llm4sql_db}
+      DB_USER: ${DB_USER:-llm4sql_user}
+      DB_PASSWORD: ${DB_PASSWORD:-llm4sql_password}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
+      ENV: production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  # 3. Interface Utilisateur React 19 / TypeScript / Vite / Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: llm4sql-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+
+# Volumes persistants pour la base de données
+volumes:
+  postgres_data:

@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 Clear-Host
 
 Write-Host "====================================================" -ForegroundColor Cyan
-Write-Host "      DÉMARRAGE AUTOMATISÉ DU BACKEND LLM4SQL       " -ForegroundColor Cyan
+Write-Host "      DÉMARRAGE DU BACKEND LLM4SQL       " -ForegroundColor Cyan
 Write-Host "====================================================" -ForegroundColor Cyan
 
 # 1. Configuration des optimisations avancées d'Ollama (Turbo Quant & Speed)
@@ -18,13 +18,15 @@ try {
     if ($response) {
         $ollamaRunning = $true
     }
-} catch {}
+}
+catch {}
 
 $envKV = [Environment]::GetEnvironmentVariable("OLLAMA_KV_CACHE_TYPE", "User")
 
 if ($ollamaRunning -and $envKV -eq "q4_0") {
     Write-Host "   [OK] Ollama est déjà configuré et actif (Port 11434)." -ForegroundColor Green
-} else {
+}
+else {
     # Application permanente des variables dans le profil Utilisateur Windows
     [Environment]::SetEnvironmentVariable("OLLAMA_KV_CACHE_TYPE", "q4_0", "User")
     [Environment]::SetEnvironmentVariable("OLLAMA_FLASH_ATTENTION", "1", "User")
@@ -59,7 +61,8 @@ if ($ollamaRunning -and $envKV -eq "q4_0") {
                     Write-Host "   [OK] Ollama Desktop démarré (Port 11434 actif)." -ForegroundColor Green
                     break
                 }
-            } catch {}
+            }
+            catch {}
         }
     }
     
@@ -78,7 +81,8 @@ if ($ollamaRunning -and $envKV -eq "q4_0") {
                     Write-Host "   [OK] Serveur Ollama CLI démarré en arrière-plan (Port 11434 actif)." -ForegroundColor Green
                     break
                 }
-            } catch {}
+            }
+            catch {}
         }
     }
     
@@ -105,7 +109,8 @@ try {
     # Lancement de Docker Compose
     docker compose up -d
     Write-Host "   [OK] Conteneurs Docker démarrés (Port 5433)." -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "   [ERREUR] Impossible de lancer Docker Compose. Assurez-vous que Docker Desktop est démarré !" -ForegroundColor Red
     Exit 1
 }
@@ -119,7 +124,8 @@ Write-Host "`n5. Initialisation des données (BD Ouvrages)..." -ForegroundColor 
 try {
     uv run -m app.database.seed_db
     Write-Host "   [OK] Schéma et données de BD initialisés avec succès !" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "   [AVERTISSEMENT] Échec de l'initialisation des données." -ForegroundColor Yellow
 }
 

@@ -248,6 +248,14 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] Suppression du routage legacy mort `should_continue` dans `routing.py` et mise à jour des exports dans `__init__.py`.
 - [x] Validation TDD (67 tests backend passés à 100% au vert, 0 régression, build Vite/TS réussi).
 
+### Phase R29 : Démarrage Unifié Docker & Orchestration Cross-Platform (Validée)
+- [x] Création du `Dockerfile` backend (Python 3.12, `uv`, seed automatique BDD au démarrage, endpoint healthcheck).
+- [x] Création du `Dockerfile` frontend multi-stage (Node 22 build ➔ Nginx Alpine avec reverse proxy `/api` et support SSE sans buffering).
+- [x] Création du `docker-compose.yml` unifié à la racine (services `db`, `backend`, `frontend`, liaison `host.docker.internal` vers Ollama hôte).
+- [x] Création des lanceurs d'orchestration `start.ps1`, `start.bat`, `start.sh` avec détection et redémarrage automatique d'Ollama si les optimisations matérielles (`q4_0`, `Flash Attention`, `0.0.0.0:11434`) sont absentes.
+- [x] Mise en place de scripts d'arrêt propre `stop.ps1`, `stop.bat`, `stop.sh` (`docker compose down`).
+- [x] Validation TDD backend (68 tests pytest passés à 100% au vert) et validation build frontend.
+
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.

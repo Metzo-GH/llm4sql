@@ -45,6 +45,8 @@ frontend/
 │   ├── App.tsx                # Composant racine (Lazy Loading & Suspense)
 │   ├── index.css              # Design System moderne et thémage Glassmorphic
 │   └── main.tsx               # Point d'entrée de React
+├── Dockerfile                 # Image de production multi-stage (Node 22 -> Nginx Alpine)
+├── nginx.conf                 # Configuration Nginx avec reverse proxy SSE (/api) et SPA
 ├── index.html                 # Index HTML (optimisé pour le SEO et le chargement des polices)
 ├── package.json               # Dépendances et scripts npm
 ├── tsconfig.json              # Configuration TypeScript strict
@@ -53,44 +55,34 @@ frontend/
 
 ---
 
-## ⚡ Guide de Démarrage et Installation
+## ⚡ Modes d'Exécution & Déploiement
 
-### Prérequis
-- **Node.js (v22+)** : Requis pour faire tourner le frontend.
-  - **Sur Windows** : [Télécharger l'installateur officiel Node.js](https://nodejs.org/).
-  - **Sur Linux / WSL 2** : Vous devez impérativement installer Node.js **directement dans votre distribution Linux** (n'utilisez pas la version Windows depuis WSL pour éviter l'erreur de chemin UNC `\\wsl.localhost\`). Installez-le via `nvm` avec ces commandes :
-    ```bash
-    # 1. Installer nvm (Node Version Manager)
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-    
-    # 2. Recharger la configuration du terminal
-    source ~/.bashrc
-    
-    # 3. Installer et activer Node.js v22
-    nvm install 22 && nvm use 22
-    ```
-- Le backend de LLM4SQL configuré et actif sur le port `8000`.
-
-### Étape 1 : Installation des dépendances
+### Option A : Déploiement Conteneurisé Nginx (Production / Orchestration)
+Le frontend est conteneurisé via une image multi-stage (`Node 22 build` ➔ `Nginx Alpine`) intégrant le reverse proxy `/api/` avec support du streaming SSE sans mise en mémoire tampon :
 ```bash
-npm install
+# Construction et lancement via Docker Compose (à la racine)
+docker compose up frontend --build -d
 ```
-*(Note de dépannage pour WSL 2 : Si vous rencontrez une erreur du type `sh: 1: tsc: Permission denied` ou `vite: Permission denied` lors du build, cela signifie que le dossier `node_modules/` a été initialisé depuis Windows, ce qui bloque les droits d'exécution sous Linux. Supprimez-le et réinstallez proprement depuis votre terminal Linux/WSL : `rm -rf node_modules package-lock.json && npm install`).*
 
-### Étape 2 : Lancement en mode développement (Vite)
-```bash
-npm run dev
-```
-L'interface est accessible instantanément sur : **[http://localhost:5173/](http://localhost:5173/)**.
+### Option B : Mode Développement Local (Vite HMR)
+Pour développer avec rechargement à chaud instantané :
 
-*(Note pour les utilisateurs WSL 2 : Le port forwarding de WSL 2 lie automatiquement localhost. Vous pouvez donc accéder à l'application depuis Firefox sous Windows via cette même adresse. En cas de problème de connexion, lancez Vite sur toutes les interfaces réseau avec : `npm run dev -- --host`).*
+1. **Installation des dépendances** :
+   ```bash
+   npm install
+   ```
 
-### Étape 3 : Compilation de production (Strict Typecheck)
-Pour générer les fichiers optimisés et minifiés dans le dossier `/dist`, lancez :
-```bash
-npm run build
-```
-*Le build exécute le compilateur TypeScript en mode strict avant de packager les fichiers. Aucune erreur de type n'est tolérée.*
+2. **Lancement du serveur de développement** :
+   ```bash
+   npm run dev
+   ```
+   L'interface est accessible sur **[http://localhost:5173/](http://localhost:5173/)**.
+
+3. **Validation & Compilation de Production** :
+   ```bash
+   npm run build
+   ```
+   *Exécute la vérification TypeScript en mode strict (`tsc -b`) puis le bundler Vite.*
 
 ---
 

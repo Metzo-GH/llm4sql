@@ -13,7 +13,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}====================================================${NC}"
-echo -e "${CYAN}      DÉMARRAGE AUTOMATISÉ DU BACKEND LLM4SQL       ${NC}"
+echo -e "${CYAN}      DÉMARRAGE DU BACKEND LLM4SQL       ${NC}"
 echo -e "${CYAN}====================================================${NC}"
 
 # 1. Configuration des optimisations avancées d'Ollama (Turbo Quant & Speed)
