@@ -39,7 +39,10 @@ Le module Sandbox permet d'isoler l'expérimentation de schémas personnalisés 
 - **Édition DDL & DML** : Saisie et exécution d'instructions `CREATE TABLE` et `INSERT INTO` dirigées vers le schéma isolé `user_sandbox`.
 - **Modélisation Graphique Déterministe** :
   - **Vue Cartes Dynamiques** : Analyse structurelle des contraintes (`PRIMARY KEY`, `FOREIGN KEY`) et mise en évidence des dépendances relationnelles.
-  - **Diagramme ER (Mermaid.js)** : Génération instantanée (<1ms) via parser syntaxique Python backend sans dépendance LLM.
+  - **Diagramme ER (Mermaid.js)** : Génération instantanée (<1ms) via parser syntaxique AST Python sans dépendance LLM.
+    - **Thèmes Haute Lisibilité** : Mode **Papier (Clair) 📄** style ingénierie/Workbench (fond blanc millimétré, bordures noires nettes) et mode **Sombre 🖤**.
+    - **Types Universels Compacts** : Normalisation déterministe (`varchar`, `int`, `decimal`, `timestamp`, `bool`) éliminant les chaînes verbeuses.
+    - **Mode Plein Écran Immersif & Zoom Centré** : Navigation à échelle adaptative (100%, 135%, +/-) avec centrage vectoriel sans dérive.
 - **Restauration** : Réinitialisation instantanée vers le schéma de référence (`public.ouvrage`).
 
 ### 2.2 Module 2 : Moteur Agentique & Dialogue (Assistant SQL)

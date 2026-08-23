@@ -175,8 +175,8 @@ def test_run_benchmark_case_telemetry():
         "ground_truth_sql": "SELECT COUNT(*) FROM serie;"
     }
 
-    with patch("app.services.eval_service.run_agent", return_value=mock_state):
-        with patch("app.services.eval_service.execute_raw_sql", return_value=[{"count": 10}]):
+    with patch("app.services.eval.eval_benchmark.run_agent", return_value=mock_state):
+        with patch("app.services.eval.eval_benchmark.execute_raw_sql", return_value=[{"count": 10}]):
             res = run_benchmark_case(case_test)
             assert res["passed"] is True
             assert "steps" in res
@@ -258,7 +258,7 @@ def test_benchmark_cancel_service():
             "steps": []
         }
 
-    with patch("app.services.eval_service.run_benchmark_case", side_effect=mock_case):
+    with patch("app.services.eval.eval_benchmark.run_benchmark_case", side_effect=mock_case):
         res = run_full_benchmark()
         assert res.get("cancelled") is True
         assert len(res["results"]) == 1

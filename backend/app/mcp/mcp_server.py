@@ -9,7 +9,7 @@ from decimal import Decimal
 from app.core.config import settings
 from app.core.security import validate_sql_query
 from app.database.pool import get_db_conn
-from app.database.queries import GET_TABLE_FOREIGN_KEYS_QUERY
+from app.database.queries import GET_TABLE_FOREIGN_KEYS_QUERY, execute_readonly_query
 
 def _serialize_row(row: dict) -> dict:
     """
@@ -25,31 +25,8 @@ def _serialize_row(row: dict) -> dict:
 # Initialiser l'instance FastMCP pour notre serveur Model Context Protocol
 mcp = FastMCP("LLM4SQL-Secure-Postgres")
 
-
-def _execute_readonly_db_query(query: str, params: tuple = None, schema: str = "public") -> List[Dict[str, Any]]:
-    """
-    Exécute une requête SQL SELECT interne pour récupérer les schémas et métadonnées.
-    
-    Cette méthode utilitaire privée se connecte en lecture seule et renvoie les résultats typés.
-    
-    Args:
-        query (str): Requête SQL.
-        params (tuple, optional): Paramètres de requête de type tuple.
-        schema (str): Le schéma PostgreSQL cible ("public" ou "user_sandbox").
-        
-    Returns:
-        List[Dict[str, Any]]: Les résultats sous forme de dictionnaire.
-        
-    Raises:
-        RuntimeError: En cas d'erreur de base de données.
-    """
-    try:
-        with get_db_conn(schema=schema, readonly=True) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(query, params)
-                return cur.fetchall()
-    except Exception as e:
-        raise RuntimeError(f"Erreur d'accès aux métadonnées : {str(e)}")
+# Utilisation de la fonction centralisée dans app.database.queries
+_execute_readonly_db_query = execute_readonly_query
 
 
 @mcp.tool()

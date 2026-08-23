@@ -36,3 +36,38 @@ GET_ALL_FOREIGN_KEYS_QUERY = """
       AND tc.table_schema IN ('user_sandbox', 'public')
     ORDER BY foreign_table, foreign_column;
 """
+
+from typing import List, Dict, Any, Optional
+from psycopg2.extras import RealDictCursor
+from app.database.pool import get_db_conn
+
+
+def execute_readonly_query(
+    query: str,
+    params: Optional[tuple] = None,
+    schema: str = "public"
+) -> List[Dict[str, Any]]:
+    """
+    Exécute une requête SQL SELECT interne pour récupérer les schémas et métadonnées.
+    
+    Se connecte au pool en lecture seule et renvoie les résultats sous forme de dictionnaires typés.
+    
+    Args:
+        query (str): Requête SQL à exécuter.
+        params (tuple, optional): Paramètres de requête de type tuple.
+        schema (str): Le schéma PostgreSQL cible ("public" ou "user_sandbox").
+        
+    Returns:
+        List[Dict[str, Any]]: Les résultats sous forme de dictionnaire.
+        
+    Raises:
+        RuntimeError: En cas d'erreur de base de données.
+    """
+    try:
+        with get_db_conn(schema=schema, readonly=True) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, params)
+                return [dict(row) for row in cur.fetchall()]
+    except Exception as e:
+        raise RuntimeError(f"Erreur d'accès aux métadonnées : {str(e)}")
+

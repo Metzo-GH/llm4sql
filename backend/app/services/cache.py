@@ -1,8 +1,8 @@
 import logging
 import threading
 from typing import List, Dict, Any, Optional
-import httpx
 from app.core.config import settings
+from app.core.http_client import get_sync_http_client
 
 # Configuration du logger pour le cache sémantique
 logger = logging.getLogger("llm4sql.cache")
@@ -75,14 +75,13 @@ class SemanticCache:
             "input": text
         }
         try:
-            # Utilisation de httpx pour un appel synchrone rapide
-            with httpx.Client(timeout=5.0) as client:
-                response = client.post(url, json=payload)
-                if response.status_code == 200:
-                    data = response.json()
-                    embeddings = data.get("embeddings")
-                    if embeddings and len(embeddings) > 0:
-                        return embeddings[0]
+            client = get_sync_http_client()
+            response = client.post(url, json=payload)
+            if response.status_code == 200:
+                data = response.json()
+                embeddings = data.get("embeddings")
+                if embeddings and len(embeddings) > 0:
+                    return embeddings[0]
         except Exception as e:
             logger.warning(f"Échec de récupération de l'embedding Ollama: {str(e)}. Utilisation du repli Jaccard.")
         return None

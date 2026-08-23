@@ -1,10 +1,10 @@
 import threading
-import httpx
 import logging
 from collections import OrderedDict
 from typing import Optional
 from langchain_ollama import ChatOllama
 from app.core.config import settings
+from app.core.http_client import get_sync_http_client
 
 logger = logging.getLogger("llm4sql.agent.llm_provider")
 
@@ -26,36 +26,36 @@ def get_model_context_length(model_name: str, force_refresh: bool = False) -> in
     # 1. Tenter d'abord /api/ps pour le modèle actif en mémoire
     try:
         url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/ps"
-        with httpx.Client(timeout=1.0) as client:
-            response = client.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                for m in data.get("models", []):
-                    m_name = m.get("name", "")
-                    # Match exact ou par préfixe
-                    if m_name == model_name or m_name.split(":")[0] == model_name.split(":")[0]:
-                        ctx_len = m.get("context_length", 0)
-                        if ctx_len > 0:
-                            _model_context_lengths[model_name] = ctx_len
-                            return ctx_len
+        client = get_sync_http_client()
+        response = client.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for m in data.get("models", []):
+                m_name = m.get("name", "")
+                # Match exact ou par préfixe
+                if m_name == model_name or m_name.split(":")[0] == model_name.split(":")[0]:
+                    ctx_len = m.get("context_length", 0)
+                    if ctx_len > 0:
+                        _model_context_lengths[model_name] = ctx_len
+                        return ctx_len
     except Exception as e:
         logger.warning(f"[Ollama API] Erreur /api/ps pour context_length: {e}")
 
     # 2. Repli sur /api/show
     try:
         url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/show"
-        with httpx.Client(timeout=1.0) as client:
-            response = client.post(url, json={"name": model_name})
-            if response.status_code == 200:
-                data = response.json()
-                model_info = data.get("model_info", {})
-                for k, v in model_info.items():
-                    if k.endswith(".context_length") and isinstance(v, int):
-                        # Si la valeur est aberrante (taille max théorique comme 262144),
-                        # on la cap à 8192 car Ollama utilise 2048/8192 par défaut.
-                        val = v if v <= 32768 else 8192
-                        _model_context_lengths[model_name] = val
-                        return val
+        client = get_sync_http_client()
+        response = client.post(url, json={"name": model_name})
+        if response.status_code == 200:
+            data = response.json()
+            model_info = data.get("model_info", {})
+            for k, v in model_info.items():
+                if k.endswith(".context_length") and isinstance(v, int):
+                    # Si la valeur est aberrante (taille max théorique comme 262144),
+                    # on la cap à 8192 car Ollama utilise 2048/8192 par défaut.
+                    val = v if v <= 32768 else 8192
+                    _model_context_lengths[model_name] = val
+                    return val
     except Exception as e:
         logger.warning(f"[Ollama API] Impossible de récupérer le context_length via show de {model_name}: {e}")
         

@@ -47,6 +47,20 @@ def close_db_pool() -> None:
                 _pool = None
 
 
+def _configure_connection(conn: Any, schema: str = "public", readonly: bool = False) -> None:
+    """
+    Configure le search_path et le mode lecture seule sur une connexion PostgreSQL active.
+    
+    Raises:
+        ValueError: Si le schéma n'est ni 'public' ni 'user_sandbox'.
+    """
+    if schema not in ("public", "user_sandbox"):
+        raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
+    conn.readonly = readonly
+    with conn.cursor() as cur:
+        cur.execute(f"SET search_path TO {schema};")
+
+
 def get_db_connection(schema: str = "public", readonly: bool = False) -> Any:
     """
     Crée et retourne une nouvelle connexion à la base de données PostgreSQL (hors pool, pour scripts isolés).
@@ -66,10 +80,7 @@ def get_db_connection(schema: str = "public", readonly: bool = False) -> Any:
         raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
     try:
         conn = psycopg2.connect(**settings.get_db_params())
-        if readonly:
-            conn.readonly = True
-        with conn.cursor() as cur:
-            cur.execute(f"SET search_path TO {schema};")
+        _configure_connection(conn, schema=schema, readonly=readonly)
         return conn
     except Exception as e:
         raise RuntimeError(f"Échec de la connexion à PostgreSQL sur {settings.DB_HOST}:{settings.DB_PORT} - Erreur : {str(e)}")
@@ -86,9 +97,7 @@ def get_db_conn(schema: str = "public", readonly: bool = False) -> Generator[Any
     pool = get_pool()
     conn = pool.getconn()
     try:
-        conn.readonly = readonly
-        with conn.cursor() as cur:
-            cur.execute(f"SET search_path TO {schema};")
+        _configure_connection(conn, schema=schema, readonly=readonly)
         yield conn
     except Exception:
         conn.rollback()

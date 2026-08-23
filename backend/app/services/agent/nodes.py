@@ -21,50 +21,14 @@ from app.services.agent.tools import (
     mcp_dry_run_query
 )
 
-def node_agent_loop(state: AgentState) -> Dict[str, Any]:
+def _stream_llm_response(llm_with_tools: Any, messages: List[BaseMessage]) -> tuple[Any, float]:
     """
-    Nœud principal de réflexion de l'agent. Appelle le LLM avec ses outils liés.
+    Invoque le LLM lié aux outils en streamant les jetons et en synchronisant
+    les balises de réflexion <think> en temps réel via les événements SSE.
+    
+    Returns:
+        tuple[response, elapsed_time_seconds]
     """
-    iteration = state["iteration_count"] + 1
-    model_name = state.get("model") or settings.OLLAMA_MODEL
-    target_schema = state.get("target_schema") or "public"
-    
-    logger.info(f"[RÉFLEXION] Exécution de l'agent (itération {iteration}, Schéma: {target_schema})...")
-    send_agent_event("log", f"[RÉFLEXION] Exécution de l'agent (itération {iteration}, Schéma: {target_schema})...")
-    
-    # 1. Préparer les messages initiaux si c'est la première itération
-    messages = list(state.get("messages", []))
-    initial_messages_to_save = []
-    if not messages:
-        schema_context = state.get("schema_context") or get_database_schema_context(schema=target_schema)
-        
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(schema_context=schema_context)
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=state["question"])
-        ]
-        initial_messages_to_save = messages.copy()
-        
-    # 2. Configurer le LLM et bind les tools
-    temp = state.get("temperature") if state.get("temperature") is not None else 0.0
-    ctx_size = state.get("context_size") if state.get("context_size") is not None else 0
-    llm = get_llm(model=model_name, temperature=temp, context_size=ctx_size)
-    llm_with_tools = llm.bind_tools(all_tools)
-    
-    # 3. Estimer l'usage du contexte
-    prompt_content = "\n".join(m.content if isinstance(m.content, str) else str(m.content) for m in messages)
-    estimated_prompt_tokens = len(prompt_content) // 3
-    reported_ctx_size = ctx_size
-    if reported_ctx_size == 0:
-        reported_ctx_size = get_model_context_length(model_name)
-        
-    send_agent_event("context_usage", {
-        "prompt_tokens": estimated_prompt_tokens,
-        "context_size": reported_ctx_size,
-        "estimated": True
-    })
-    
-    # 4. Invoquer le modèle avec streaming
     start_time = time.time()
     callback = event_callback_var.get()
     
@@ -121,8 +85,20 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
             response.content = f"<think>\n{reasoning_content}\n</think>\n{response.content}"
 
     elapsed = time.time() - start_time
-    
-    # 5. Métriques de performance
+    return response, elapsed
+
+
+def _emit_agent_metrics(
+    response: Any,
+    elapsed: float,
+    estimated_prompt_tokens: int,
+    model_name: str,
+    ctx_size: int,
+    iteration: int
+) -> Dict[str, Any]:
+    """
+    Calcule le débit de tokens, actualise les jauges de contexte Ollama et émet les télémétries associées.
+    """
     metadata = getattr(response, "response_metadata", {})
     prompt_tokens = max(metadata.get("prompt_eval_count", 0), estimated_prompt_tokens)
     eval_tokens = metadata.get("eval_count", 0) or 0
@@ -131,11 +107,10 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     if eval_tokens > 0 and eval_duration > 0:
         tokens_per_sec = round(eval_tokens / (eval_duration * 1e-9), 2)
         
-    # Refresh context size dynamically from Ollama session (cached)
+    # Actualisation dynamique de la taille de contexte
     active_ctx_len = get_model_context_length(model_name, force_refresh=False)
-    if ctx_size == 0:
-        reported_ctx_size = active_ctx_len
-    elif active_ctx_len > 0 and active_ctx_len != 2048:
+    reported_ctx_size = ctx_size if ctx_size > 0 else active_ctx_len
+    if active_ctx_len > 0 and active_ctx_len != 2048:
         reported_ctx_size = active_ctx_len
         
     send_agent_event("context_usage", {
@@ -148,7 +123,7 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
     logger.info(f"  [RÉPONSE LLM] Fin de la réflexion en {elapsed:.2f}s (Tokens/s: {tokens_per_sec})")
     send_agent_event("log", f"  [RÉPONSE LLM] Fin de la réflexion en {elapsed:.2f}s (Tokens/s: {tokens_per_sec})")
     
-    step_info = {
+    return {
         "node": "agent_loop",
         "iteration": iteration,
         "elapsed": round(elapsed, 3),
@@ -158,6 +133,61 @@ def node_agent_loop(state: AgentState) -> Dict[str, Any]:
         "model": model_name,
         "context_size": reported_ctx_size
     }
+
+
+def node_agent_loop(state: AgentState) -> Dict[str, Any]:
+    """
+    Nœud principal de réflexion de l'agent. Appelle le LLM avec ses outils liés.
+    """
+    iteration = state["iteration_count"] + 1
+    model_name = state.get("model") or settings.OLLAMA_MODEL
+    target_schema = state.get("target_schema") or "public"
+    
+    logger.info(f"[RÉFLEXION] Exécution de l'agent (itération {iteration}, Schéma: {target_schema})...")
+    send_agent_event("log", f"[RÉFLEXION] Exécution de l'agent (itération {iteration}, Schéma: {target_schema})...")
+    
+    # 1. Préparer les messages initiaux si c'est la première itération
+    messages = list(state.get("messages", []))
+    initial_messages_to_save = []
+    if not messages:
+        schema_context = state.get("schema_context") or get_database_schema_context(schema=target_schema)
+        
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(schema_context=schema_context)
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=state["question"])
+        ]
+        initial_messages_to_save = messages.copy()
+        
+    # 2. Configurer le LLM et bind les tools
+    temp = state.get("temperature") if state.get("temperature") is not None else 0.0
+    ctx_size = state.get("context_size") if state.get("context_size") is not None else 0
+    llm = get_llm(model=model_name, temperature=temp, context_size=ctx_size)
+    llm_with_tools = llm.bind_tools(all_tools)
+    
+    # 3. Estimer l'usage du contexte
+    prompt_content = "\n".join(m.content if isinstance(m.content, str) else str(m.content) for m in messages)
+    estimated_prompt_tokens = len(prompt_content) // 3
+    reported_ctx_size = ctx_size if ctx_size > 0 else get_model_context_length(model_name)
+        
+    send_agent_event("context_usage", {
+        "prompt_tokens": estimated_prompt_tokens,
+        "context_size": reported_ctx_size,
+        "estimated": True
+    })
+    
+    # 4. Invoquer le modèle avec streaming via le helper dédié
+    response, elapsed = _stream_llm_response(llm_with_tools, messages)
+    
+    # 5. Métriques et télémétrie via le helper dédié
+    step_info = _emit_agent_metrics(
+        response=response,
+        elapsed=elapsed,
+        estimated_prompt_tokens=estimated_prompt_tokens,
+        model_name=model_name,
+        ctx_size=ctx_size,
+        iteration=iteration
+    )
     
     return {
         "messages": initial_messages_to_save + [response],

@@ -1,6 +1,7 @@
 import asyncio
 import re
 import logging
+import sqlglot
 from fastapi import APIRouter, HTTPException, Request
 from app.database.pool import init_user_sandbox, get_db_conn
 from app.core.limiter import limiter
@@ -24,7 +25,7 @@ async def init_sandbox(request: Request, sandbox_request: SandboxInitRequest) ->
     Initialise un environnement isolé (sandbox) avec le schéma et les données fournis.
     """
     try:
-        # Exécuter l'initialisation synchrone de la sandbox dans un thread pool pour éviter de bloquer l'event-loop
+        # Exécuter l'initialisation synchrone dans un worker thread pool pour ne pas bloquer l'Event Loop
         await asyncio.to_thread(
             init_user_sandbox,
             schema_sql=sandbox_request.schema_sql,
@@ -36,7 +37,7 @@ async def init_sandbox(request: Request, sandbox_request: SandboxInitRequest) ->
         agent_module.invalidate_schema_cache()
         
         return SandboxInitResponse(
-            success=True, 
+            success=True,
             message="Sandbox initialisée avec succès ! Vous pouvez maintenant interroger votre base."
         )
     except (ValueError, RuntimeError) as e:
@@ -46,16 +47,67 @@ async def init_sandbox(request: Request, sandbox_request: SandboxInitRequest) ->
         raise HTTPException(status_code=500, detail="Une erreur interne est survenue lors de l'initialisation de la sandbox.")
 
 
+def _strip_sql_comments(sql_text: str) -> str:
+    """
+    Supprime tous les commentaires SQL de manière sûre via l'AST sqlglot sans vulnérabilité ReDoS.
+    """
+    try:
+        parsed = sqlglot.parse(sql_text, read="postgres")
+        if parsed:
+            return ";\n".join(stmt.sql(dialect="postgres", comments=False) for stmt in parsed if stmt)
+    except Exception:
+        pass
+    
+    # Repli sécurisé borné
+    clean = re.sub(r'--[^\r\n]*', '', sql_text)
+    clean = re.sub(r'/\*[\s\S]*?\*/', '', clean)
+    return clean
+
+
+def _simplify_sql_type(raw_type: str) -> str:
+    """
+    Simplifie et abrège universellement les types SQL verbeux (ex: character varying -> varchar, integer -> int).
+    Évite les débordements de texte et assure une syntaxe Mermaid ER ultra propre.
+    """
+    if not raw_type:
+        return 'text'
+    clean = re.sub(r'\(.*?\)', '', raw_type).strip().lower()
+    clean = re.sub(r'\s+', ' ', clean)
+    
+    if 'varying' in clean or 'varchar' in clean:
+        return 'varchar'
+    if clean.startswith('char'):
+        return 'char'
+    if 'bigint' in clean or 'bigserial' in clean or clean == 'int8':
+        return 'bigint'
+    if 'smallint' in clean or 'smallserial' in clean or clean == 'int2':
+        return 'smallint'
+    if 'int' in clean or 'serial' in clean:
+        return 'int'
+    if 'bool' in clean:
+        return 'bool'
+    if any(k in clean for k in ('double', 'float', 'real', 'numeric', 'decimal', 'money')):
+        return 'decimal'
+    if 'timestamp' in clean or 'datetime' in clean:
+        return 'timestamp'
+    if 'time' in clean:
+        return 'time'
+    if 'date' in clean:
+        return 'date'
+    if 'uuid' in clean:
+        return 'uuid'
+    if 'json' in clean:
+        return 'json'
+    return 'text'
+
+
 def sql_ddl_to_mermaid(ddl_text: str) -> str:
     """
     Convertit un schéma SQL DDL brut en diagramme Entité-Relation Mermaid (erDiagram).
     Analyse de manière déterministe le texte SQL sans faire appel au LLM ni à une connexion BDD.
     """
-    # 1. Nettoyer les commentaires
-    # Supprimer les commentaires de ligne (--)
-    ddl_text = re.sub(r'--.*$', '', ddl_text, flags=re.MULTILINE)
-    # Supprimer les commentaires de bloc (/* */)
-    ddl_text = re.sub(r'/\*.*?\*/', '', ddl_text, flags=re.DOTALL)
+    # 1. Nettoyer les commentaires de manière sûre via AST sqlglot
+    ddl_text = _strip_sql_comments(ddl_text)
     
     # 2. Extraire les blocs CREATE TABLE
     matches = re.finditer(r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(', ddl_text, re.IGNORECASE)
@@ -154,9 +206,8 @@ def sql_ddl_to_mermaid(ddl_text: str) -> str:
             if col_name.upper() in ('CONSTRAINT', 'UNIQUE', 'CHECK', 'FOREIGN', 'PRIMARY'):
                 continue
                 
-            col_type = parts[1] if len(parts) > 1 else 'text'
-            # Nettoyer le type: varchar(100) -> varchar
-            col_type = re.sub(r'\(.*?\)', '', col_type).lower()
+            raw_type_str = " ".join(parts[1:]) if len(parts) > 1 else 'text'
+            col_type = _simplify_sql_type(raw_type_str)
             
             # Attributs inline
             is_pk = False

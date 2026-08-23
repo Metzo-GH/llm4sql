@@ -92,15 +92,17 @@ def test_api_sandbox_init_syntax_rejection():
 
 def test_api_cors_headers():
     """
-    Vérifie que le middleware CORS n'autorise que GET et POST pour les requêtes cross-origin.
+    Vérifie que le middleware CORS autorise les méthodes GET, POST, PUT, DELETE pour les requêtes cross-origin.
     """
     headers = {
         "Origin": "http://localhost:5173",
         "Access-Control-Request-Method": "DELETE",
         "Access-Control-Request-Headers": "Content-Type"
     }
-    response = client.options("/api/schema", headers=headers)
-    assert response.status_code == 400
+    response = client.options("/api/eval/cases/1", headers=headers)
+    assert response.status_code == 200
+    allow_methods = response.headers.get("access-control-allow-methods", "")
+    assert "*" in allow_methods or "DELETE" in allow_methods
     
     headers_allowed = {
         "Origin": "http://localhost:5173",
@@ -109,8 +111,8 @@ def test_api_cors_headers():
     }
     response = client.options("/api/schema", headers=headers_allowed)
     assert response.status_code == 200
-    assert "POST" in response.headers.get("access-control-allow-methods", "")
-    assert "DELETE" not in response.headers.get("access-control-allow-methods", "")
+    allow_methods_post = response.headers.get("access-control-allow-methods", "")
+    assert "*" in allow_methods_post or "POST" in allow_methods_post
 
 
 def test_validate_sandbox_sql_comments():

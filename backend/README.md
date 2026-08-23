@@ -15,14 +15,20 @@ backend/
 ├── app/                       # Package principal de l'application
 │   ├── core/                  # Configurations globales, sécurité et utilitaires transverses
 │   │   ├── config.py          # Configuration globale via pydantic-settings
+│   │   ├── http_client.py     # Connection pooling HTTP global réutilisable (httpx.AsyncClient)
 │   │   ├── limiter.py         # Configuration du rate-limiter global (slowapi)
 │   │   └── security.py        # Validateur AST de sécurité SQL (sqlglot)
 │   ├── database/              # Services d'accès à PostgreSQL
 │   │   ├── pool.py            # Gestion thread-safe du pool de connexions (DRY)
-│   │   ├── queries.py         # Centralisation des requêtes d'extraction de schéma
+│   │   ├── queries.py         # Centralisation des requêtes d'extraction de schéma & readonly
 │   │   └── seed_db.py         # Script de peuplement de la BD d'exercice
 │   ├── services/              # Logique métier et orchestrations intelligentes
 │   │   ├── cache.py           # Service de cache schéma thread-safe
+│   │   ├── eval_service.py    # Façade de réexport pour rétro-compatibilité 100%
+│   │   ├── eval/              # Package d'évaluation décomposé SRP
+│   │   │   ├── eval_benchmark.py  # Orchestration du benchmark et flux SSE
+│   │   │   ├── eval_comparator.py # Comparaison d'Execution Accuracy & normalisation
+│   │   │   └── eval_repo.py       # Persistance JSON et opérations CRUD du dataset
 │   │   └── agent/             # Graphe de décision LangGraph (Le Cerveau)
 │   │       ├── graph.py       # Définition et compilation du graphe de flux
 │   │       ├── llm_provider.py# Singleton global de chargement paresseux d'Ollama
@@ -45,15 +51,17 @@ backend/
 │   ├── mcp/                   # Implémentation du Model Context Protocol (MCP)
 │   │   └── mcp_server.py      # Serveur MCP exposant les outils de lecture de schéma et requête
 │   └── main.py                # Point d'entrée principal de l'application FastAPI
-├── tests/                     # Suite complète de tests unitaires et intégration (pytest)
+├── tests/                     # Suite complète de 10 fichiers de tests unitaires et intégration (pytest)
 │   ├── test_agent.py          # Tests de l'agent LangGraph et boucle de Self-Healing
 │   ├── test_api.py            # Tests de validation des routes FastAPI
 │   ├── test_health.py         # Test unitaire de l'endpoint /api/health (Docker probe)
 │   ├── test_eval.py           # Tests du moteur d'évaluation, normalisation sémantique et soft-matching
+│   ├── test_eval_modules.py   # Tests unitaires des sous-modules eval_repo, eval_comparator, eval_benchmark
+│   ├── test_audit_lot1.py     # Tests du connection pooling HTTP, cap combinatoire et AST DDL
 │   ├── test_target_schema.py  # Tests d'isolation des schémas PostgreSQL ('public' vs 'user_sandbox')
 │   ├── test_mcp.py            # Tests des outils MCP de découverte de schéma et suggestions FK
 │   ├── test_mcp_security.py   # Tests unitaires du validateur SQL sécurité AST
-│   └── test_security_r1.py    # Tests d'intégration et protection des connexions readonly
+│   └── test_security_r1.py    # Tests d'intégration, CORS et protection readonly
 ├── Dockerfile                 # Image conteneurisée Python 3.12-slim avec uv
 ├── entrypoint.sh              # Attente DB, seed automatique et démarrage Uvicorn
 ├── pyproject.toml             # Configuration et dépendances de l'environnement virtuel Python
@@ -226,13 +234,15 @@ Le backend intègre une suite exhaustive de tests unitaires et d'intégration ga
 uv run pytest
 ```
 
-### Description des 8 fichiers de test :
+### Description des 10 fichiers de test :
 - **`test_agent.py`** : Valide le graphe LangGraph ReAct, la boucle de Self-Healing face à des erreurs SQL simulées et le mécanisme de repli (Fallback) vers `mcp_dry_run_query`.
 - **`test_api.py`** : Valide la conformité des routes principales FastAPI, les payloads Pydantic et le rate limiting.
 - **`test_health.py`** : Valide l'endpoint de santé `/api/health` et son intégration avec les healthchecks Docker Compose.
 - **`test_eval.py`** : Valide le moteur d'évaluation, le calcul d'Execution Accuracy, la normalisation des chaînes d'absence (`FALLBACK_NULL_STRINGS`) et le soft-matching par jetons distincts.
+- **`test_eval_modules.py`** : Valide unitairement les sous-modules décomposés `eval_repo.py`, `eval_comparator.py` et `eval_benchmark.py`.
+- **`test_audit_lot1.py`** : Valide le pooling HTTP global `httpx`, le cap combinatoire et le parsing DDL avec simplification universelle des types.
 - **`test_target_schema.py`** : Valide le cloisonnement strict des schémas PostgreSQL (`public` vs `user_sandbox`) et le rejet des schémas non autorisés.
 - **`test_mcp.py`** : Valide les outils MCP de découverte de schéma, la recherche dynamique et les suggestions de clés étrangères (`foreign_key_suggestion`).
 - **`test_mcp_security.py`** : Valide le blocage strict des requêtes mutatrices (`DROP`, `UPDATE`, `DELETE`, `ALTER`) par le validateur AST SQLGlot.
-- **`test_security_r1.py`** : Valide la protection transactionnelle physique en lecture seule (`readonly=True`) sur les connexions PostgreSQL.
+- **`test_security_r1.py`** : Valide les en-têtes CORS (`DELETE`, `PUT`, `POST`, `GET`) et la protection transactionnelle en lecture seule (`readonly=True`).
 

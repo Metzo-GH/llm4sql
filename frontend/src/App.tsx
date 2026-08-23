@@ -2,8 +2,8 @@ import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react
 import { ChatInterface } from './components/ChatInterface';
 import { useSandbox } from './hooks/useSandbox';
 import { useChat } from './hooks/useChat';
-import { Terminal, MessageSquare, FlaskConical, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
-import { SettingsDropdown } from './components/settings/SettingsDropdown';
+import { PanelLeftOpen, PanelRightOpen } from 'lucide-react';
+import { AppHeader } from './components/layout/AppHeader';
 
 // Importation paresseuse des panneaux lourds pour le code splitting (performance)
 const SandboxPanel = lazy(() => import('./components/sandbox/SandboxPanel').then(module => ({ default: module.SandboxPanel })));
@@ -133,96 +133,27 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      {/* Global Application Header */}
-      <header className="glass-panel app-header">
-        <div className="app-logo-group">
-          <div className="app-logo-badge">
-            <Terminal size={18} className="app-logo-icon" />
-          </div>
-          <div>
-            <h1 className="app-title">
-              LLM<span className="app-title-accent">4</span>SQL
-            </h1>
-            <p className="app-subtitle">
-              Assistant SQL Agentique Local
-            </p>
-          </div>
-        </div>
-
-        {/* Dynamic Navigation Tabs: Chat vs Benchmark */}
-        <div className="sandbox-tabs" role="tablist" aria-label="Navigation principale">
-          <button
-            onClick={() => setMainTab('chat')}
-            className={`sandbox-tab-btn ${mainTab === 'chat' ? 'sandbox-tab-btn-active' : ''}`}
-            role="tab"
-            aria-selected={mainTab === 'chat'}
-          >
-            <MessageSquare size={14} />
-            <span>Chat Agent 💬</span>
-          </button>
-          <button
-            onClick={() => setMainTab('benchmark')}
-            className={`sandbox-tab-btn ${mainTab === 'benchmark' ? 'sandbox-tab-btn-active' : ''}`}
-            role="tab"
-            aria-selected={mainTab === 'benchmark'}
-          >
-            <FlaskConical size={14} />
-            <span>Benchmark 🧪</span>
-          </button>
-        </div>
-
-        <div className="app-header-actions">
-          {/* Real-time Ollama status */}
-          {loadedModelStatus ? (
-            <div className="hidden lg:flex app-ollama-status">
-              <span className="app-ollama-status-dot app-ollama-status-dot-active animate-pulse"></span>
-              <span className="app-ollama-text">
-                Ollama: <strong className="app-ollama-text-bold">{loadedModelStatus.name}</strong> ({loadedModelStatus.processor})
-              </span>
-              <span className="app-ollama-ctx font-mono">
-                Ctx: {loadedModelStatus.context_length >= 1024 ? `${Math.round(loadedModelStatus.context_length / 1024)}k` : loadedModelStatus.context_length}
-              </span>
-            </div>
-          ) : apiOnline ? (
-            <div className="hidden lg:flex app-ollama-status">
-              <span className="app-ollama-status-dot"></span>
-              <span className="app-ollama-text">
-                Ollama: Veille / Inactif
-              </span>
-            </div>
-          ) : null}
-
-          {/* Settings Dropdown Component (SOLID - SRP) */}
-          <SettingsDropdown
-            model={model}
-            setModel={setModel}
-            temperature={temperature}
-            setTemperature={setTemperature}
-            contextSize={contextSize}
-            setContextSize={setContextSize}
-            bypassSemanticCache={bypassSemanticCache}
-            setBypassSemanticCache={setBypassSemanticCache}
-            selectedSchema={selectedSchema}
-            setSelectedSchema={setSelectedSchema}
-            installedModels={installedModels}
-            isSettingsOpen={isSettingsOpen}
-            setIsSettingsOpen={(open) => {
-              setIsSettingsOpen(open);
-              if (open) {
-                refreshModels();
-              }
-            }}
-          />
-
-          {/* Dynamic FastAPI status */}
-          <div className="hidden md:flex app-api-status">
-            <span className={`app-api-status-dot ${apiOnline ? 'app-api-status-online' : 'app-api-status-offline'}`}></span>
-            <span className="app-api-text">
-              FastAPI: {apiOnline ? 'En ligne' : 'Hors ligne'}
-            </span>
-          </div>
-        </div>
-      </header>
+      {/* Global Application Header (Modularité SRP - Phase R35) */}
+      <AppHeader
+        mainTab={mainTab}
+        setMainTab={setMainTab}
+        loadedModelStatus={loadedModelStatus}
+        apiOnline={apiOnline}
+        model={model}
+        setModel={setModel}
+        temperature={temperature}
+        setTemperature={setTemperature}
+        contextSize={contextSize}
+        setContextSize={setContextSize}
+        bypassSemanticCache={bypassSemanticCache}
+        setBypassSemanticCache={setBypassSemanticCache}
+        selectedSchema={selectedSchema}
+        setSelectedSchema={setSelectedSchema}
+        installedModels={installedModels}
+        refreshModels={refreshModels}
+        isSettingsOpen={isSettingsOpen}
+        setIsSettingsOpen={setIsSettingsOpen}
+      />
 
       {/* Main Content Layout */}
       {mainTab === 'chat' ? (

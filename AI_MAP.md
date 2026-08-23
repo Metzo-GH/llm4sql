@@ -279,6 +279,31 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] **Follow-Up Chips** : Suggestions d'actions de suivi contextualisées dans `ChatMessage.tsx`.
 - [x] **Validation Globale** : Non-régression complète (suite pytest backend 71 tests au vert, build TypeScript strict Vite réussi).
 
+### Phase R33 : Quick Wins, Performance HTTP & Sécurité Immédiate - Audit Lot 1 (Validée)
+- [x] **H4 — Connection Pooling HTTP (`httpx`)** : Centralisation d'un client `httpx.AsyncClient` global avec Keep-Alive connection pooling dans le `lifespan` FastAPI et réutilisation dans les routes de monitoring (`monitoring.py`), cache d'embeddings (`cache.py`) et inspection LLM (`llm_provider.py`).
+- [x] **H3 — Plafond Combinatoire de Projection de Colonnes** : Ajout d'une constante `MAX_COLUMN_PERMUTATIONS = 120` dans `eval_service.py` pour borner les permutations `itertools.permutations` lors de la comparaison sémantique de sous-ensembles de colonnes.
+- [x] **M4 — Rendu Mermaid React-Idiomatique** : Remplacement des mutations directes `containerRef.current.innerHTML` par un état React `svgContent` et `dangerouslySetInnerHTML` assaini avec `DOMPurify` dans `SchemaVisualizer.tsx`.
+- [x] **M5 — Sécurisation AST du Parser DDL Sandbox** : Remplacement des expressions régulières de suppression de commentaires par l'analyse syntaxique AST native `sqlglot` dans `sandbox.py` pour éliminer tout risque de ReDoS.
+- [x] **L1 & L2 — Centralisation DRY & SRP Base de Données** : Factorisation de la configuration de connexion (`search_path`, `readonly`) dans `pool.py` et migration de la fonction d'accès SQL `_execute_readonly_db_query` vers `queries.py`.
+- [x] **Validation Globale** : Non-régression complète (suite pytest backend 75 tests au vert, build TypeScript strict Vite réussi).
+
+### Phase R34 : Architecture Backend & Décomposition SRP - Audit Lot 2 (Validée)
+- [x] **H2 — Décomposition du God Service `eval_service.py`** : Scission en 3 sous-modules spécialisés (`eval_repo.py` pour le CRUD/JSON, `eval_comparator.py` pour la comparaison mathématique/sémantique, `eval_benchmark.py` pour l'orchestration/SSE) avec façade de réexport `eval_service.py` pour rétro-compatibilité 100%.
+- [x] **M3 — Allègement des Nœuds LangGraph (`nodes.py`)** : Extraction des sous-fonctions d'assistance pour le streaming SSE et l'analyse télémétrique des métriques de tokens.
+- [x] **Validation Globale** : Suite complète de tests TDD backend (`test_eval.py`, `test_eval_modules.py`, `test_target_schema.py`) à 100% au vert (79 passed).
+
+### Phase R35 : Architecture Frontend & Modularité des Hooks/Composants - Audit Lot 3 (Validée)
+- [x] **H1 — Décomposition du God Hook `useChat.ts`** : Scission en sous-hooks dédiés (`useChatConfig.ts` pour les paramètres et localStorage, `useOllamaStatus.ts` pour le polling/disponibilité) et allègement de `useChat.ts` pour le flux SSE et les logs en direct.
+- [x] **M1 — Découpage des Composants Géants** :
+  - `BenchmarkPanel.tsx` ➔ `BenchmarkSummaryCards.tsx`, `BenchmarkCaseItem.tsx`, `BenchmarkCaseModal.tsx`.
+  - `SchemaVisualizer.tsx` ➔ Extraction de `parseSqlSchema` dans `utils/sqlParser.ts`.
+- [x] **M2 — Modularisation du Layout `App.tsx`** : Extraction de `AppHeader.tsx`.
+- [x] **Validation Globale** : Compilation TypeScript strict (`tsc -b`), build Vite de production (0 erreur) et vérification de la suite pytest (79 passed).
+
+### Phase R36 : Évolutions Long Terme - Audit Lot 4 (Optionnelle / Future)
+- [ ] **L4 — Virtualisation du DataTable** : Intégration de `@tanstack/react-virtual` pour les jeux de données volumineux (> 5 000 lignes).
+- [ ] **L3 — Modernisation Driver PostgreSQL** : Évaluation du passage à `psycopg` (v3) pour unifier le pooling asynchrone et synchrone.
+
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.

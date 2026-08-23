@@ -1,8 +1,8 @@
-import httpx
 import logging
 from typing import Dict, Any
 from fastapi import APIRouter, Response
 from app.core.config import settings
+from app.core.http_client import get_async_http_client
 
 logger = logging.getLogger("llm4sql.monitoring")
 
@@ -45,12 +45,12 @@ async def get_ollama_models(response: Response) -> Dict[str, Any]:
     Récupère la liste des modèles installés localement dans Ollama.
     """
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags")
-            if response.status_code == 200:
-                data = response.json()
-                models = [m["name"] for m in data.get("models", [])]
-                return {"models": models, "online": True}
+        client = get_async_http_client()
+        res = await client.get(f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags")
+        if res.status_code == 200:
+            data = res.json()
+            models = [m["name"] for m in data.get("models", [])]
+            return {"models": models, "online": True}
     except Exception as e:
         logger.error(f"[Ollama API Error] Impossible de joindre Ollama: {str(e)}")
     
@@ -68,40 +68,40 @@ async def get_ollama_status(response: Response) -> Dict[str, Any]:
     Récupère l'état en temps réel des modèles chargés en mémoire (GPU/CPU).
     """
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/ps")
-            if response.status_code == 200:
-                data = response.json()
-                loaded_models = []
-                for m in data.get("models", []):
-                    size = m.get("size", 0)
-                    size_vram = m.get("size_vram", 0)
+        client = get_async_http_client()
+        res = await client.get(f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/ps")
+        if res.status_code == 200:
+            data = res.json()
+            loaded_models = []
+            for m in data.get("models", []):
+                size = m.get("size", 0)
+                size_vram = m.get("size_vram", 0)
+                
+                if size > 0:
+                    vram_ratio = size_vram / size
+                    gpu_percent = round(vram_ratio * 100)
+                else:
+                    gpu_percent = 0
+                
+                cpu_percent = 100 - gpu_percent
+                
+                if gpu_percent == 100:
+                    processor_str = "100% GPU"
+                elif gpu_percent == 0:
+                    processor_str = "100% CPU"
+                else:
+                    processor_str = f"{gpu_percent}% GPU / {cpu_percent}% CPU"
                     
-                    if size > 0:
-                        vram_ratio = size_vram / size
-                        gpu_percent = round(vram_ratio * 100)
-                    else:
-                        gpu_percent = 0
-                    
-                    cpu_percent = 100 - gpu_percent
-                    
-                    if gpu_percent == 100:
-                        processor_str = "100% GPU"
-                    elif gpu_percent == 0:
-                        processor_str = "100% CPU"
-                    else:
-                        processor_str = f"{gpu_percent}% GPU / {cpu_percent}% CPU"
-                        
-                    loaded_models.append({
-                        "name": m.get("name"),
-                        "size": size,
-                        "size_vram": size_vram,
-                        "gpu_percent": gpu_percent,
-                        "cpu_percent": cpu_percent,
-                        "processor": processor_str,
-                        "context_length": m.get("context_length", 0)
-                    })
-                return {"online": True, "models": loaded_models}
+                loaded_models.append({
+                    "name": m.get("name"),
+                    "size": size,
+                    "size_vram": size_vram,
+                    "gpu_percent": gpu_percent,
+                    "cpu_percent": cpu_percent,
+                    "processor": processor_str,
+                    "context_length": m.get("context_length", 0)
+                })
+            return {"online": True, "models": loaded_models}
     except Exception as e:
         logger.error(f"[Ollama Status Error] Impossible d'interroger le statut Ollama: {str(e)}")
     return {"online": False, "models": []}

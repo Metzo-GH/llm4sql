@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.http_client import init_http_clients, close_http_clients
 from app.database.pool import init_db_pool, close_db_pool
 from app.routers import chat, schema, sandbox, monitoring, eval as eval_router
 
@@ -33,13 +34,15 @@ logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 async def lifespan(app: FastAPI):
     """
     Gestionnaire de cycle de vie de l'application FastAPI.
-    Initialise le pool de connexions PostgreSQL au démarrage et le ferme proprement à l'extinction.
+    Initialise les pools PostgreSQL et HTTP au démarrage et les ferme proprement à l'extinction.
     """
-    logger.info("[FastAPI Startup] Initialisation du pool de connexion PostgreSQL...")
+    logger.info("[FastAPI Startup] Initialisation du pool PostgreSQL et des clients HTTP...")
     init_db_pool()
+    init_http_clients()
     yield
-    logger.info("[FastAPI Shutdown] Fermeture du pool de connexion PostgreSQL...")
+    logger.info("[FastAPI Shutdown] Fermeture du pool PostgreSQL et des clients HTTP...")
     close_db_pool()
+    await close_http_clients()
 
 
 app = FastAPI(
@@ -63,7 +66,7 @@ app.add_middleware(
         "http://127.0.0.1",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 

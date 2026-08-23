@@ -2024,6 +2024,43 @@ textarea:focus-visible {
   height: 100%;
 }
 
+/* Mode Plein Écran pour le Visualiseur de Schéma / Diagramme SQL */
+.schema-visual-fullscreen {
+  position: fixed !important;
+  inset: 12px !important;
+  z-index: 1000 !important;
+  width: calc(100vw - 24px) !important;
+  height: calc(100vh - 24px) !important;
+  background-color: rgba(12, 16, 23, 0.97) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--accent-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 30px -5px var(--accent-glow) !important;
+  padding: 16px !important;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.schema-visual-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.schema-visual-fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-heading);
+  border-color: var(--accent-primary);
+}
+
 .schema-visual-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2299,17 +2336,23 @@ textarea:focus-visible {
   height: 100%;
   overflow: auto;
   display: flex;
-  padding: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
 }
 
 .schema-visual-mermaid-viewport {
   margin: auto;
-  transition: width 0.1s ease-out, height 0.1s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .schema-visual-mermaid-container {
-  display: inline-block;
-  transition: transform 0.1s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .chat-clear-btn {
@@ -2427,85 +2470,177 @@ textarea:focus-visible {
 }
 
 /* =====================================================================
-   13. Mermaid ER Diagram Theme Overrides (Dark Mode Visibility)
+   13. Mermaid ER Diagram Theme Overrides (High-Contrast Light & Dark Modes)
    ===================================================================== */
 .schema-visual-mermaid-container svg {
   background-color: transparent !important;
+  max-width: 100%;
+  height: auto;
 }
 
-.schema-visual-mermaid-container svg text,
-.schema-visual-mermaid-container svg span {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 11px !important;
+/* --- THÈME CLAIR (STYLE PAPIER BLANC / NOIR - TYPE DBDATABASE / WORKBENCH) --- */
+.schema-visual-mermaid-wrapper.theme-light {
+  background-color: #ffffff !important;
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+  border-color: #cbd5e1 !important;
 }
 
-/* Entity/Table Name Headers */
-.schema-visual-mermaid-container svg .er.entityBox {
-  fill: hsl(225, 25%, 16%) !important;
-  stroke: hsl(225, 25%, 26%) !important;
-  stroke-width: 1px !important;
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg {
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.1)) !important;
 }
 
-.schema-visual-mermaid-container svg .er.entityLabel {
-  fill: var(--text-heading) !important;
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg text,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg tspan,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg span {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-size: 13px !important;
+  fill: #0f172a !important;
+  color: #0f172a !important;
+  font-weight: 500 !important;
+}
+
+/* En-têtes de tables clair */
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.entityBox {
+  fill: #f1f5f9 !important;
+  stroke: #0f172a !important;
+  stroke-width: 1.8px !important;
+  rx: 4px !important;
+  ry: 4px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.entityLabel {
+  fill: #0f172a !important;
   font-weight: 700 !important;
-  font-size: 12px !important;
+  font-size: 14px !important;
 }
 
-/* Attributes / Columns */
-.schema-visual-mermaid-container svg .er.attributeBoxEven {
-  fill: hsl(225, 25%, 11%) !important;
-  stroke: hsl(225, 25%, 20%) !important;
-  stroke-width: 0.5px !important;
-}
-
-.schema-visual-mermaid-container svg .er.attributeBoxOdd {
-  fill: hsl(225, 25%, 9%) !important;
-  stroke: hsl(225, 25%, 20%) !important;
-  stroke-width: 0.5px !important;
-}
-
-/* Text inside attributes (Column name, type, key) */
-.schema-visual-mermaid-container svg text,
-.schema-visual-mermaid-container svg tspan,
-.schema-visual-mermaid-container svg text *,
-.schema-visual-mermaid-container svg tspan *,
-.schema-visual-mermaid-container svg foreignObject,
-.schema-visual-mermaid-container svg foreignObject * {
+/* Attributs / Colonnes clair */
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.attributeBoxEven {
   fill: #ffffff !important;
-  color: #ffffff !important;
+  stroke: #0f172a !important;
+  stroke-width: 1.2px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.attributeBoxOdd {
+  fill: #f8fafc !important;
+  stroke: #0f172a !important;
+  stroke-width: 1.2px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg text,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg tspan,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg text *,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg tspan *,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg foreignObject,
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg foreignObject * {
+  fill: #0f172a !important;
+  color: #0f172a !important;
   stroke: none !important;
-  opacity: 1 !important;
-  visibility: visible !important;
 }
 
-/* Specific styling for PK and FK labels if they are text/tspan/HTML nodes */
-.schema-visual-mermaid-container svg text[class*="key"],
-.schema-visual-mermaid-container svg tspan[class*="key"],
-.schema-visual-mermaid-container svg text[class*="key"] *,
-.schema-visual-mermaid-container svg tspan[class*="key"] *,
-.schema-visual-mermaid-container svg foreignObject [class*="key"],
-.schema-visual-mermaid-container svg foreignObject [class*="key"] * {
-  fill: hsl(265, 95%, 75%) !important; /* PK light purple */
-  color: hsl(265, 95%, 75%) !important;
-  font-weight: bold !important;
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg text[class*="key"],
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg tspan[class*="key"] {
+  fill: #6b21a8 !important; /* PK violet contrasté */
+  font-weight: 800 !important;
 }
 
-/* Relationship lines and labels */
-.schema-visual-mermaid-container svg .er.relationshipLine {
-  stroke: hsl(225, 20%, 40%) !important;
+/* Lignes et étiquettes de relations clair */
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.relationshipLine {
+  stroke: #0f172a !important;
+  stroke-width: 2px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.relationshipLabel {
+  fill: #0f172a !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-light .schema-visual-mermaid-container svg .er.relationshipLabelBox {
+  fill: #ffffff !important;
+  stroke: #64748b !important;
+  stroke-width: 1.2px !important;
+  rx: 4px !important;
+}
+
+/* --- THÈME SOMBRE (STYLE ONYX / SATELLITE DARK) --- */
+.schema-visual-mermaid-wrapper.theme-dark {
+  background-color: #070a13 !important;
+  border-color: #1e293b !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg {
+  filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.65)) !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg text,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg tspan,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg span {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-size: 13px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.entityBox {
+  fill: hsl(225, 28%, 18%) !important;
+  stroke: hsl(217, 91%, 60%) !important;
   stroke-width: 1.5px !important;
+  rx: 6px !important;
+  ry: 6px !important;
 }
 
-.schema-visual-mermaid-container svg .er.relationshipLabel {
-  fill: var(--text-muted) !important;
-  font-size: 10px !important;
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.entityLabel {
+  fill: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
 }
 
-.schema-visual-mermaid-container svg .er.relationshipLabelBox {
-  fill: hsl(225, 25%, 10%) !important;
-  stroke: hsl(225, 20%, 30%) !important;
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.attributeBoxEven {
+  fill: hsl(225, 25%, 11%) !important;
+  stroke: hsl(225, 20%, 25%) !important;
   stroke-width: 1px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.attributeBoxOdd {
+  fill: hsl(225, 25%, 14%) !important;
+  stroke: hsl(225, 20%, 25%) !important;
+  stroke-width: 1px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg text,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg tspan,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg text *,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg tspan *,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg foreignObject,
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg foreignObject * {
+  fill: #f8fafc !important;
+  color: #f8fafc !important;
+  stroke: none !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg text[class*="key"],
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg tspan[class*="key"] {
+  fill: hsl(270, 95%, 75%) !important;
+  color: hsl(270, 95%, 75%) !important;
+  font-weight: 800 !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.relationshipLine {
+  stroke: hsl(215, 95%, 65%) !important;
+  stroke-width: 2px !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.relationshipLabel {
+  fill: hsl(215, 20%, 85%) !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+}
+
+.schema-visual-mermaid-wrapper.theme-dark .schema-visual-mermaid-container svg .er.relationshipLabelBox {
+  fill: hsl(225, 30%, 10%) !important;
+  stroke: hsl(215, 70%, 45%) !important;
+  stroke-width: 1px !important;
+  rx: 4px !important;
 }
 
 /* =====================================================================

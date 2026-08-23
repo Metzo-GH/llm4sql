@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ContextUsage, LoadedModelStatus, SqlResultRow } from '../types/chat';
+import type { Message, ContextUsage, SqlResultRow } from '../types/chat';
 import { parseThinking, parseAllThinking } from '../utils/thinkingParser';
-
 import { API_BASE_URL } from '../config/api';
+import { useChatConfig } from './useChatConfig';
+import { useOllamaStatus } from './useOllamaStatus';
 
 /**
  * Custom React hook orchestrating chat messaging flows, agentic LLM API calls,
@@ -22,44 +23,36 @@ export function useChat() {
   // Visual explorer mode ('table' | 'chart')
   const [activeView, setActiveView] = useState<'table' | 'chart'>('table');
 
-  // Agent configuration states with localStorage persistence
-  const [model, setModel] = useState<string>(() => {
-    return localStorage.getItem('llm4sql_model') || '';
-  });
-  const [temperature, setTemperature] = useState<number>(() => {
-    const val = localStorage.getItem('llm4sql_temperature');
-    return val !== null ? parseFloat(val) : 0.0;
-  });
-  const [contextSize, setContextSize] = useState<number>(() => {
-    const val = localStorage.getItem('llm4sql_context_size');
-    return val !== null ? parseInt(val) : 0;
-  });
-  const [bypassSemanticCache, setBypassSemanticCache] = useState<boolean>(() => {
-    return localStorage.getItem('llm4sql_bypass_semantic_cache') === 'true';
-  });
-  const [selectedSchema, setSelectedSchema] = useState<string>(() => {
-    return localStorage.getItem('selectedSchema') || 'public';
-  });
+  // Délégation de la configuration LLM et de la persistance localStorage
+  const {
+    model,
+    setModel,
+    temperature,
+    setTemperature,
+    contextSize,
+    setContextSize,
+    bypassSemanticCache,
+    setBypassSemanticCache,
+    selectedSchema,
+    setSelectedSchema,
+  } = useChatConfig();
 
-  useEffect(() => {
-    localStorage.setItem('llm4sql_model', model);
-  }, [model]);
+  // Délégation du monitoring API FastAPI et Ollama
+  const {
+    apiOnline,
+    loadedModelStatus,
+    installedModels,
+    refreshModels,
+  } = useOllamaStatus();
 
+  // Auto-sélection intelligente du premier modèle disponible si aucun modèle valide n'est défini
   useEffect(() => {
-    localStorage.setItem('llm4sql_temperature', temperature.toString());
-  }, [temperature]);
-
-  useEffect(() => {
-    localStorage.setItem('llm4sql_context_size', contextSize.toString());
-  }, [contextSize]);
-
-  useEffect(() => {
-    localStorage.setItem('llm4sql_bypass_semantic_cache', bypassSemanticCache.toString());
-  }, [bypassSemanticCache]);
-
-  useEffect(() => {
-    localStorage.setItem('selectedSchema', selectedSchema);
-  }, [selectedSchema]);
+    if (installedModels.length > 0) {
+      if (!model || !installedModels.includes(model)) {
+        setModel(installedModels[0]);
+      }
+    }
+  }, [installedModels, model, setModel]);
 
   // Real-time telemetry log lines for the terminal visualizer
   const [liveLogs, setLiveLogs] = useState<string[]>([]);
@@ -67,83 +60,8 @@ export function useChat() {
   // Real-time context window usage
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
 
-  const [apiOnline, setApiOnline] = useState(false);
-  const [loadedModelStatus, setLoadedModelStatus] = useState<LoadedModelStatus | null>(null);
-  const [installedModels, setInstalledModels] = useState<string[]>([]);
-
   // Ref to hold the current AbortController for stopping running requests
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  const checkStatus = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/?t=${Date.now()}`);
-      if (res.ok) {
-        setApiOnline(true);
-      } else {
-        setApiOnline(false);
-      }
-    } catch {
-      setApiOnline(false);
-    }
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/ollama/status?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.online && data.models && data.models.length > 0) {
-          setLoadedModelStatus(data.models[0]);
-        } else {
-          setLoadedModelStatus(null);
-        }
-      } else {
-        setLoadedModelStatus(null);
-      }
-    } catch {
-      setLoadedModelStatus(null);
-    }
-  }, []);
-
-  const fetchModels = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/ollama/models?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const modelsList = data.models || [];
-        setInstalledModels(modelsList);
-        setModel((currentModel) => {
-          if (!modelsList || modelsList.length === 0) return '';
-          if (currentModel && modelsList.includes(currentModel)) return currentModel;
-          return '';
-        });
-      }
-    } catch (err: unknown) {
-      console.error("Erreur lors de la récupération des modèles Ollama:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    const initStatus = async () => {
-      await checkStatus();
-      await fetchModels();
-    };
-    void initStatus();
-
-    const statusInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        void checkStatus();
-      }
-    }, 5000);
-    const modelsInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        void fetchModels();
-      }
-    }, 15000);
-
-    return () => {
-      clearInterval(statusInterval);
-      clearInterval(modelsInterval);
-    };
-  }, [checkStatus, fetchModels]);
 
   /**
    * Internal common method to submit a query to the LangGraph backend SSE endpoint,
@@ -556,6 +474,6 @@ export function useChat() {
     apiOnline,
     loadedModelStatus,
     installedModels,
-    refreshModels: fetchModels,
+    refreshModels,
   };
 }

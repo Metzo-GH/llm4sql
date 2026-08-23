@@ -63,8 +63,8 @@ def test_eval_run_request_target_schema():
     assert req_sb.target_schema == "user_sandbox"
 
 
-@patch("app.services.eval_service.execute_raw_sql")
-@patch("app.services.eval_service.run_agent")
+@patch("app.services.eval.eval_benchmark.execute_raw_sql")
+@patch("app.services.eval.eval_benchmark.run_agent")
 def test_run_benchmark_case_uses_target_schema(mock_run_agent, mock_execute_raw_sql):
     """
     Vérifie que run_benchmark_case transmet target_schema à run_agent et execute_raw_sql.
