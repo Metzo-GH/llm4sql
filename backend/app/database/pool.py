@@ -58,7 +58,7 @@ def _configure_connection(conn: Any, schema: str = "public", readonly: bool = Fa
     if schema not in ("public", "user_sandbox"):
         raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
     conn.autocommit = True
-    conn.execute(f"SET search_path TO {schema};")
+    conn.execute(psycopg.sql.SQL("SET search_path TO {}").format(psycopg.sql.Identifier(schema)))
     conn.autocommit = False
     conn.read_only = readonly
 

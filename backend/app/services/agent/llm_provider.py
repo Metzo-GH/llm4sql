@@ -80,29 +80,26 @@ def get_llm(model: Optional[str] = None, temperature: float = 0.0, context_size:
         
     cache_key = f"{model}_{temperature}_{context_size}"
     
-    if cache_key in _llm_cache:
-        with _llm_lock:
-            if cache_key in _llm_cache:
-                _llm_cache.move_to_end(cache_key)
-                return _llm_cache[cache_key]
-            
     with _llm_lock:
-        if cache_key not in _llm_cache:
-            # Éliminer le plus ancien si limite atteinte
-            if len(_llm_cache) >= MAX_LLM_CACHE_SIZE:
-                _llm_cache.popitem(last=False)
-                
-            kwargs = {
-                "model": model,
-                "base_url": settings.OLLAMA_BASE_URL,
-                "temperature": temperature,
-                "keep_alive": -1,
-                "reasoning": True
-            }
-            # Si context_size vaut 0 ou n'est pas spécifié, utiliser une fenêtre de contexte de 8192 (8k) par défaut
-            # afin d'éviter la tronquature silencieuse du prompt système par Ollama (défaut à 2048).
-            effective_ctx = context_size if (context_size and context_size > 0) else 8192
-            kwargs["num_ctx"] = effective_ctx
-                
-            _llm_cache[cache_key] = ChatOllama(**kwargs)
+        if cache_key in _llm_cache:
+            _llm_cache.move_to_end(cache_key)
+            return _llm_cache[cache_key]
+            
+        # Éliminer le plus ancien si limite atteinte
+        if len(_llm_cache) >= MAX_LLM_CACHE_SIZE:
+            _llm_cache.popitem(last=False)
+            
+        kwargs = {
+            "model": model,
+            "base_url": settings.OLLAMA_BASE_URL,
+            "temperature": temperature,
+            "keep_alive": -1,
+            "reasoning": True
+        }
+        # Si context_size vaut 0 ou n'est pas spécifié, utiliser une fenêtre de contexte de 8192 (8k) par défaut
+        # afin d'éviter la tronquature silencieuse du prompt système par Ollama (défaut à 2048).
+        effective_ctx = context_size if (context_size and context_size > 0) else 8192
+        kwargs["num_ctx"] = effective_ctx
+            
+        _llm_cache[cache_key] = ChatOllama(**kwargs)
         return _llm_cache[cache_key]

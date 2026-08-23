@@ -59,10 +59,21 @@ export function useOllamaStatus(): OllamaStatus {
   }, []);
 
   useEffect(() => {
-    checkStatus();
-    refreshModels();
+    let isMounted = true;
+
+    const initialize = async () => {
+      if (!isMounted) return;
+      await checkStatus();
+      if (!isMounted) return;
+      await refreshModels();
+    };
+
+    void initialize();
     const interval = setInterval(checkStatus, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [checkStatus, refreshModels]);
 
   return {

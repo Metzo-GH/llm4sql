@@ -51,9 +51,10 @@ backend/
 │   ├── mcp/                   # Implémentation du Model Context Protocol (MCP)
 │   │   └── mcp_server.py      # Serveur MCP exposant les outils de lecture de schéma et requête
 │   └── main.py                # Point d'entrée principal de l'application FastAPI
-├── tests/                     # Suite complète de 10 fichiers de tests unitaires et intégration (pytest)
+├── tests/                     # Suite complète de 11 fichiers de tests unitaires et intégration (pytest)
 │   ├── test_agent.py          # Tests de l'agent LangGraph et boucle de Self-Healing
 │   ├── test_api.py            # Tests de validation des routes FastAPI
+│   ├── test_cache.py          # Tests d'isolation par schéma et éviction LRU du SemanticCache
 │   ├── test_health.py         # Test unitaire de l'endpoint /api/health (Docker probe)
 │   ├── test_eval.py           # Tests du moteur d'évaluation, normalisation sémantique et soft-matching
 │   ├── test_eval_modules.py   # Tests unitaires des sous-modules eval_repo, eval_comparator, eval_benchmark
@@ -234,9 +235,10 @@ Le backend intègre une suite exhaustive de tests unitaires et d'intégration ga
 uv run pytest
 ```
 
-### Description des 10 fichiers de test :
+### Description des 11 fichiers de test :
 - **`test_agent.py`** : Valide le graphe LangGraph ReAct, la boucle de Self-Healing face à des erreurs SQL simulées et le mécanisme de repli (Fallback) vers `mcp_dry_run_query`.
 - **`test_api.py`** : Valide la conformité des routes principales FastAPI, les payloads Pydantic et le rate limiting.
+- **`test_cache.py`** : Valide l'étanchéité et le partitionnement multi-schémas du cache sémantique, la similarité cosinus, le repli Jaccard et l'éviction LRU à 100 entrées.
 - **`test_health.py`** : Valide l'endpoint de santé `/api/health` et son intégration avec les healthchecks Docker Compose.
 - **`test_eval.py`** : Valide le moteur d'évaluation, le calcul d'Execution Accuracy, la normalisation des chaînes d'absence (`FALLBACK_NULL_STRINGS`) et le soft-matching par jetons distincts.
 - **`test_eval_modules.py`** : Valide unitairement les sous-modules décomposés `eval_repo.py`, `eval_comparator.py` et `eval_benchmark.py`.

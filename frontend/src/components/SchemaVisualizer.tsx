@@ -73,11 +73,13 @@ export const SchemaVisualizer: React.FC<SchemaVisualizerProps> = React.memo(({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
 
-  // Agrandissement automatique pour un affichage optimal lors du passage en plein écran
+  // Agrandissement automatique pour un affichage optimal uniquement lors de la transition vers le plein écran
+  const prevFullscreenRef = useRef(isFullscreen);
   useEffect(() => {
-    if (isFullscreen && zoomScale <= 1.0) {
-      setZoomScale(1.35);
+    if (isFullscreen && !prevFullscreenRef.current) {
+      setZoomScale(prev => (prev <= 1.0 ? 1.35 : prev));
     }
+    prevFullscreenRef.current = isFullscreen;
   }, [isFullscreen]);
 
   // Parse tables dynamically from SQL schema

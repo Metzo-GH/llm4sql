@@ -86,9 +86,15 @@ class SemanticCache:
             logger.warning(f"Échec de récupération de l'embedding Ollama: {str(e)}. Utilisation du repli Jaccard.")
         return None
 
-    def check(self, question: str, model: str, threshold: float = 0.85) -> Optional[Dict[str, Any]]:
+    def check(
+        self, 
+        question: str, 
+        model: str, 
+        threshold: float = 0.85, 
+        target_schema: str = "public"
+    ) -> Optional[Dict[str, Any]]:
         """
-        Recherche une question sémantiquement similaire dans le cache.
+        Recherche une question sémantiquement similaire dans le cache pour un target_schema donné.
         """
         query_text = question.strip()
         if not query_text:
@@ -97,16 +103,15 @@ class SemanticCache:
         with self._lock:
             # 1. Recherche exacte immédiate (sans appel d'embedding)
             for entry in self._cache:
-                if entry["question"].lower() == query_text.lower():
-                    logger.info(f"Hit exact trouvé dans le cache pour: '{query_text}'")
+                if entry.get("target_schema", "public") == target_schema and entry["question"].lower() == query_text.lower():
+                    logger.info(f"Hit exact trouvé dans le cache [{target_schema}] pour: '{query_text}'")
                     return entry["response"]
             
-            # Si le cache est vide, pas besoin d'aller plus loin
-            if not self._cache:
-                return None
-                
-            # Snapshot de la liste pour les calculs hors verrou
-            cache_snapshot = list(self._cache)
+            # Snapshot de la liste filtrée par target_schema pour les calculs hors verrou
+            cache_snapshot = [e for e in self._cache if e.get("target_schema", "public") == target_schema]
+
+        if not cache_snapshot:
+            return None
 
         # 2. Recherche sémantique via embeddings Ollama (HORS VERROU)
         query_vector = self._get_embedding(query_text, model)
@@ -123,9 +128,9 @@ class SemanticCache:
                         best_score = score
                         best_entry = entry
             
-            logger.info(f"Meilleur score de similarité cosinus: {best_score:.4f} (Seuil: {threshold})")
+            logger.info(f"Meilleur score de similarité cosinus [{target_schema}]: {best_score:.4f} (Seuil: {threshold})")
             if best_score >= threshold and best_entry:
-                logger.info(f"Hit sémantique (Cosinus) pour: '{query_text}' -> '{best_entry['question']}'")
+                logger.info(f"Hit sémantique (Cosinus) [{target_schema}] pour: '{query_text}' -> '{best_entry['question']}'")
                 return best_entry["response"]
         
         # 3. Repli (Fallback) sur la similarité Jaccard (HORS VERROU)
@@ -138,9 +143,9 @@ class SemanticCache:
                 best_jaccard = score
                 best_jaccard_entry = entry
                 
-        logger.info(f"Meilleur score de similarité Jaccard: {best_jaccard:.4f} (Seuil: {threshold})")
+        logger.info(f"Meilleur score de similarité Jaccard [{target_schema}]: {best_jaccard:.4f} (Seuil: {threshold})")
         if best_jaccard >= threshold and best_jaccard_entry:
-            logger.info(f"Hit sémantique (Jaccard) pour: '{query_text}' -> '{best_jaccard_entry['question']}'")
+            logger.info(f"Hit sémantique (Jaccard) [{target_schema}] pour: '{query_text}' -> '{best_jaccard_entry['question']}'")
             return best_jaccard_entry["response"]
             
         return None
@@ -152,10 +157,11 @@ class SemanticCache:
         sql_query: str, 
         query_results: List[Dict[str, Any]], 
         iteration_count: int,
-        tables: List[str]
+        tables: List[str],
+        target_schema: str = "public"
     ) -> None:
         """
-        Stocke une nouvelle réponse réussie dans le cache sémantique.
+        Stocke une nouvelle réponse réussie dans le cache sémantique pour le target_schema donné.
         """
         query_text = question.strip()
         if not query_text or not sql_query:
@@ -173,8 +179,11 @@ class SemanticCache:
         }
         
         with self._lock:
-            # Éviter les doublons exacts dans le cache en mémoire
-            self._cache = [e for e in self._cache if e["question"].lower() != query_text.lower()]
+            # Éviter les doublons exacts dans le même schéma en mémoire
+            self._cache = [
+                e for e in self._cache 
+                if not (e.get("target_schema", "public") == target_schema and e["question"].lower() == query_text.lower())
+            ]
             
             # Limiter le cache à 100 entrées maximum pour éviter les fuites mémoire
             if len(self._cache) >= 100:
@@ -183,17 +192,22 @@ class SemanticCache:
             self._cache.append({
                 "question": query_text,
                 "vector": vector,
-                "response": response_data
+                "response": response_data,
+                "target_schema": target_schema
             })
-            logger.info(f"Ajout au cache sémantique réussi : '{query_text}'")
+            logger.info(f"Ajout au cache sémantique [{target_schema}] réussi : '{query_text}'")
 
-    def clear(self) -> None:
+    def clear(self, target_schema: Optional[str] = None) -> None:
         """
-        Vide l'intégralité du cache sémantique.
+        Vide le cache sémantique (filtré par target_schema si fourni, ou globalement si None).
         """
         with self._lock:
-            self._cache.clear()
-            logger.info("Le cache sémantique a été vidé.")
+            if target_schema is not None:
+                self._cache = [e for e in self._cache if e.get("target_schema", "public") != target_schema]
+                logger.info(f"Le cache sémantique pour le schéma '{target_schema}' a été vidé.")
+            else:
+                self._cache.clear()
+                logger.info("Le cache sémantique global a été vidé.")
 
 # Instance globale partagée
 semantic_cache = SemanticCache()

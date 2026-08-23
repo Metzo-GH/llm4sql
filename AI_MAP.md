@@ -304,9 +304,19 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] **L4 — Virtualisation du DataTable** : Intégration de `@tanstack/react-virtual` avec virtualisation conditionnelle (seuil > 500 lignes en mode "Tout afficher"). Le hook `useVirtualizer` est appelé inconditionnellement (Rules of Hooks) avec `enabled: shouldVirtualize`, `estimateSize: 40px` et `overscan: 20`. Les contrôles de pagination sont masqués en mode virtualisé. Build TypeScript strict validé.
 - [x] **L3 — Modernisation Driver PostgreSQL** : Migration complète de `psycopg2-binary` (v2) vers `psycopg` v3.3.4 + `psycopg-pool` v3.3.1. Refonte du pool (`ConnectionPool` avec `conninfo`, `min_size/max_size`), migration des curseurs (`dict_row` au lieu de `RealDictCursor`), adaptation des diagnostics d'erreur (`message_primary`, `message_detail`, `message_hint`), et remplacement de `IN %s` par `= ANY(%s)` pour la compatibilité psycopg v3. 79 tests backend au vert (0 régression).
 
+### Phase R37 : Assainissement Global de la Dette Technique & Isolation Cache (Validée)
+- [x] **Sécurité & Isolation Cache (OWASP LLM08)** : Partitionnement du Cache Sémantique en mémoire par schéma BDD (`target_schema`) et propagation dans le graphe LangGraph.
+- [x] **Thread-Safety LLM** : Protection exclusive sous verrou du cache LRU `OrderedDict` dans `llm_provider.py`.
+- [x] **Conformité React 19 & ESLint** : Résolution des erreurs/warnings ESLint (`useOllamaStatus.ts`, `BenchmarkPanel.tsx`, `SchemaVisualizer.tsx`).
+- [x] **Optimisation Packaging Frontend** : Découpage ciblé des chunks volumineux (`mermaid`, `cytoscape`, `katex`, `recharts`) via `manualChunks` dans `vite.config.ts`.
+- [x] **Ergonomie Visualiseur de Schéma** : Correction du zoom en mode plein écran (transition one-shot déverrouillant le dézoom et l'échelle 100%).
+- [x] **Validation Globale** : Non-régression complète backend (85 tests pytest au vert) et build Vite/TS réussi en 11s.
+
+
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
 - **Source de Vérité** : Ce fichier `#AI_MAP.md` est la seule référence de l'état du projet et doit être mis à jour après chaque complétion.
+
 
 

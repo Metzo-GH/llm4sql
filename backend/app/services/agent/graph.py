@@ -71,10 +71,10 @@ def run_agent(
     
     # 1. Vérification du cache sémantique (RAG Mémoire)
     active_model = model or settings.OLLAMA_MODEL
-    cached_res = None if bypass_semantic_cache else semantic_cache.check(question, model=active_model)
+    cached_res = None if bypass_semantic_cache else semantic_cache.check(question, model=active_model, target_schema=target_schema)
     if cached_res:
-        logger.info(f"[CACHE HIT] Résultat sémantique trouvé pour : '{question}'")
-        send_agent_event("log", f"[CACHE HIT] Résultat sémantique trouvé pour : '{question}'")
+        logger.info(f"[CACHE HIT] Résultat sémantique trouvé pour : '{question}' (Schema: {target_schema})")
+        send_agent_event("log", f"[CACHE HIT] Résultat sémantique trouvé pour : '{question}' (Schema: {target_schema})")
         send_agent_event("log", "[FIN] Requete resolue avec succes et validee !")
         return {
             "question": question,
@@ -126,7 +126,8 @@ def run_agent(
             sql_query=final_state["sql_query"],
             query_results=final_state["query_results"],
             iteration_count=final_state["iteration_count"],
-            tables=final_state.get("tables", [])
+            tables=final_state.get("tables", []),
+            target_schema=target_schema
         )
         
     return final_state

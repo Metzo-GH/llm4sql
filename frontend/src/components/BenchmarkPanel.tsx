@@ -102,13 +102,7 @@ export const BenchmarkPanel: React.FC<BenchmarkPanelProps> = ({
 
   const activeModel = selectedModel || currentModel || '';
 
-  useEffect(() => {
-    if (currentModel && !selectedModel) {
-      setSelectedModel(currentModel);
-    }
-  }, [currentModel, selectedModel]);
-
-  // Charger la liste des cas depuis l'API
+  // Charger la liste des cas depuis l' API
   const fetchCases = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/eval/cases`);
