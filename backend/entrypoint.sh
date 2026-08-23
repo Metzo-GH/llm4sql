@@ -8,7 +8,7 @@ echo "[LLM4SQL Docker Entrypoint] Attente de la disponibilité de PostgreSQL ($D
 python - <<'EOF'
 import os
 import time
-import psycopg2
+import psycopg
 
 db_host = os.getenv("DB_HOST", "db")
 db_port = int(os.getenv("DB_PORT", "5432"))
@@ -19,7 +19,7 @@ db_password = os.getenv("DB_PASSWORD", "postgres")
 max_retries = 30
 for i in range(max_retries):
     try:
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host=db_host,
             port=db_port,
             dbname=db_name,
@@ -42,7 +42,7 @@ EOF
 echo "[LLM4SQL Docker Entrypoint] Vérification du schéma initial..."
 python - <<'EOF'
 import os
-import psycopg2
+import psycopg
 
 db_host = os.getenv("DB_HOST", "db")
 db_port = int(os.getenv("DB_PORT", "5432"))
@@ -51,7 +51,7 @@ db_user = os.getenv("DB_USER", "postgres")
 db_password = os.getenv("DB_PASSWORD", "postgres")
 
 try:
-    conn = psycopg2.connect(
+    conn = psycopg.connect(
         host=db_host,
         port=db_port,
         dbname=db_name,

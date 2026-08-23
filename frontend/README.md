@@ -141,7 +141,7 @@ Le style visuel est centralisé dans **`index.css`** (sans CSS en ligne dans les
   - **Mode Plein Écran Immersif & Zoom Centré** : Navigation grand format avec centrage géométrique vectoriel et échelle adaptative (100%, 135%, +/-).
 
 ### Tableau et Data Viz (`DataTable.tsx` & `DataVisualization.tsx`)
-- **Tableau** : Affiche les résultats paginés, mémorise les colonnes calculées (`useMemo`) et intègre un bouton d'export CSV encodé avec un marqueur UTF-8 BOM (`\uFEFF`) pour une compatibilité Excel native.
+- **Tableau & Virtualisation** : Affiche les résultats paginés ou virtualisés avec `@tanstack/react-virtual` (activation automatique conditionnelle au-delà de 500 lignes en mode « Tout afficher »), mémorise les colonnes et KPIs calculés (`useMemo`) et intègre un bouton d'export CSV encodé avec un marqueur UTF-8 BOM (`\uFEFF`) pour une compatibilité Excel native.
 - **Graphiques** : Rendu adaptatif propulsé par **Recharts** (Aires, Courbes, Barres) adaptant automatiquement ses axes en fonction des types de données détectés.
 
 

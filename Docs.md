@@ -140,7 +140,7 @@ erDiagram
 ### 4.2 Optimisation du Contexte & Cache Sémantique
 - **Cache Sémantique Vectoriel** : Mise en cache LRU en mémoire des requêtes passées calculée par similarité cosinus (Ollama embeddings) avec fallback textuel de Jaccard (temps de réponse 0ms sur requêtes récurrentes).
 - **Bypass Dynamique** : Capacité de forcer le ré-entraînement de l'agent sans interruption de service.
-- **Asynchronisme & Gestion de Pool** : Découplage de la boucle événementielle FastAPI (`asyncio.to_thread`) et mutualisation des connexions PostgreSQL (`psycopg2.pool.ThreadedConnectionPool`).
+- **Asynchronisme & Gestion de Pool** : Découplage de la boucle événementielle FastAPI (`asyncio.to_thread`) et mutualisation des connexions PostgreSQL (`psycopg_pool.ConnectionPool` sous `psycopg` v3).
 
 ---
 

@@ -1,9 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Download, Search, ChevronLeft, ChevronRight, Table, ArrowUpDown, ArrowUp, ArrowDown, Calculator } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { SqlResultRow } from '../types/chat';
 
 export type SortDirection = 'default' | 'asc' | 'desc';
 export type PageSizeMode = 'auto' | 10 | 25 | 50 | 'all';
+
+const VIRTUALIZATION_THRESHOLD = 500;
 
 interface SortConfig {
   column: string | null;
@@ -24,6 +27,7 @@ interface DataTableProps {
  */
 export const DataTable: React.FC<DataTableProps> = ({ data }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: null, direction: 'default' });
@@ -121,6 +125,16 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
       return isAsc ? comp : -comp;
     });
   }, [data, columns, searchTerm, sortConfig]);
+
+  const shouldVirtualize = pageSizeMode === 'all' && filteredData.length > VIRTUALIZATION_THRESHOLD;
+
+  const virtualizer = useVirtualizer({
+    count: shouldVirtualize ? filteredData.length : 0,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 40,
+    overscan: 20,
+    enabled: shouldVirtualize,
+  });
 
   // Calcul des statistiques résumées sur les colonnes numériques
   const stats = useMemo(() => {
@@ -235,9 +249,13 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
       </div>
 
       {/* Rendu du tableau SQL */}
-      <div className="data-table-container">
+      <div
+        className="data-table-container"
+        ref={scrollContainerRef}
+        style={shouldVirtualize ? { maxHeight: '70vh', overflow: 'auto' } : undefined}
+      >
         <table className="data-table">
-          <thead>
+          <thead style={shouldVirtualize ? { display: 'table', width: '100%', tableLayout: 'fixed' as const } : undefined}>
             <tr className="data-table-header-row">
               {columns.map((col) => {
                 const isCurrentCol = sortConfig.column === col;
@@ -278,32 +296,64 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
               })}
             </tr>
           </thead>
-          <tbody>
-            {paginatedData.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="data-table-empty-row">
-                  Aucun résultat ne correspond à votre filtre local.
-                </td>
-              </tr>
-            ) : (
-              paginatedData.map((row, rIdx) => (
-                <tr
-                  key={rIdx}
-                  className="data-table-row"
-                >
-                  {columns.map((col) => (
-                    <td key={col} className="data-table-td">
-                      {row[col] === null || row[col] === undefined ? (
-                        <span className="data-table-td-null">NULL</span>
-                      ) : (
-                        String(row[col])
-                      )}
-                    </td>
-                  ))}
+          {shouldVirtualize ? (
+            <tbody style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative', display: 'block', width: '100%' }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const row = filteredData[virtualRow.index];
+                return (
+                  <tr
+                    key={virtualRow.index}
+                    className="data-table-row"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                      display: 'table',
+                      tableLayout: 'fixed',
+                    }}
+                  >
+                    {columns.map((col) => (
+                      <td key={col} className="data-table-td">
+                        {row[col] === null || row[col] === undefined ? (
+                          <span className="data-table-td-null">NULL</span>
+                        ) : String(row[col])}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          ) : (
+            <tbody>
+              {paginatedData.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="data-table-empty-row">
+                    Aucun résultat ne correspond à votre filtre local.
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
+              ) : (
+                paginatedData.map((row, rIdx) => (
+                  <tr
+                    key={rIdx}
+                    className="data-table-row"
+                  >
+                    {columns.map((col) => (
+                      <td key={col} className="data-table-td">
+                        {row[col] === null || row[col] === undefined ? (
+                          <span className="data-table-td-null">NULL</span>
+                        ) : (
+                          String(row[col])
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          )}
         </table>
       </div>
 
@@ -333,6 +383,8 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
           <span className="data-table-pagination-info">
             {filteredData.length === 0
               ? '0 ligne'
+              : shouldVirtualize
+              ? `${filteredData.length} lignes (virtualisées)`
               : `Lignes ${startIndex + 1}-${Math.min(startIndex + rowsPerPage, filteredData.length)} sur ${filteredData.length}`}
           </span>
           <select
@@ -357,27 +409,29 @@ export const DataTable: React.FC<DataTableProps> = ({ data }) => {
           </select>
         </div>
 
-        <div className="data-table-pagination-actions">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="btn-secondary data-table-pagination-btn"
-            aria-label="Page précédente"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="data-table-pagination-current">
-            Page {currentPage} sur {Math.max(1, totalPages)}
-          </span>
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            className="btn-secondary data-table-pagination-btn"
-            aria-label="Page suivante"
-          >
-            <ChevronRight size={14} />
-          </button>
-        </div>
+        {!shouldVirtualize && (
+          <div className="data-table-pagination-actions">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="btn-secondary data-table-pagination-btn"
+              aria-label="Page précédente"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="data-table-pagination-current">
+              Page {currentPage} sur {Math.max(1, totalPages)}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="btn-secondary data-table-pagination-btn"
+              aria-label="Page suivante"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

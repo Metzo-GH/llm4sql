@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     def get_db_params(self) -> Dict[str, Any]:
         """
-        Retourne les paramètres de connexion sous forme de dictionnaire compatible avec psycopg2.
+        Retourne les paramètres de connexion sous forme de dictionnaire compatible avec psycopg v3.
         
         Returns:
             Dict[str, Any]: Les paramètres de connexion avec clés converties.
@@ -54,6 +54,10 @@ class Settings(BaseSettings):
             "user": self.DB_USER,
             "password": self.DB_PASSWORD,
         }
+
+    def get_conninfo(self) -> str:
+        """Retourne la chaine de connexion (conninfo) compatible avec psycopg v3."""
+        return f"host={self.DB_HOST} port={self.DB_PORT} dbname={self.DB_NAME} user={self.DB_USER} password={self.DB_PASSWORD}"
 
 
 # Instance globale de configuration accessible depuis toute l'application

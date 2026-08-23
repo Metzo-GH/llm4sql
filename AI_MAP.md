@@ -300,9 +300,9 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] **M2 — Modularisation du Layout `App.tsx`** : Extraction de `AppHeader.tsx`.
 - [x] **Validation Globale** : Compilation TypeScript strict (`tsc -b`), build Vite de production (0 erreur) et vérification de la suite pytest (79 passed).
 
-### Phase R36 : Évolutions Long Terme - Audit Lot 4 (Optionnelle / Future)
-- [ ] **L4 — Virtualisation du DataTable** : Intégration de `@tanstack/react-virtual` pour les jeux de données volumineux (> 5 000 lignes).
-- [ ] **L3 — Modernisation Driver PostgreSQL** : Évaluation du passage à `psycopg` (v3) pour unifier le pooling asynchrone et synchrone.
+### Phase R36 : Évolutions Long Terme - Audit Lot 4 (Validée)
+- [x] **L4 — Virtualisation du DataTable** : Intégration de `@tanstack/react-virtual` avec virtualisation conditionnelle (seuil > 500 lignes en mode "Tout afficher"). Le hook `useVirtualizer` est appelé inconditionnellement (Rules of Hooks) avec `enabled: shouldVirtualize`, `estimateSize: 40px` et `overscan: 20`. Les contrôles de pagination sont masqués en mode virtualisé. Build TypeScript strict validé.
+- [x] **L3 — Modernisation Driver PostgreSQL** : Migration complète de `psycopg2-binary` (v2) vers `psycopg` v3.3.4 + `psycopg-pool` v3.3.1. Refonte du pool (`ConnectionPool` avec `conninfo`, `min_size/max_size`), migration des curseurs (`dict_row` au lieu de `RealDictCursor`), adaptation des diagnostics d'erreur (`message_primary`, `message_detail`, `message_hint`), et remplacement de `IN %s` par `= ANY(%s)` pour la compatibilité psycopg v3. 79 tests backend au vert (0 régression).
 
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.

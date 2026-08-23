@@ -1,8 +1,8 @@
 import contextlib
 import threading
-import psycopg2
+import psycopg
 from typing import Generator, Any
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg_pool import ConnectionPool
 from app.core.config import settings
 from app.core.security import validate_sandbox_sql
 
@@ -12,21 +12,22 @@ _pool_lock = threading.Lock()
 
 def init_db_pool() -> None:
     """
-    Initialise le pool de connexions ThreadedConnectionPool.
+    Initialise le pool de connexions ConnectionPool.
     """
     global _pool
     if _pool is None:
         with _pool_lock:
             if _pool is None:
-                # Créer un pool avec minconn=2 et maxconn=10
-                _pool = ThreadedConnectionPool(
-                    minconn=2,
-                    maxconn=10,
-                    **settings.get_db_params()
+                # Créer un pool avec min_size=2 et max_size=10
+                _pool = ConnectionPool(
+                    conninfo=settings.get_conninfo(),
+                    min_size=2,
+                    max_size=10,
+                    open=True
                 )
 
 
-def get_pool() -> ThreadedConnectionPool:
+def get_pool() -> ConnectionPool:
     """
     Retourne l'instance du pool. Initialise le pool si nécessaire.
     """
@@ -43,7 +44,7 @@ def close_db_pool() -> None:
     if _pool is not None:
         with _pool_lock:
             if _pool is not None:
-                _pool.closeall()
+                _pool.close()
                 _pool = None
 
 
@@ -56,9 +57,10 @@ def _configure_connection(conn: Any, schema: str = "public", readonly: bool = Fa
     """
     if schema not in ("public", "user_sandbox"):
         raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
-    conn.readonly = readonly
-    with conn.cursor() as cur:
-        cur.execute(f"SET search_path TO {schema};")
+    conn.autocommit = True
+    conn.execute(f"SET search_path TO {schema};")
+    conn.autocommit = False
+    conn.read_only = readonly
 
 
 def get_db_connection(schema: str = "public", readonly: bool = False) -> Any:
@@ -70,7 +72,7 @@ def get_db_connection(schema: str = "public", readonly: bool = False) -> Any:
         readonly (bool): Si True, la connexion sera marquée en lecture seule.
         
     Returns:
-        psycopg2.extensions.connection: L'objet connexion PostgreSQL.
+        psycopg.Connection: L'objet connexion PostgreSQL.
         
     Raises:
         ValueError: Si le schéma n'est ni 'public' ni 'user_sandbox'.
@@ -79,7 +81,7 @@ def get_db_connection(schema: str = "public", readonly: bool = False) -> Any:
     if schema not in ("public", "user_sandbox"):
         raise ValueError(f"Schéma non autorisé : '{schema}'. Choisir 'public' ou 'user_sandbox'.")
     try:
-        conn = psycopg2.connect(**settings.get_db_params())
+        conn = psycopg.connect(settings.get_conninfo())
         _configure_connection(conn, schema=schema, readonly=readonly)
         return conn
     except Exception as e:
@@ -104,7 +106,7 @@ def get_db_conn(schema: str = "public", readonly: bool = False) -> Generator[Any
         raise
     finally:
         try:
-            conn.readonly = False
+            conn.read_only = False
             conn.rollback()
         except Exception:
             pass

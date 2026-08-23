@@ -38,7 +38,7 @@ GET_ALL_FOREIGN_KEYS_QUERY = """
 """
 
 from typing import List, Dict, Any, Optional
-from psycopg2.extras import RealDictCursor
+from psycopg.rows import dict_row
 from app.database.pool import get_db_conn
 
 
@@ -65,7 +65,7 @@ def execute_readonly_query(
     """
     try:
         with get_db_conn(schema=schema, readonly=True) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(query, params)
                 return [dict(row) for row in cur.fetchall()]
     except Exception as e:

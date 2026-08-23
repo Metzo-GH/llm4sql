@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
+    "@tanstack/react-virtual": "^3.14.10",
     "dompurify": "^3.4.11",
     "lucide-react": "^1.17.0",
     "mermaid": "^11.15.0",

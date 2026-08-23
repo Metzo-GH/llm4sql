@@ -1,6 +1,6 @@
 import re
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 from mcp.server.fastmcp import FastMCP
 import json
 from typing import List, Dict, Any
@@ -146,7 +146,7 @@ def search_value(term: str, schema: str = "public") -> str:
         union_query = f"SELECT DISTINCT table_name, column_name, matched_value FROM ({' UNION ALL '.join(select_clauses)}) AS search_union LIMIT 20;"
 
         with get_db_conn(schema=schema, readonly=True) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(union_query, tuple(params))
                 raw_matches = cur.fetchall()
 
@@ -204,7 +204,7 @@ def get_sample_data(table_name: str, limit: int = 3, schema: str = "public") -> 
     
     try:
         with get_db_conn(schema=schema, readonly=True) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(query, (limit,))
                 results = cur.fetchall()
                 for row in results:
@@ -251,8 +251,8 @@ def dry_run_query(sql: str, schema: str = "public") -> str:
                 description = cur.description or []
                 columns_info = []
                 if description:
-                    type_oids = tuple(set(col.type_code for col in description))
-                    cur.execute("SELECT oid, typname FROM pg_type WHERE oid IN %s;", (type_oids,))
+                    type_oids = list(set(col.type_code for col in description))
+                    cur.execute("SELECT oid, typname FROM pg_type WHERE oid = ANY(%s);", (type_oids,))
                     type_rows = cur.fetchall()
                     type_map = {r[0]: r[1] for r in type_rows}
                     columns_info = [
@@ -269,11 +269,11 @@ def dry_run_query(sql: str, schema: str = "public") -> str:
                 "estimated_rows": estimated_rows
             }, indent=2)
             
-    except psycopg2.Error as e:
-        db_err = e.pgerror.strip() if e.pgerror else str(e)
+    except psycopg.Error as e:
+        db_err = e.diag.message_primary if e.diag and e.diag.message_primary else str(e)
         diag = getattr(e, 'diag', None)
-        detail = getattr(diag, 'message_detail', None) if diag else None
-        hint = getattr(diag, 'message_hint', None) if diag else None
+        detail = diag.message_detail if diag else None
+        hint = diag.message_hint if diag else None
         
         err_res = {
             "success": False,
@@ -312,7 +312,7 @@ def execute_query(sql: str, schema: str = "public") -> str:
     # 2. Exécution de la requête
     try:
         with get_db_conn(schema=schema, readonly=True) as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(sql)
                 results = cur.fetchall()
                 
