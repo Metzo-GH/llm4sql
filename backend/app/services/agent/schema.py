@@ -61,13 +61,16 @@ def get_database_schema_context(schema: str = "public") -> str:
                 cur.execute(query, (schema,))
                 rows = cur.fetchall()
                 
-                # Organiser par table
+                # Organiser par table et stocker nullabilité
                 tables = {}
+                col_null_map = {}
                 for row in rows:
                     t_name, c_name, d_type, is_null = row
                     if t_name not in tables:
                         tables[t_name] = []
-                    null_status = "NULL" if is_null == "YES" else "NOT NULL"
+                    is_nullable = (is_null == "YES")
+                    col_null_map[(t_name, c_name)] = is_nullable
+                    null_status = "NULL" if is_nullable else "NOT NULL"
                     tables[t_name].append(f"  - {c_name} ({d_type}) {null_status}")
                 
                 schema_blocks = []
@@ -84,7 +87,15 @@ def get_database_schema_context(schema: str = "public") -> str:
                     relations_block.append("Relations (Clés Étrangères) :")
                     for fk in fk_rows:
                         f_table, f_col, p_table, p_col = fk
-                        relations_block.append(f"  - Table '{f_table}' colonne '{f_col}' référence '{p_table}({p_col})'")
+                        is_fk_null = col_null_map.get((f_table, f_col), False)
+                        if is_fk_null:
+                            relations_block.append(
+                                f"  - Table '{f_table}' colonne '{f_col}' (nullable) référence '{p_table}({p_col})' [OPTIONAL -> Use LEFT JOIN to avoid dropping '{f_table}' records]"
+                            )
+                        else:
+                            relations_block.append(
+                                f"  - Table '{f_table}' colonne '{f_col}' (NOT NULL) référence '{p_table}({p_col})'"
+                            )
                 
                 # Assembler le tout
                 schema_str = "\n\n".join(schema_blocks)
@@ -126,9 +137,15 @@ def get_dynamic_schema_context(selected_tables: List[str]) -> str:
                 # Ajouter les relations de cette table si elles existent
                 if "relations" in schema_data:
                     for rel in schema_data["relations"]:
-                        relations_info.append(
-                            f"  - Table '{t_name}' colonne '{rel['local_column']}' référence '{rel['foreign_table']}({rel['foreign_column']})'"
-                        )
+                        is_fk_null = rel.get("nullable", False)
+                        if is_fk_null:
+                            relations_info.append(
+                                f"  - Table '{t_name}' colonne '{rel['local_column']}' (nullable) référence '{rel['foreign_table']}({rel['foreign_column']})' [OPTIONAL -> Use LEFT JOIN to avoid dropping '{t_name}' records]"
+                            )
+                        else:
+                            relations_info.append(
+                                f"  - Table '{t_name}' colonne '{rel['local_column']}' (NOT NULL) référence '{rel['foreign_table']}({rel['foreign_column']})'"
+                            )
             else:
                 logger.warning(f"  [WARNING] get_schema pour '{t_name}' a retourné : {schema_str}")
         except Exception as e:

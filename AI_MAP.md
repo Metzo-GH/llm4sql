@@ -309,14 +309,53 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
 - [x] **Thread-Safety LLM** : Protection exclusive sous verrou du cache LRU `OrderedDict` dans `llm_provider.py`.
 - [x] **Conformité React 19 & ESLint** : Résolution des erreurs/warnings ESLint (`useOllamaStatus.ts`, `BenchmarkPanel.tsx`, `SchemaVisualizer.tsx`).
 - [x] **Optimisation Packaging Frontend** : Découpage ciblé des chunks volumineux (`mermaid`, `cytoscape`, `katex`, `recharts`) via `manualChunks` dans `vite.config.ts`.
-- [x] **Ergonomie Visualiseur de Schéma** : Correction du zoom en mode plein écran (transition one-shot déverrouillant le dézoom et l'échelle 100%).
-- [x] **Validation Globale** : Non-régression complète backend (85 tests pytest au vert) et build Vite/TS réussi en 11s.
+### Phase R38 : Structuration & Initialisation du Rapport Master MIAGE (Typst) (Validée)
+- [x] **Choix Technologique** : Sélection et configuration du moteur typographique moderne **Typst** pour la rédaction académique du mémoire de fin d'études.
+- [x] **Document Maître & Charte Typographique (`main.typ`)** : Configuration A4, marges universitaires, styles de titres hiérarchiques, boîtes d'emphase (callouts), en-têtes/pieds de page dynamiques et page de garde officielle Master MIAGE.
+- [x] **Architecture Modulaire par Chapitres (`rapport/chapters/`)** :
+  - `00_abstracts.typ` : Résumé exécutif en français et Abstract en anglais (~1/2 page chacun).
+  - `01_contexte_enjeux.typ` : Enjeux de la BI conversationnelle, souveraineté/RGPD et état de l'art 2026 (MCP, ReAct).
+  - `02_gestion_projet.typ` : Gouvernance MOA/MOE, méthodologie agile U-AEP, TDD et outillage (`uv`, Docker, Vite).
+  - `03_specifications.typ` : Personas, matrice MoSCoW, exigences non-fonctionnelles et schéma canonique BD Ouvrages.
+  - `04_architecture_conception.typ` : Topologie en couches, moteur LangGraph, serveur MCP et défense en profondeur.
+  - `05_implementation_defis.typ` : Streaming SSE, XAI (`<think>`), cache sémantique et résolution des 4 défis d'ingénierie.
+  - `06_evaluation_resultats.typ` : Banc de test de 18 cas, Execution Accuracy (83.3%), soft-matching et ROI.
+  - `07_bilan_perspectives.typ` : Bilan des compétences MIAGE (Hard/Soft skills), leçons apprises et projet professionnel.
+  - `08_annexes.typ` : Planning de soutenance orale (20 min) et FAQ technique jury (15 min).
 
+### Phase R39 : Résolution Universelle du LEFT JOIN & Préservation d'Ancre par Métadonnées MCP (Validée)
+- [x] **Diagnostic Théorique & Invariant Relationnel** : Résolution de la cause racine universelle de perte de données (*Lossy Join*) sur les relations optionnelles (clés étrangères `nullable: true`). L'invariant mathématique impose un `LEFT JOIN` (Lossless Projection) lorsque la table jointe sert à enrichir l'affichage sans être un prédicat de filtrage restrictif.
+- [x] **Enrichissement Dynamique MCP (`mcp_server.py`)** : Détection automatique de la nullabilité des clés étrangères dans `get_schema()` et injection du champ `join_hint` (`"LEFT JOIN recommended (optional relation, avoids dropping parent rows)"` si nullable, `"INNER JOIN (mandatory relation)"` sinon). Cette solution est 100% agnostique et fonctionne sur n'importe quel schéma de base de données (existant ou Sandbox).
+- [x] **Contextes de Schéma Structurés (`schema.py`)** : Annotation explicite des clés étrangères dans `get_database_schema_context()` et `get_dynamic_schema_context()` avec les mentions `(nullable) -> [OPTIONAL -> Use LEFT JOIN]` ou `(NOT NULL)`.
+- [x] **Directive d'Ancrage Concis (`prompts.py`)** : Intégration de la règle d'or *Anchor Preservation* dans les guidelines SQL du prompt système sans saturer la fenêtre d'attention du modèle 4B.
+- [x] **Validation TDD & Benchmark** : 85 tests pytest passés à 100% au vert. Validation du Cas #6 du benchmark (qui échouait auparavant avec 3 lignes au lieu de 4), passant désormais avec succès (`passed: True`, 4 lignes retournées avec conservation du one-shot *Carnet d'un matelot*).
+
+### Phase R41 : Standards Académiques, Autopsie des Impasses & TCO Code Arena 2026 (Validée)
+- [x] **Mise en Page selon les Standards Académiques Universitaires (`main.typ`)** :
+  - Marges larges avec gouttière de reliure gauche (3,5 cm gauche, 2,5 cm droite, 2,5 cm haut/bas).
+  - Interligne 1,5 universitaire (`leading: 1em`, `spacing: 1.4em`, texte justifié).
+  - Remerciements rédigés à la première personne (« Je » authentique).
+- [x] **Actualisation des Coûts LLM & TCO sur Données Officielles Code Arena WebDev (Août 2026)** :
+  - Intégration de la grille officielle (Claude Opus 5, GPT-5.6 Sol, Gemini 3.7 Flash, DeepSeek V4 Flash).
+  - Modélisation du TCO sur 3 ans (33 000 requêtes/an) avec méthodologie de calcul tracée ($198$ M tokens In, $26{,}4$ M tokens Out).
+  - Nuance juridique rigoureuse sur le RGPD (Articles 44+ sur les transferts hors UE vs obligations organisationnelles internes).
+- [x] **Agnosticisme du Modèle & Sobriété Matérielle (< 6 Go VRAM)** :
+  - Clarification de l'agnosticisme total de la plateforme (Ollama / LangGraph) capable d'accueillir n'importe quel LLM local.
+  - Positionnement du modèle 4B comme étalon minimaliste de test pour démontrer l'apport de l'architecture.
+- [x] **Autopsie des 3 Impasses Techniques Abandonnées & Nouveau Schéma Vectoriel (`pivots_architecturaux.svg`)** :
+  - *Impasse #1* : Abandon de la traduction AST ➔ Français (Phase R16) suite à la découverte des faux négatifs (similarité 34,8% sur du SQL juste) au profit de l'Execution Accuracy sur PostgreSQL avec soft-matching par jetons.
+  - *Impasse #2* : Abandon du Dynamic Few-Shot par gabarits synthétiques (Phase R27) pour éliminer l'Attention Collapse et les hallucinations de tables au profit du Zero-Shot outillé via MCP.
+  - *Impasse #3* : Remplacement du générateur Mermaid par LLM (Phase 5) par un parseur DDL en Python pur (< 1 ms, 0 erreur).
+- [x] **Exemples Typiques Comparatifs & Dé-lissage Stylistique** :
+  - Ajout d'encadrés comparatifs concrets illustrant le Lossy Join (Cas #6 de Blain), la pollution d'attention, le mismatch d'alias de colonnes et la validation par jetons utiles (`_extract_row_tokens`).
+  - Suppression des tics de langage et des répétitions superflues du mot "déterministe".
+- [x] **Validation Globale & Compilation** : 85 tests pytest backend au vert (100%), build Vite/TS réussi et compilation Typst du mémoire (`memoire_llm4sql.pdf`, 1,60 Mo, 0 warning, 0 erreur).
 
 ## 4. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
 - **Source de Vérité** : Ce fichier `#AI_MAP.md` est la seule référence de l'état du projet et doit être mis à jour après chaque complétion.
+
 
 
 

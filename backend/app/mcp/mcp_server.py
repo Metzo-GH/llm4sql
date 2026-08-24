@@ -77,20 +77,26 @@ def get_schema(table_name: str, schema: str = "public") -> str:
             return json.dumps({"error": f"La table '{table_name}' n'existe pas ou n'a pas de colonnes dans '{schema}'."}, indent=2)
         
         schema_info = []
+        col_nullability = {}
         for col in columns:
+            is_nullable = col["is_nullable"] == "YES"
+            col_nullability[col["column_name"]] = is_nullable
             schema_info.append({
                 "column": col["column_name"],
                 "type": col["data_type"],
-                "nullable": col["is_nullable"] == "YES"
+                "nullable": is_nullable
             })
             
         relations = _execute_readonly_db_query(GET_TABLE_FOREIGN_KEYS_QUERY, (table_name,), schema=schema)
         relations_info = []
         for rel in relations:
+            is_fk_nullable = col_nullability.get(rel["local_column"], False)
             relations_info.append({
                 "local_column": rel["local_column"],
+                "nullable": is_fk_nullable,
                 "foreign_table": rel["foreign_table"],
-                "foreign_column": rel["foreign_column"]
+                "foreign_column": rel["foreign_column"],
+                "join_hint": "LEFT JOIN recommended (optional relation, avoids dropping parent rows)" if is_fk_nullable else "INNER JOIN (mandatory relation)"
             })
             
         return json.dumps({
