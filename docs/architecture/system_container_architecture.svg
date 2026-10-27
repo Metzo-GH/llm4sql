@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1120" height="680" viewBox="0 0 1120 680">
+  <defs>
+    <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="0.75" fill="#cbd5e1"/>
+    </pattern>
+    <marker id="arrow-slate" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#0f172a"/>
+    </marker>
+    <marker id="arrow-muted" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-blue" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="arrow-teal" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-red" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#b91c1c"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1120" height="680" rx="0" fill="#ffffff"/>
+  <rect x="1" y="1" width="1118" height="678" rx="0" fill="url(#dot-grid)"/>
+  <rect x="0.5" y="0.5" width="1119" height="679" rx="0" fill="none" stroke="#94a3b8" stroke-width="1"/>
+  <rect x="16" y="14" width="1088" height="52" rx="0" fill="#f8fafc" stroke="#0f172a" stroke-width="1.2"/>
+  <line x1="784" y1="14" x2="784" y2="66" stroke="#0f172a" stroke-width="1"/>
+  <text x="30.0" y="36.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13.0" font-weight="700" fill="#0f172a">System Architecture</text>
+  <text x="30.0" y="55.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="400" fill="#475569">Docker Compose services (Nginx, FastAPI, PostgreSQL) + host Ollama runtime</text>
+  <text x="794.0" y="28.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.0" font-weight="700" fill="#475569">LEGEND</text>
+  <line x1="794" y1="39" x2="814" y2="39" stroke="#0f172a" stroke-width="1.5"/>
+  <text x="819.0" y="42.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">Sync HTTP / TCP</text>
+  <line x1="950" y1="39" x2="970" y2="39" stroke="#1d4ed8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="975.0" y="42.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">SSE Stream</text>
+  <line x1="794" y1="52.5" x2="814" y2="52.5" stroke="#0f766e" stroke-width="1.3"/><line x1="794" y1="55.5" x2="814" y2="55.5" stroke="#0f766e" stroke-width="1.3"/>
+  <text x="819.0" y="57.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">Read-Only</text>
+  <line x1="950" y1="54" x2="970" y2="54" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="975.0" y="57.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">Boundary</text>
+  <rect x="16" y="82" width="328" height="582" rx="0" fill="#f8fafc" fill-opacity="0.42" stroke="#475569" stroke-width="1.2" stroke-dasharray="6,4"/>
+  <rect x="24" y="88" width="242.015" height="19" rx="0" fill="#f1f5f9" stroke="#334155" stroke-width="0.9"/>
+  <text x="32.0" y="101.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="9.5" font-weight="700" fill="#0f172a">HOST MACHINE (Windows / macOS / Linux)</text>
+  <rect x="28" y="114" width="302" height="228" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="28.75" y="114.75" width="300.5" height="35.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="28" y1="150" x2="330" y2="150" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="38.0" y="129.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">Web Browser</text>
+  <text x="38.0" y="142.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">Browser (localhost:5173)</text>
+  <rect x="224" y="121" width="98" height="18" rx="1" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.9"/>
+  <text x="273.0" y="133.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">localhost:5173</text>
+  <text x="38.0" y="166.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#334155">TRANSPORT &amp; STREAMING</text>
+  <text x="38.0" y="181.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="9.0" font-weight="400" fill="#0f172a">- HTTP/1.1 GET SPA + POST /api/*</text>
+  <text x="38.0" y="196.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="9.0" font-weight="400" fill="#0f172a">- SSE stream (&lt;think&gt; + tool events)</text>
+  <line x1="38" y1="206" x2="320" y2="206" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="38.0" y="221.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#334155">REACT 19 CLIENT MODULES</text>
+  <text x="38.0" y="238.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">useChat           : SSE consumer &amp; state hook</text>
+  <text x="38.0" y="257.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">SchemaVisualizer  : Mermaid v11 + DOMPurify</text>
+  <text x="38.0" y="276.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">DataTable         : @tanstack/react-virtual</text>
+  <text x="38.0" y="295.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">DataVisualization : Recharts bar / line / area</text>
+  <text x="38.0" y="314.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">SqlSandbox        : Sandbox DDL/DML editor</text>
+  <rect x="28" y="380" width="302" height="270" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="28.75" y="380.75" width="300.5" height="35.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="28" y1="416" x2="330" y2="416" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="38.0" y="395.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">Ollama Server</text>
+  <text x="38.0" y="408.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">Native host process</text>
+  <rect x="224" y="387" width="98" height="18" rx="1" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.9"/>
+  <text x="273.0" y="399.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">0.0.0.0:11434</text>
+  <rect x="38" y="426" width="282" height="42" rx="1" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.0"/>
+  <text x="46.0" y="442.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="700" fill="#0f172a">GPU ACCELERATION: CUDA / Metal / DirectML</text>
+  <text x="46.0" y="458.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="400" fill="#475569">Native host execution (no WSL2/Docker GPU layer)</text>
+  <text x="38.0" y="486.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#334155">RUNTIME FLAGS (start.ps1 / start.sh)</text>
+  <text x="38.0" y="502.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#0f172a">- FLASH_ATTENTION=1  |  KV_CACHE_TYPE=q4_0</text>
+  <text x="38.0" y="518.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#0f172a">- OLLAMA_TIMEOUT=90s |  Keep-Alive sockets</text>
+  <line x1="38" y1="529" x2="320" y2="529" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="38.0" y="545.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#334155">LOCAL MODELS</text>
+  <text x="38.0" y="562.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#0f172a">- Any tool-calling LLM (UI-selectable)</text>
+  <text x="38.0" y="578.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#475569">  e.g. qwen3.5:4b + &lt;think&gt; stream</text>
+  <text x="38.0" y="597.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#0f172a">- Local Embedding    : /api/embed vectors</text>
+  <text x="38.0" y="613.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#475569">  for semantic cache lookup</text>
+  <text x="38.0" y="636.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f766e">Runs locally on host GPU/CPU</text>
+  <rect x="468" y="82" width="636" height="582" rx="0" fill="#f8fafc" fill-opacity="0.42" stroke="#475569" stroke-width="1.2" stroke-dasharray="6,4"/>
+  <rect x="476" y="88" width="224.48749999999998" height="19" rx="0" fill="#f1f5f9" stroke="#334155" stroke-width="0.9"/>
+  <text x="484.0" y="101.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="9.5" font-weight="700" fill="#0f172a">DOCKER NETWORK (docker-compose.yml)</text>
+  <rect x="482" y="114" width="608" height="106" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="482.75" y="114.75" width="606.5" height="33.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="482" y1="148" x2="1090" y2="148" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="492.0" y="129.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">llm4sql-frontend</text>
+  <text x="492.0" y="142.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">Nginx Alpine</text>
+  <rect x="964" y="121" width="116" height="18" rx="1" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.9"/>
+  <text x="1022.0" y="133.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">:5173 -&gt; :5173</text>
+  <rect x="492" y="155" width="286" height="56" rx="1" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.9"/>
+  <rect x="790" y="155" width="290" height="56" rx="1" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.9"/>
+  <text x="500.0" y="170.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#334155">STATIC SPA SERVER</text>
+  <text x="500.0" y="185.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">Vite / React 19 (/usr/share/nginx/html)</text>
+  <text x="500.0" y="200.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#475569">gzip on | SPA fallback try_files</text>
+  <text x="798.0" y="170.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#334155">REVERSE PROXY (location /api/)</text>
+  <text x="798.0" y="185.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">proxy_pass http://backend:8000/api/</text>
+  <text x="798.0" y="200.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#1d4ed8">proxy_buffering off | timeout 600s</text>
+  <rect x="482" y="268" width="608" height="224" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="482.75" y="268.75" width="606.5" height="33.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="482" y1="302" x2="1090" y2="302" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="492.0" y="283.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">llm4sql-backend</text>
+  <text x="492.0" y="296.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">Python 3.12 / FastAPI / Uvicorn / uv</text>
+  <rect x="964" y="275" width="116" height="18" rx="1" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.9"/>
+  <text x="1022.0" y="287.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">TCP :8000</text>
+  <rect x="492" y="310" width="188" height="84" rx="1" fill="#f8fafc" stroke="#334155" stroke-width="0.9"/>
+  <rect x="690" y="310" width="190" height="84" rx="1" fill="#f8fafc" stroke="#334155" stroke-width="0.9"/>
+  <rect x="890" y="310" width="190" height="84" rx="1" fill="#f8fafc" stroke="#334155" stroke-width="0.9"/>
+  <rect x="492" y="402" width="288" height="80" rx="1" fill="#f8fafc" stroke="#334155" stroke-width="0.9"/>
+  <rect x="790" y="402" width="290" height="80" rx="1" fill="#f8fafc" stroke="#334155" stroke-width="0.9"/>
+  <text x="500.0" y="325.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0f172a">API Routes (app/routers/)</text>
+  <text x="500.0" y="341.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">/api/chat &amp; /chat/stream</text>
+  <text x="500.0" y="355.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569">SlowAPI 20/min | Queue SSE</text>
+  <text x="500.0" y="369.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569">asyncio.to_thread bridge</text>
+  <text x="500.0" y="383.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#0f172a">/schema /sandbox /eval</text>
+  <text x="698.0" y="325.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0f172a">Semantic Cache (cache.py)</text>
+  <text x="698.0" y="341.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#0f172a">In-memory LRU vector store</text>
+  <text x="698.0" y="355.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#475569">Cosine + Jaccard fallback</text>
+  <text x="698.0" y="369.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.1" font-weight="700" fill="#0f766e">Key: (model, target_schema)</text>
+  <text x="698.0" y="383.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.1" font-weight="400" fill="#475569">No cross-schema cache hits</text>
+  <text x="898.0" y="325.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0f172a">Agent Engine (agent/)</text>
+  <text x="898.0" y="341.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#0f172a">LangGraph ReAct workflow</text>
+  <text x="898.0" y="355.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#0f172a">StateGraph(AgentState)</text>
+  <text x="898.0" y="369.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="700" fill="#1d4ed8">5 FastMCP read-only tools</text>
+  <text x="898.0" y="383.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569">Self-healing dry-run loop</text>
+  <text x="500.0" y="417.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0f172a">Query Validation (security.py)</text>
+  <text x="500.0" y="433.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f766e">- SQLGlot AST check: SELECT-only</text>
+  <text x="500.0" y="448.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">- Blocks DDL/DML &amp; pg_sleep / pg_read_file</text>
+  <text x="500.0" y="463.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#475569">- Python DDL-to-Mermaid parser (&lt;1ms)</text>
+  <text x="798.0" y="417.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.8" font-weight="700" fill="#0f172a">DB &amp; HTTP Pools (pool.py / http_client)</text>
+  <text x="798.0" y="433.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">- psycopg_pool.ConnectionPool (psycopg v3)</text>
+  <text x="798.0" y="448.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">- Shared httpx Keep-Alive client pool</text>
+  <text x="798.0" y="463.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#1d4ed8">- Bridge: host.docker.internal:11434</text>
+  <rect x="482" y="540" width="608" height="112" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="482.75" y="540.75" width="606.5" height="31.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="482" y1="572" x2="1090" y2="572" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="492.0" y="555.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">llm4sql-db</text>
+  <text x="492.0" y="568.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">PostgreSQL 16 Alpine</text>
+  <rect x="798" y="546" width="134" height="18" rx="1" fill="#f1f5f9" stroke="#334155" stroke-width="0.9"/>
+  <text x="865.0" y="558.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f172a" text-anchor="middle">vol: postgres_data</text>
+  <rect x="940" y="546" width="140" height="18" rx="1" fill="#f0fdfa" stroke="#0f766e" stroke-width="0.9"/>
+  <text x="1010.0" y="558.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f766e" text-anchor="middle">:5432 (Host :5433)</text>
+  <rect x="492" y="579" width="290" height="65" rx="1" fill="#f0fdfa" stroke="#0f766e" stroke-width="1.3"/>
+  <rect x="794" y="579" width="286" height="65" rx="1" fill="#f8fafc" stroke="#334155" stroke-width="1.0" stroke-dasharray="4,3"/>
+  <text x="500.0" y="595.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="700" fill="#0f766e">schema: public (read-only)</text>
+  <text x="500.0" y="612.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.6" font-weight="400" fill="#0f172a">Default BD Ouvrages schema (6 tables)</text>
+  <text x="500.0" y="628.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#475569">Session guard: readonly=True transactions</text>
+  <text x="802.0" y="595.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="700" fill="#0f172a">schema: user_sandbox (isolated)</text>
+  <text x="802.0" y="612.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8.6" font-weight="400" fill="#0f172a">User DDL/DML sandbox tables</text>
+  <text x="802.0" y="628.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569">CREATE TABLE / INSERT isolated from public</text>
+  <path d="M 330.0,148.0 L 482.0,148.0" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-slate)"/>
+  <path d="M 482.0,194.0 L 330.0,194.0" fill="none" stroke="#1d4ed8" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <path d="M 634.0,220.0 L 634.0,268.0" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-slate)"/>
+  <path d="M 934.0,268.0 L 934.0,220.0" fill="none" stroke="#1d4ed8" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <path d="M 482.0,428.0 L 330.0,428.0" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-slate)"/>
+  <path d="M 330.0,468.0 L 482.0,468.0" fill="none" stroke="#1d4ed8" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <path d="M 636.0,492.0 L 636.0,533.5" fill="none" stroke="#0f766e" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 636.0,492.0 L 636.0,533.5" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 636.0,492.0 L 636.0,540.0" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-opacity="0" marker-end="url(#arrow-teal)"/>
+  <path d="M 936.0,492.0 L 936.0,540.0" fill="none" stroke="#334155" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-muted)"/>
+  <rect x="349.0" y="135.0" width="114.0" height="26.0" rx="1.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.85"/>
+  <text x="406.0" y="145.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f172a" text-anchor="middle">HTTP/1.1 :5173</text>
+  <text x="406.0" y="156.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569" text-anchor="middle">GET + POST /api</text>
+  <rect x="349.0" y="181.0" width="114.0" height="26.0" rx="1.5" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.85"/>
+  <text x="406.0" y="191.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">EventSource SSE</text>
+  <text x="406.0" y="202.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#1d4ed8" text-anchor="middle">&lt;think&gt; + JSON</text>
+  <rect x="526.0" y="234.5" width="216.0" height="19.0" rx="1.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.85"/>
+  <text x="634.0" y="247.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a" text-anchor="middle">Proxy -&gt; http://backend:8000/api/</text>
+  <rect x="824.0" y="234.5" width="220.0" height="19.0" rx="1.5" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.85"/>
+  <text x="934.0" y="247.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#1d4ed8" text-anchor="middle">SSE Stream (proxy_buffering off)</text>
+  <rect x="349.0" y="415.0" width="114.0" height="26.0" rx="1.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.85"/>
+  <text x="406.0" y="425.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f172a" text-anchor="middle">host-gateway</text>
+  <text x="406.0" y="436.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569" text-anchor="middle">HTTP :11434</text>
+  <rect x="349.0" y="455.0" width="114.0" height="26.0" rx="1.5" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.85"/>
+  <text x="406.0" y="465.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Token &amp; Embed</text>
+  <text x="406.0" y="476.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#1d4ed8" text-anchor="middle">&lt;think&gt; + Tools</text>
+  <rect x="522.0" y="506.5" width="228.0" height="19.0" rx="1.5" fill="#f0fdfa" stroke="#0f766e" stroke-width="0.85"/>
+  <text x="636.0" y="519.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f766e" text-anchor="middle">psycopg_pool :5432 (readonly=True)</text>
+  <rect x="828.0" y="506.5" width="216.0" height="19.0" rx="1.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.85"/>
+  <text x="936.0" y="519.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a" text-anchor="middle">Sandbox DDL/DML -&gt; user_sandbox</text>
+</svg>

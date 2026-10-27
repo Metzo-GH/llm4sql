@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1120" height="660" viewBox="0 0 1120 660">
+  <defs>
+    <pattern id="dot-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="0.75" fill="#cbd5e1"/>
+    </pattern>
+    <marker id="arrow-slate" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#0f172a"/>
+    </marker>
+    <marker id="arrow-muted" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-blue" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="arrow-teal" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-red" markerUnits="userSpaceOnUse" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8.5" markerHeight="7" orient="auto">
+      <path d="M 0,0.5 L 9,4 L 0,7.5 Z" fill="#b91c1c"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1120" height="660" rx="0" fill="#ffffff"/>
+  <rect x="1" y="1" width="1118" height="658" rx="0" fill="url(#dot-grid)"/>
+  <rect x="0.5" y="0.5" width="1119" height="659" rx="0" fill="none" stroke="#94a3b8" stroke-width="1"/>
+  <rect x="16" y="14" width="1088" height="52" rx="0" fill="#f8fafc" stroke="#0f172a" stroke-width="1.2"/>
+  <line x1="784" y1="14" x2="784" y2="66" stroke="#0f172a" stroke-width="1"/>
+  <text x="30.0" y="36.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13.0" font-weight="700" fill="#0f172a">Agent Execution Flow</text>
+  <text x="30.0" y="55.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="400" fill="#475569">Semantic cache, LangGraph tool loop, read-only MCP tools, and SQLGlot check</text>
+  <text x="794.0" y="28.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.0" font-weight="700" fill="#475569">LEGEND</text>
+  <line x1="794" y1="39" x2="814" y2="39" stroke="#0f172a" stroke-width="1.5"/>
+  <text x="819.0" y="42.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">State Flow</text>
+  <line x1="950" y1="39" x2="970" y2="39" stroke="#1d4ed8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="975.0" y="42.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">Tool / SSE Loop</text>
+  <line x1="794" y1="52.5" x2="814" y2="52.5" stroke="#0f766e" stroke-width="1.3"/><line x1="794" y1="55.5" x2="814" y2="55.5" stroke="#0f766e" stroke-width="1.3"/>
+  <text x="819.0" y="57.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">Read-Only / Cache</text>
+  <line x1="950" y1="54" x2="970" y2="54" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="975.0" y="57.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">Guard / Error</text>
+  <rect x="20" y="84" width="224" height="92" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="20.75" y="84.75" width="222.5" height="31.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="20" y1="116" x2="244" y2="116" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="30.0" y="99.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">run_agent()</text>
+  <text x="30.0" y="112.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/services/agent/graph.py</text>
+  <text x="30.0" y="132.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">- question, model, temp</text>
+  <text x="30.0" y="148.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">- target_schema ('public'|'sbx')</text>
+  <text x="30.0" y="164.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#475569">- bypass_semantic_cache: bool</text>
+  <rect x="20" y="208" width="224" height="118" rx="2" fill="#ffffff" stroke="#0f766e" stroke-width="1.5"/>
+  <rect x="20.75" y="208.75" width="222.5" height="31.25" rx="1" fill="#f0fdfa" stroke="none"/><line x1="20" y1="240" x2="244" y2="240" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="30.0" y="223.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">SemanticCache.check()</text>
+  <text x="30.0" y="236.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/services/cache.py</text>
+  <text x="30.0" y="256.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">- Cosine (/api/embed) + Jaccard</text>
+  <text x="30.0" y="272.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">- Partition key:</text>
+  <text x="30.0" y="288.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="700" fill="#0f766e">  (model, target_schema)</text>
+  <text x="30.0" y="306.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#475569">- No cross-schema cache hits</text>
+  <rect x="338" y="82" width="710" height="404" rx="0" fill="#f8fafc" fill-opacity="0.42" stroke="#475569" stroke-width="1.2" stroke-dasharray="6,4"/>
+  <rect x="346" y="88" width="382.235" height="19" rx="0" fill="#f1f5f9" stroke="#334155" stroke-width="0.9"/>
+  <text x="354.0" y="101.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="9.5" font-weight="700" fill="#0f172a">LANGGRAPH WORKFLOW: StateGraph(AgentState) (max 30 iterations)</text>
+  <rect x="350" y="112" width="230" height="144" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="350.75" y="112.75" width="228.5" height="31.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="350" y1="144" x2="580" y2="144" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="360.0" y="127.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">node_agent_loop</text>
+  <text x="360.0" y="140.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/services/agent/nodes.py</text>
+  <text x="360.0" y="160.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">- Iter 1: SYSTEM_PROMPT + schema</text>
+  <text x="360.0" y="177.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">- ChatOllama.bind_tools(5 MCP)</text>
+  <text x="360.0" y="194.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#1d4ed8">- SSE: &lt;think&gt; &amp; context_usage</text>
+  <text x="360.0" y="211.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#0f172a">- Appends AIMessage to state</text>
+  <text x="360.0" y="228.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#475569">- Tracks tokens/sec metrics</text>
+  <rect x="606" y="122" width="190" height="124" rx="2" fill="#ffffff" stroke="#1d4ed8" stroke-width="1.5"/>
+  <rect x="606.75" y="122.75" width="188.5" height="31.25" rx="1" fill="#eff6ff" stroke="none"/><line x1="606" y1="154" x2="796" y2="154" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="616.0" y="137.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">should_continue_react</text>
+  <text x="616.0" y="150.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/services/agent/routing.py</text>
+  <text x="616.0" y="170.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="700" fill="#0f172a">Inspects messages[-1]:</text>
+  <text x="616.0" y="187.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#1d4ed8">A. tool_calls &amp; iter &lt; 30</text>
+  <text x="616.0" y="203.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#b91c1c">B. tool_calls &amp; iter &gt;= 30</text>
+  <text x="616.0" y="219.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#0f766e">C. Final SQL / dry_run OK</text>
+  <text x="616.0" y="235.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.1" font-weight="400" fill="#475569">Routes to next graph node</text>
+  <rect x="864" y="112" width="172" height="124" rx="2" fill="#ffffff" stroke="#b91c1c" stroke-width="1.5"/>
+  <rect x="864.75" y="112.75" width="170.5" height="31.25" rx="1" fill="#fef2f2" stroke="none"/><line x1="864" y1="144" x2="1036" y2="144" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="874.0" y="127.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">node_force_loop_break</text>
+  <text x="874.0" y="140.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/services/agent/nodes.py</text>
+  <text x="874.0" y="160.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="700" fill="#b91c1c">Stops at 30 tool calls</text>
+  <text x="874.0" y="178.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">- Trigger: iter &gt;= 30</text>
+  <text x="874.0" y="195.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">- Stops runaway tool loop</text>
+  <text x="874.0" y="212.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#475569">- Returns error_message</text>
+  <rect x="350" y="314" width="402" height="160" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <rect x="350.75" y="314.75" width="400.5" height="31.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="350" y1="346" x2="752" y2="346" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="360.0" y="329.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">node_execute_tools</text>
+  <text x="360.0" y="342.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/mcp/mcp_server.py (5 read-only tools)</text>
+  <rect x="630" y="320" width="112" height="18" rx="1" fill="#f0fdfa" stroke="#0f766e" stroke-width="0.9"/>
+  <text x="686.0" y="332.2" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f766e" text-anchor="middle">target_schema</text>
+  <text x="360.0" y="361.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#0f172a">1. mcp_list_tables    : Active schema table list</text>
+  <text x="360.0" y="379.5" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#0f172a">2. mcp_get_schema     : Cols, nulls &amp; FK LEFT/INNER JOIN hints</text>
+  <text x="360.0" y="398.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#0f172a">3. mcp_search_value   : UNION ALL ILIKE + FK join anchors</text>
+  <text x="360.0" y="416.5" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#0f172a">4. mcp_get_sample_data: Row preview (SELECT * LIMIT &lt;= 10)</text>
+  <text x="360.0" y="435.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#0f172a">5. mcp_dry_run_query  : EXPLAIN + LIMIT 0 (readonly=True)</text>
+  <text x="360.0" y="463.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="700" fill="#475569">Appends ToolMessage | Increments iteration_count + 1</text>
+  <rect x="768" y="314" width="268" height="160" rx="2" fill="#ffffff" stroke="#0f766e" stroke-width="1.5"/>
+  <rect x="768.75" y="314.75" width="266.5" height="31.25" rx="1" fill="#f0fdfa" stroke="none"/><line x1="768" y1="346" x2="1036" y2="346" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="778.0" y="329.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11.0" font-weight="700" fill="#0f172a">node_clean_and_finalize</text>
+  <text x="778.0" y="342.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.8" font-weight="400" fill="#475569">app/services/agent/nodes.py</text>
+  <text x="778.0" y="360.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="700" fill="#0f172a">1. SQL Extraction Fallback:</text>
+  <text x="778.0" y="375.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#475569">   AIMessage -&gt; N1 (validated)</text>
+  <text x="778.0" y="390.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#475569">             -&gt; N2 (last dry_run)</text>
+  <text x="778.0" y="408.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="700" fill="#0f766e">2. SQLGlot Check (SELECT-only):</text>
+  <text x="778.0" y="423.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#0f172a">   Blocks DDL/DML &amp; pg_sleep/read</text>
+  <text x="778.0" y="441.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="700" fill="#0f172a">3. Read-Only Exec (psycopg v3):</text>
+  <text x="778.0" y="456.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#475569">   readonly=True + _attempt_fallback</text>
+  <rect x="752" y="508" width="264" height="54" rx="2" fill="#ffffff" stroke="#0f766e" stroke-width="1.5"/>
+  <rect x="752.75" y="508.75" width="262.5" height="23.25" rx="1" fill="#f0fdfa" stroke="none"/><line x1="752" y1="532" x2="1016" y2="532" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="762.0" y="524.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0f172a">SemanticCache.set()</text>
+  <text x="762.0" y="548.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#0f172a">Caches valid (sql_query, rows) by (model, schema)</text>
+  <rect x="28" y="412" width="208" height="64" rx="2" fill="#ffffff" stroke="#0f766e" stroke-width="1.5"/>
+  <rect x="28.75" y="412.75" width="206.5" height="23.25" rx="1" fill="#f0fdfa" stroke="none"/><line x1="28" y1="436" x2="236" y2="436" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="38.0" y="428.0" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0f172a">Cache Hit (0ms)</text>
+  <text x="38.0" y="451.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.4" font-weight="400" fill="#0f172a">Skips StateGraph, LLM &amp; DB</text>
+  <text x="38.0" y="466.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.3" font-weight="400" fill="#475569">Emits 0ms step event</text>
+  <rect x="350" y="588" width="746" height="56" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="1.8"/>
+  <rect x="353" y="591" width="740" height="50" rx="1" fill="none" stroke="#0f172a" stroke-width="0.8"/>
+  <rect x="350.75" y="588.75" width="744.5" height="24.25" rx="1" fill="#f1f5f9" stroke="none"/><line x1="350" y1="613" x2="1096" y2="613" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="360.0" y="604.5" font-family="'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#0f172a">END -&gt; FastAPI ChatResponse &amp; Final SSE Event (type: 'result')</text>
+  <text x="362.0" y="631.0" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.6" font-weight="400" fill="#0f172a">Payload: sql_query | query_results | steps[] | iteration_count | tables[] | cache_hit</text>
+  <path d="M 132.0,176.0 L 132.0,208.0" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-slate)"/>
+  <path d="M 244.0,232.0 L 350.0,232.0" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-slate)"/>
+  <path d="M 580.0,184.0 L 606.0,184.0" fill="none" stroke="#0f172a" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-slate)"/>
+  <path d="M 796.0,174.0 L 864.0,174.0" fill="none" stroke="#b91c1c" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-red)"/>
+  <path d="M 668.0,246.0 L 668.0,314.0" fill="none" stroke="#1d4ed8" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-blue)"/>
+  <path d="M 466.0,314.0 L 466.0,256.0" fill="none" stroke="#b91c1c" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-red)"/>
+  <path d="M 768.0,246.0 L 768.0,280.0 L 902.0,280.0 L 902.0,314.0" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-teal)"/>
+  <path d="M 884.0,474.0 L 884.0,501.5" fill="none" stroke="#0f766e" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 884.0,474.0 L 884.0,501.5" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 884.0,474.0 L 884.0,508.0" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-opacity="0" marker-end="url(#arrow-teal)"/>
+  <path d="M 132.0,326.0 L 132.0,405.5" fill="none" stroke="#0f766e" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 132.0,326.0 L 132.0,405.5" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 132.0,326.0 L 132.0,412.0" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-opacity="0" marker-end="url(#arrow-teal)"/>
+  <path d="M 132.0,476.0 L 132.0,616.0 L 343.5,616.0" fill="none" stroke="#0f766e" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 132.0,476.0 L 132.0,616.0 L 343.5,616.0" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M 132.0,476.0 L 132.0,616.0 L 350.0,616.0" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-opacity="0" marker-end="url(#arrow-teal)"/>
+  <path d="M 884.0,562.0 L 884.0,588.0" fill="none" stroke="#0f766e" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" marker-end="url(#arrow-teal)"/>
+  <path d="M 1036.0,174.0 L 1070.0,174.0 L 1070.0,588.0" fill="none" stroke="#b91c1c" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter" stroke-dasharray="5,3" marker-end="url(#arrow-red)"/>
+  <rect x="250.0" y="219.0" width="82.0" height="26.0" rx="1.5" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.85"/>
+  <text x="291.0" y="229.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f172a" text-anchor="middle">Cache Miss</text>
+  <text x="291.0" y="240.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="400" fill="#475569" text-anchor="middle">Init State</text>
+  <rect x="802.0" y="165.0" width="56.0" height="18.0" rx="1.5" fill="#fef2f2" stroke="#b91c1c" stroke-width="0.85"/>
+  <text x="830.0" y="177.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.0" font-weight="700" fill="#b91c1c" text-anchor="middle">iter&gt;=30</text>
+  <rect x="599.0" y="270.5" width="138.0" height="19.0" rx="1.5" fill="#eff6ff" stroke="#1d4ed8" stroke-width="0.85"/>
+  <text x="668.0" y="283.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="400" fill="#1d4ed8" text-anchor="middle">tool_calls (iter &lt; 30)</text>
+  <rect x="360.0" y="272.0" width="212.0" height="26.0" rx="1.5" fill="#fef2f2" stroke="#b91c1c" stroke-width="0.85"/>
+  <text x="466.0" y="282.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.2" font-weight="700" fill="#b91c1c" text-anchor="middle">ToolMessage / PG Error Feedback</text>
+  <text x="466.0" y="293.8" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="7.8999999999999995" font-weight="400" fill="#b91c1c" text-anchor="middle">Self-Healing: diag.message_hint</text>
+  <rect x="773.0" y="270.5" width="146.0" height="19.0" rx="1.5" fill="#f0fdfa" stroke="#0f766e" stroke-width="0.85"/>
+  <text x="846.0" y="283.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f766e" text-anchor="middle">Final SQL / dry_run OK</text>
+  <rect x="167.0" y="606.5" width="148.0" height="19.0" rx="1.5" fill="#f0fdfa" stroke="#0f766e" stroke-width="0.85"/>
+  <text x="241.0" y="619.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#0f766e" text-anchor="middle">Cached (sql_query, data)</text>
+  <rect x="1036.0" y="525.5" width="68.0" height="19.0" rx="1.5" fill="#fef2f2" stroke="#b91c1c" stroke-width="0.85"/>
+  <text x="1070.0" y="538.1" font-family="'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace" font-size="8.5" font-weight="700" fill="#b91c1c" text-anchor="middle">Error Halt</text>
+</svg>

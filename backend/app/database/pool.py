@@ -106,8 +106,8 @@ def get_db_conn(schema: str = "public", readonly: bool = False) -> Generator[Any
         raise
     finally:
         try:
-            conn.read_only = False
             conn.rollback()
+            conn.read_only = False
         except Exception:
             pass
         pool.putconn(conn)

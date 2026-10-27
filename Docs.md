@@ -1,78 +1,56 @@
-# LLM4SQL - Spécifications Techniques & Fonctionnelles d'Architecture
+# Workspace Guide & Reference Schema
 
-Ce document spécifie les exigences d'ingénierie, la topologie fonctionnelle, le modèle conceptuel de données et les règles de gouvernance de la plateforme **LLM4SQL**.
-
----
-
-## 1. Objectifs & Cadre Fonctionnel
-
-La plateforme résout la complexité d'interrogation des bases de données relationnelles en entreprise en fournissant une interface de traduction Langage Naturel ➔ SQL opérant en environnement hermétique local (*air-gapped*).
-
-### 1.1 Exigences Fondamentales :
-- **Souveraineté des Données** : Exécution exclusive sur l'infrastructure de l'organisation sans transmission externe vers des API SaaS tierces.
-- **Auto-Correction Récursive (Self-Healing)** : Résolution autonome des erreurs de syntaxe ou de schéma via boucle de rétroaction agentique (LangGraph / MCP).
-- **Contrôle & Validation Déterministe** : Séparation stricte entre le moteur d'inférence non-déterministe (LLM) et la validation syntaxique/sécurité déterministe (AST SQLGlot, contraintes transactionnelles `read-only`).
+Functional overview of the four LLM4SQL workspace panels, the default PostgreSQL schema, and query safety rules.
 
 ---
 
-## 2. Découpage Fonctionnel des Modules
+## Workspace Modules
 
-L'interface de travail est structurée en deux modes principaux et quatre modules synchronisés :
+The web UI has two top-level tabs and four panels:
 
-```
-+---------------------------------------------------------------------------------------------------------+
-|                                        MODE 1 : CHAT & WORKSPACE                                        |
-|  +---------------------------+---------------------------------+-------------------------------------+  |
-|  |     1. LABORATOIRE        |        2. ASSISTANT SQL         |          3. EXPLORATEUR             |  |
-|  |        (Sandbox)          |             (Chat)              |            DE DONNÉES               |  |
-|  +---------------------------+---------------------------------+-------------------------------------+  |
-+---------------------------------------------------------------------------------------------------------+
-|                                        MODE 2 : QUALITÉ & ÉVALUATION                                    |
-|  +---------------------------------------------------------------------------------------------------+  |
-|  |                    4. BANC DE TEST & BENCHMARK D'ÉVALUATION AUTOMATISÉ                            |  |
-|  +---------------------------------------------------------------------------------------------------+  |
-+---------------------------------------------------------------------------------------------------------+
+```text
++---------------------------------------------------------------------------------------------------+
+|                                        TAB 1: CHAT WORKSPACE                                      |
+|  +-------------------------+-------------------------------+-----------------------------------+  |
+|  |     1. SQL SANDBOX      |     2. SQL CHAT ASSISTANT     |          3. DATA EXPLORER         |  |
+|  +-------------------------+-------------------------------+-----------------------------------+  |
++---------------------------------------------------------------------------------------------------+
+|                                      TAB 2: EVALUATION BENCHMARK                                  |
+|  +---------------------------------------------------------------------------------------------+  |
+|  |                          4. AUTOMATED SQL BENCHMARK & CASE EDITOR                           |  |
+|  +---------------------------------------------------------------------------------------------+  |
++---------------------------------------------------------------------------------------------------+
 ```
 
-### 2.1 Module 1 : Laboratoire SQL & Bac à Sable DDL (Sandbox)
-Le module Sandbox permet d'isoler l'expérimentation de schémas personnalisés :
-- **Édition DDL & DML** : Saisie et exécution d'instructions `CREATE TABLE` et `INSERT INTO` dirigées vers le schéma isolé `user_sandbox`.
-- **Modélisation Graphique Déterministe** :
-  - **Vue Cartes Dynamiques** : Analyse structurelle des contraintes (`PRIMARY KEY`, `FOREIGN KEY`) et mise en évidence des dépendances relationnelles.
-  - **Diagramme ER (Mermaid.js)** : Génération instantanée (<1ms) via parser syntaxique AST Python sans dépendance LLM.
-    - **Thèmes Haute Lisibilité** : Mode **Papier (Clair) 📄** style ingénierie/Workbench (fond blanc millimétré, bordures noires nettes) et mode **Sombre 🖤**.
-    - **Types Universels Compacts** : Normalisation déterministe (`varchar`, `int`, `decimal`, `timestamp`, `bool`) éliminant les chaînes verbeuses.
-    - **Mode Plein Écran Immersif & Zoom Centré** : Navigation à échelle adaptative (100%, 135%, +/-) avec centrage vectoriel sans dérive.
-- **Restauration** : Réinitialisation instantanée vers le schéma de référence (`public.ouvrage`).
+### 1. SQL Sandbox (`SandboxPanel` & `SchemaVisualizer`)
+- Executes custom `CREATE TABLE` and `INSERT INTO` scripts inside the isolated `user_sandbox` PostgreSQL schema without modifying `public`.
+- Converts SQL DDL into a Mermaid `erDiagram` in `<1ms` using a Python parser (`POST /api/sandbox/visualize`), alongside a client-side FK card explorer (`sqlParser.ts`) with Paper and Dark ERD themes, fullscreen zoom, and one-click reset to `public`.
 
-### 2.2 Module 2 : Moteur Agentique & Dialogue (Assistant SQL)
-- **Traitement Asynchrone & Télémétrie** : Réception de la requête utilisateur et diffusion en continu (*Server-Sent Events - SSE*) des étapes de décision :
-  1. Exploration sélective de schéma (`mcp_get_schema`).
-  2. Recherche sémantique de valeurs réelles (`mcp_search_value`).
-  3. Validation à blanc sans effet de bord (`mcp_dry_run_query`).
-  4. Auto-correction itérative en cas d'erreur PostgreSQL.
-- **Transparence de Raisonnement (XAI)** : Streaming jeton par jeton de la réflexion interne du modèle (`<think>`) dans un accordéon rétractable.
+### 2. SQL Chat Assistant (`ChatInterface`)
+- Streams `<think>` tokens into a collapsible accordion, tracks each MCP tool call (`mcp_get_schema`, `mcp_search_value`, `mcp_dry_run_query`) with step latency, and displays `tokens/s` plus VRAM context usage.
+- Includes an editable SQL block (`SqlCodeBlock`) that runs user-modified `SELECT` queries via `POST /api/chat/execute-raw`.
 
-### 2.3 Module 3 : Exploration & Restitution Analytique
-- **Grille Tabulaire (`DataTable`)** : Navigation paginée, filtrage multi-colonnes, tri déterministe et export de données CSV au format UTF-8 BOM (compatibilité tableurs d'entreprise).
-- **Restitution Graphique (`DataVisualization`)** : Tracé dynamique (BarChart, LineChart, PieChart) avec détection automatique des axes dimensionnels et métriques.
+### 3. Data Explorer (`DataExplorerPanel`)
+- **Table view (`DataTable`)**: Paginated and sortable grid that switches to `@tanstack/react-virtual` row virtualization above 500 rows in "Show all" mode, with UTF-8 BOM (`\uFEFF`) CSV export for Excel compatibility.
+- **Chart view (`DataVisualization`)**: Renders `Recharts` bar, line, and area charts based on detected text/date dimensions and numeric columns.
 
-### 2.4 Module 4 : Banc de Test & Benchmark d'Évaluation Automatisé
-Le module Benchmark (`BenchmarkPanel` & `eval_service.py`) assure l'assurance qualité continue du système Text-to-SQL :
-- **Mesure d'Execution Accuracy Multi-Axes** : Exécution comparée en miroir de la requête SQL de vérité terrain (*Ground Truth*) et de la requête générée par l'agent sur PostgreSQL réel.
-- **Normalisation Sémantique des Absences (`FALLBACK_NULL_STRINGS`)** : Équivalence automatique entre valeurs `NULL`, `None`, chaînes vides et libellés textuels (`'Pas de série'`, `'N/A'`, `'Inconnu'`) pour éviter tout faux négatif heuristique.
-- **Soft-Matching par Jetons Distincts** : Validation des requêtes multi-colonnes ou concaténées via l'algorithme `_find_distinct_token_matching` sans imposer un formatage de colonne arbitraire.
-- **Télémétrie Agentique LangGraph** : Capture détaillée et inspection pour chaque cas de test des étapes de réflexion (`<think>`), des appels d'outils MCP, des temps d'inférence et des boucles d'auto-correction (Self-Healing).
-- **Gestionnaire de Jeux de Données (CRUD)** : Édition, ajout, suppression et réinitialisation du dataset canonique de 18 cas pratiques (`eval_dataset.json`).
-
+### 4. Evaluation Benchmark (`BenchmarkPanel` & `app/services/eval/`)
+- Executes ground-truth SQL and agent-generated SQL side by side against PostgreSQL across the 18-case reference dataset (`eval_dataset.json`), streaming live progress over `/api/eval/stream`.
+- **Null marker normalization (`FALLBACK_NULL_STRINGS`)**: Treats `NULL`, `None`, empty strings, and placeholder labels (`'Pas de série'`, `'N/A'`, `'Inconnu'`) as equivalent during result comparison to avoid false negatives on `COALESCE` queries.
+- **Token-based column matching (`_find_distinct_token_matching`)**: Compares multi-column or concatenated projections (such as `prenom || ' ' || nom` vs separate `prenom`, `nom` columns) without requiring identical column aliases.
+- Supports adding, editing, deleting, and resetting test cases from the UI.
 
 ---
 
-## 3. Modèle de Données Canonique : "BD Ouvrages"
+## Default Schema: BD Ouvrages
 
-Le schéma relationnel de référence modélise une bibliothèque éditoriale structurée en **6 relations** :
+The default `public` schema models an editorial comic/book catalog across 6 tables:
 
 ```mermaid
+---
+config:
+  theme: neutral
+---
 erDiagram
     PERSONNE {
         int idp PK
@@ -120,55 +98,22 @@ erDiagram
     OUVRAGE ||--o{ AVIS : "recoit"
 ```
 
-### 3.1 Dictionnaire des Relations
-1. **`personne`** : Auteurs, dessinateurs, scénaristes et coloristes.
-2. **`serie`** : Collections et séries d'œuvres éditoriales.
-3. **`ouvrage`** : Entité centrale représentant chaque album publié (relations clés étrangères multiples vers `personne` et `serie`).
-4. **`concept`** : Ontologie thématique hiérarchique avec auto-référence (`concept_pere`).
-5. **`a_pour_mot_cle`** : Table de jonction N:M associant les ouvrages aux concepts.
-6. **`avis`** : Évaluations quantitatives associées aux ouvrages.
+| Table | Role |
+| :--- | :--- |
+| `personne` | Contributors (illustrators, writers, colorists) with birth and death dates. |
+| `serie` | Editorial series grouping multiple volumes. |
+| `ouvrage` | Published volumes with nullable foreign keys to `serie` (`ids`) and `personne` (`dessinateur`, `scenariste`, `coloriste`). |
+| `concept` | Subject taxonomy with self-referencing parent hierarchy (`concept_pere`). |
+| `a_pour_mot_cle` | Many-to-many join table linking `ouvrage` (`ido`) and `concept` (`idc`). |
+| `avis` | Reader ratings (`score`) keyed by `(pseudo, ido)`. |
 
 ---
 
-## 4. Sécurité & Gouvernance (Defense in Depth)
+## Security Model
 
-### 4.1 Ségrégation des Privilèges & Validation Syntaxique
-- **Validation AST Stricte (SQLGlot)** : Toute commande SQL générée fait l'objet d'un parsing syntaxique en arbre AST. Toute opération non-idempotente ou mutatrice (`DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `GRANT`, `REVOKE`) est immédiatement rejetée avec levée d'exception de sécurité.
-- **Isolation de Connexion** : Les requêtes analytiques sont exécutées via des curseurs transactionnels en mode `readonly=True` au niveau du pilote PostgreSQL.
-- **Protection XSS** : Assainissement systématique des rendus Mermaid et données textuelles via `DOMPurify`.
+- **SQL AST validation (`sqlglot`)**: Every agent or user query is parsed into an AST; anything other than `SELECT` (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `GRANT`, `REVOKE`) or blocked functions (`pg_sleep`, `pg_read_file`) is rejected before reaching PostgreSQL.
+- **Read-only database sessions**: Analytical queries run through `psycopg` v3 connections with `readonly=True` session enforcement.
+- **Schema & cache isolation**: DDL/DML statements in the sandbox only target `user_sandbox`, and `SemanticCache` partitions entries by `(model, target_schema)`.
+- **SVG sanitization**: `SchemaVisualizer` sanitizes rendered Mermaid SVG markup via `DOMPurify.sanitize()`.
 
-### 4.2 Optimisation du Contexte & Cache Sémantique
-- **Cache Sémantique Vectoriel** : Mise en cache LRU en mémoire des requêtes passées calculée par similarité cosinus (Ollama embeddings) avec fallback textuel de Jaccard (temps de réponse 0ms sur requêtes récurrentes).
-- **Bypass Dynamique** : Capacité de forcer le ré-entraînement de l'agent sans interruption de service.
-- **Asynchronisme & Gestion de Pool** : Découplage de la boucle événementielle FastAPI (`asyncio.to_thread`) et mutualisation des connexions PostgreSQL (`psycopg_pool.ConnectionPool` sous `psycopg` v3).
-
----
-
-## 5. Topologie de Déploiement Conteneurisé
-
-La plateforme applique une topologie hybride standardisée :
-
-```mermaid
-flowchart TD
-    subgraph Host ["Machine Hôte (Windows / macOS / Linux)"]
-        GPU["Accélération Matérielle (CUDA / Metal / DirectML)"] --- OllamaHost["Serveur Ollama (Port 11434)<br>Turbo Quant q4_0 & Flash Attention"]
-        BrowserHost["Navigateur Web (http://localhost:5173)"]
-    end
-
-    subgraph DockerNetwork ["Réseau Docker Compose (llm4sql)"]
-        DBContainer[("PostgreSQL 16 (Port 5433)<br>Volume persistant: postgres_data")]
-        BackendContainer["FastAPI Backend (Port 8000)<br>LangGraph • MCP • AST Validator"]
-        FrontendContainer["Nginx / React SPA (Port 5173)<br>Reverse Proxy /api/ (SSE Unbuffered)"]
-
-        FrontendContainer -->|Reverse Proxy /api/| BackendContainer
-        BackendContainer -->|Connexion Poolée| DBContainer
-    end
-
-    BackendContainer -->|"host.docker.internal:11434"| OllamaHost
-    BrowserHost --> FrontendContainer
-```
-
-### 5.1 Spécifications Opérationnelles :
-1. **Zéro Configuration Hôte** : Les conteneurs encapsulent l'ensemble des runtimes (Python 3.12, `uv`, Node 22, Nginx, PostgreSQL 16).
-2. **Performance GPU Préservée** : Le moteur d'inférence s'exécute directement sur l'OS hôte, évitant la latence de virtualisation WSL2/Docker GPU.
-3. **Cycle de Vie Automatisé** : Détection et application automatique des variables d'accélération d'Ollama (`q4_0`, `Flash Attention`, écoute sur `0.0.0.0:11434`) avec redémarrage transparent si nécessaire.
+For container topology, SSE request flow, and module internals, see [ARCHITECTURE.md](./ARCHITECTURE.md), [backend/README.md](./backend/README.md), and [frontend/README.md](./frontend/README.md).
