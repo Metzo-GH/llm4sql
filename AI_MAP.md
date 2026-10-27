@@ -1,27 +1,69 @@
-# LLM4SQL - AI MAP & Architecture 
+# 🗺️ AI_MAP - LLM4SQL
 
-## 1. Vision du Projet
-Application 100% locale (privée) permettant de traduire du langage naturel en requêtes SQL via un LLM (Qwen 3.5 9B) orchestré par LangGraph. 
-L'application comprend une boucle d'auto-correction ("Self-Healing"), une connexion via le standard MCP, une API FastAPI, et un frontend React (Vite) avec Data Viz. La base de données PostgreSQL tourne dans un conteneur Docker pour une flexibilité maximale (ajout futur d'autres services / bases NoSQL).
+## 1. Vision & Périmètre
+- **Objectif Principal** : Application 100% locale (souveraine et privée) permettant de traduire du langage naturel en requêtes SQL via un LLM local (famille Qwen 3.5 / Ollama) orchestré par LangGraph.
+- **Scope Actuel (MVP & Fonctionnalités Clés)** :
+  - Pipeline Agentique LangGraph ReAct avec Tool Calling natif MCP.
+  - Serveur MCP Python sur-mesure (5 outils sécurisés en lecture seule : `mcp_get_schema`, `mcp_get_sample_data`, `mcp_search_value`, `mcp_dry_run_query`, `mcp_get_db_tables`).
+  - Détection automatique d'ancre relationnelle et nullabilité de clés étrangères (recommandation `LEFT JOIN` dynamique anti-perte de données / Lossless Projection).
+  - Évaluation de performance par Execution Accuracy sur PostgreSQL avec soft-matching par jetons utiles (`eval_service.py`, 83.3% de succès sur le dataset canonique).
+  - Télémétrie en direct & Streaming SSE (logs backend, étapes agentiques, tokens `<think>`).
+  - Cache sémantique en mémoire partitionné par schéma BDD (`target_schema`).
+  - Laboratoire SQL & Sandbox DDL avec parseur SQL DDL déterministe en Python pur et rendu diagramme Mermaid.
+  - Interface Web React 19 / TypeScript strict / Vite / TailwindCSS v4 avec explorateur de données, table virtuelle `@tanstack/react-virtual`, graphiques Recharts, et onglet Benchmark interactif.
+  - Déploiement conteneurisé Docker & Docker Compose unifié avec lanceurs cross-platform (`start.ps1`, `start.bat`, `start.sh`).
+- **Hors-Scope Actuel & Décisions d'Architecture (Invalidations)** :
+  - Traduction AST ➔ Français heuristique (abandonnée en Phase R16 suite aux faux négatifs).
+  - Dynamic Few-Shot RAG par gabarits synthétiques (abandonné en Phase R27 pour éliminer l'Attention Collapse).
+  - Altération destructive de base de données (verrouillage strict en lecture seule via analyse AST `sqlglot` et transactions READ ONLY).
 
-## 2. Architecture Technique (Stack 2026)
-### 2.1 Backend (Python) & BDD
-- **Gestionnaire d'environnement & dépendances** : `uv` (remplace pip/poetry pour des performances maximales).
-- **Conteneurisation BDD** : `Docker` & `Docker Compose` exécutant une base `PostgreSQL v16+`.
-- **Framework Web** : `FastAPI` (pour exposer l'agent via une API REST rapide).
-- **Orchestration IA** : `LangGraph` (pour gérer les cycles complexes comme la boucle d'erreur SQL).
-- **Intégration BDD** : Client `MCP` (Model Context Protocol) pour lire le schéma de la base de données.
-- **RAG** : VectorDB légère (ex: `Chroma`) pour le Few-Shot Prompting.
-- **LLM Local** : `Ollama` avec `Qwen 3.5 9B`.
+## 2. Stack Technique & Standards Actuels
+- **Langages & Runtimes** : Python 3.12+ (Backend), TypeScript 5.x strict & Node 22+ (Frontend).
+- **Backend & Base de Données** :
+  - Gestionnaire d'environnement : `uv` (0.11+)
+  - Framework API : `FastAPI` (0.136+, lifespan asynchrone, CORS, SlowAPI rate-limiting) & `Uvicorn`
+  - Orchestration Agentique : `LangGraph` (1.2+) & `langchain-ollama` (1.1+)
+  - Intégration Base de Données : `MCP` (Model Context Protocol 1.27+) & `psycopg` v3 (`psycopg-pool` 3.2+)
+  - Validation SQL & AST : `sqlglot` (30.8+)
+  - Moteur d'Inférence Local : `Ollama` (Qwen 3.5 4B / 9B)
+- **Frontend** :
+  - Build Tool : `Vite` (8.x avec `@tailwindcss/vite`)
+  - Framework UI : `React` 19 avec `TypeScript` strict
+  - Styling : `TailwindCSS` v4
+  - Data Visualisation : `Recharts` (3.x)
+  - Diagrammes : `Mermaid` (11.x) & `Cytoscape`
+  - Virtualisation : `@tanstack/react-virtual` (3.x)
+  - Sécurité UI : `DOMPurify` (3.x)
+- **Standards de Code** : Conformes aux standards stricts de `AI_RULES` (SOLID, DRY, nommage métier explicite, auto-documentation axée sur le *pourquoi*, zéro secret, docstrings natives PEP 257 et TSDoc/JSDoc).
 
-### 2.2 Frontend (Web)
-- **Build Tool** : `Vite`.
-- **Framework UI** : `React` avec `TypeScript` strict.
-- **Styling & Composants** : `TailwindCSS` + `Shadcn/ui` (ou équivalent moderne) pour une UI premium "Chat-like".
-- **Data Visualisation** : `Recharts` pour générer des graphes à partir des résultats SQL.
-- **Rigueur** : TSDoc obligatoire pour chaque fonction métier/composant.
+## 3. Matrice d'Outillage & Environnement
+- **Sécurité** : Semgrep 1.171.0 (natif)
+- **Tests** :
+  - Backend : `pytest` 9.0.3 & `pytest-asyncio` 1.4.0 (86 tests unitaires et d'intégration)
+  - Frontend : TypeScript strict compiler (`tsc -b`) & Vite build
+- **Linters & Formatters** :
+  - Backend : Ruff / Flake8 ready
+  - Frontend : `eslint` 10.3.0 & `typescript-eslint` 8.59.2
+- **Runtimes & Gestionnaires Détectés** :
+  - Python : 3.12.10
+  - Node.js : v22.12.0
+  - uv : 0.11.16
+  - Docker : 29.4.3 & Docker Compose v5.1.3
+  - Ollama : client 0.32.15
 
-## 3. Plan d'Implémentation (Phases)
+## 4. Architecture & Arborescence des Modules
+- `backend/app/main.py` : Point d'entrée FastAPI avec cycle de vie lifespan asynchrone, CORS et middlewares.
+- `backend/app/routers/` : Routeurs REST modulaires (`chat.py`, `schema.py`, `sandbox.py`, `monitoring.py`, `eval.py`).
+- `backend/app/services/agent/` : Moteur agentique LangGraph ReAct (`graph.py`, `nodes.py`, `tools.py`, `prompts.py`, `routing.py`).
+- `backend/app/services/mcp_server.py` : Serveur MCP Python sur-mesure exposant les 5 outils d'introspection et dry-run PostgreSQL.
+- `backend/app/services/eval/` : Moteur d'évaluation modulaire (`eval_service.py`, `eval_repo.py`, `eval_comparator.py`, `eval_benchmark.py`).
+- `backend/app/database/` : Couche d'accès DB avec pool `psycopg` v3 et requêtes mutualisées (`pool.py`, `queries.py`).
+- `frontend/src/App.tsx` : Orchestrateur UI bi-modal (Chat/Sandbox/Explorateur vs Benchmark).
+- `frontend/src/components/` : Composants UI React modulaires (`ChatInterface.tsx`, `DataTable.tsx`, `DataVisualization.tsx`, `SchemaVisualizer.tsx`, `BenchmarkPanel.tsx`, `AppHeader.tsx`, `SettingsDropdown.tsx`...).
+- `frontend/src/hooks/` : Hooks personnalisés (`useChat.ts`, `useChatConfig.ts`, `useOllamaStatus.ts`, `useSandbox.ts`).
+- `rapport/` : Mémoire académique Master MIAGE complet rédigé en Typst (`main.typ`, `chapters/`).
+
+## 5. Feuille de Route / Backlog des Phases
 
 ### Phase 1 : Initialisation & POC (Validée)
 - [x] Initialisation du conteneur PostgreSQL via `docker-compose.yml` (Port 5433 hôte).
@@ -351,10 +393,10 @@ L'application comprend une boucle d'auto-correction ("Self-Healing"), une connex
   - Suppression des tics de langage et des répétitions superflues du mot "déterministe".
 - [x] **Validation Globale & Compilation** : 85 tests pytest backend au vert (100%), build Vite/TS réussi et compilation Typst du mémoire (`memoire_llm4sql.pdf`, 1,60 Mo, 0 warning, 0 erreur).
 
-## 4. Règles d'Or du Projet (Rappels)
+## 6. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
-- **Source de Vérité** : Ce fichier `#AI_MAP.md` est la seule référence de l'état du projet et doit être mis à jour après chaque complétion.
+- **Source de Vérité** : Ce fichier `AI_MAP.md` est la seule référence de l'état du projet et doit être mis à jour après chaque complétion.
 
 
 
