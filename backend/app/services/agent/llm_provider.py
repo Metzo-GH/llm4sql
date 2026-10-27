@@ -94,7 +94,8 @@ def get_llm(model: Optional[str] = None, temperature: float = 0.0, context_size:
             "base_url": settings.OLLAMA_BASE_URL,
             "temperature": temperature,
             "keep_alive": -1,
-            "reasoning": True
+            "reasoning": True,
+            "client_kwargs": {"timeout": settings.OLLAMA_TIMEOUT}
         }
         # Si context_size vaut 0 ou n'est pas spécifié, utiliser une fenêtre de contexte de 8192 (8k) par défaut
         # afin d'éviter la tronquature silencieuse du prompt système par Ollama (défaut à 2048).

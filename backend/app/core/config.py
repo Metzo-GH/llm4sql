@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Paramètres Ollama
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = ""
+    OLLAMA_TIMEOUT: float = 90.0
 
     # Environnement
     ENV: str = "development"

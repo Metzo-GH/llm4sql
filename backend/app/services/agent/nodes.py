@@ -1,6 +1,7 @@
 import time
 import json
 import logging
+import httpx
 from typing import Dict, Any, Optional, List
 
 logger = logging.getLogger("llm4sql.agent.nodes")
@@ -32,57 +33,76 @@ def _stream_llm_response(llm_with_tools: Any, messages: List[BaseMessage]) -> tu
     start_time = time.time()
     callback = event_callback_var.get()
     
-    if callback:
-        content_parts = []
-        full_metadata = {}
-        has_started_thinking = False
-        has_finished_thinking = False
-        response = None
-        
-        for chunk in llm_with_tools.stream(messages):
-            reasoning_content = chunk.additional_kwargs.get("reasoning_content", "")
-            content = chunk.content
+    try:
+        if callback:
+            content_parts = []
+            full_metadata = {}
+            has_started_thinking = False
+            has_finished_thinking = False
+            response = None
             
-            if reasoning_content and not has_started_thinking:
-                send_agent_event("token", "<think>")
-                content_parts.append("<think>")
-                has_started_thinking = True
+            for chunk in llm_with_tools.stream(messages):
+                reasoning_content = chunk.additional_kwargs.get("reasoning_content", "")
+                content = chunk.content
                 
-            if content and has_started_thinking and not has_finished_thinking:
-                send_agent_event("token", "</think>")
-                content_parts.append("</think>")
-                has_finished_thinking = True
-                
-            if reasoning_content:
-                send_agent_event("token", reasoning_content)
-                content_parts.append(reasoning_content)
-            elif content:
-                if has_started_thinking and not has_finished_thinking:
+                if reasoning_content and not has_started_thinking:
+                    send_agent_event("token", "<think>")
+                    content_parts.append("<think>")
+                    has_started_thinking = True
+                    
+                if content and has_started_thinking and not has_finished_thinking:
                     send_agent_event("token", "</think>")
                     content_parts.append("</think>")
                     has_finished_thinking = True
-                send_agent_event("token", content)
-                content_parts.append(content)
+                    
+                if reasoning_content:
+                    send_agent_event("token", reasoning_content)
+                    content_parts.append(reasoning_content)
+                elif content:
+                    if has_started_thinking and not has_finished_thinking:
+                        send_agent_event("token", "</think>")
+                        content_parts.append("</think>")
+                        has_finished_thinking = True
+                    send_agent_event("token", content)
+                    content_parts.append(content)
+                    
+                if chunk.response_metadata:
+                    full_metadata.update(chunk.response_metadata)
+                    
+                if response is None:
+                    response = chunk
+                else:
+                    response += chunk
+                    
+            if has_started_thinking and not has_finished_thinking:
+                send_agent_event("token", "</think>")
+                content_parts.append("</think>")
                 
-            if chunk.response_metadata:
-                full_metadata.update(chunk.response_metadata)
-                
-            if response is None:
-                response = chunk
-            else:
-                response += chunk
-                
-        if has_started_thinking and not has_finished_thinking:
-            send_agent_event("token", "</think>")
-            content_parts.append("</think>")
-            
-        if response is not None:
-            response.content = "".join(content_parts)
-    else:
-        response = llm_with_tools.invoke(messages)
-        reasoning_content = response.additional_kwargs.get("reasoning_content")
-        if reasoning_content:
-            response.content = f"<think>\n{reasoning_content}\n</think>\n{response.content}"
+            if response is not None:
+                response.content = "".join(content_parts)
+        else:
+            response = llm_with_tools.invoke(messages)
+            reasoning_content = response.additional_kwargs.get("reasoning_content")
+            if reasoning_content:
+                response.content = f"<think>\n{reasoning_content}\n</think>\n{response.content}"
+    except httpx.TimeoutException as exc:
+        timeout_val = getattr(settings, "OLLAMA_TIMEOUT", 90.0)
+        err_msg = f"Délai d'attente dépassé ({timeout_val}s) lors de la communication avec Ollama. Le modèle met trop de temps à répondre."
+        logger.error(f"[OLLAMA TIMEOUT] {err_msg} : {exc}")
+        send_agent_event("error", err_msg)
+        raise TimeoutError(err_msg) from exc
+    except httpx.ConnectError as exc:
+        err_msg = f"Impossible de se connecter au serveur Ollama sur {settings.OLLAMA_BASE_URL}. Vérifiez qu'Ollama est actif (ex: ollama serve)."
+        logger.error(f"[OLLAMA CONNECT ERROR] {err_msg} : {exc}")
+        send_agent_event("error", err_msg)
+        raise ConnectionError(err_msg) from exc
+    except Exception as exc:
+        if "timeout" in str(exc).lower() or "timed out" in str(exc).lower():
+            err_msg = f"Délai d'attente dépassé lors de la communication avec Ollama ({exc})."
+            logger.error(f"[OLLAMA TIMEOUT] {err_msg}")
+            send_agent_event("error", err_msg)
+            raise TimeoutError(err_msg) from exc
+        raise
 
     elapsed = time.time() - start_time
     return response, elapsed

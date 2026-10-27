@@ -393,6 +393,15 @@
   - Suppression des tics de langage et des répétitions superflues du mot "déterministe".
 - [x] **Validation Globale & Compilation** : 85 tests pytest backend au vert (100%), build Vite/TS réussi et compilation Typst du mémoire (`memoire_llm4sql.pdf`, 1,60 Mo, 0 warning, 0 erreur).
 
+### Phase R39 : Préparation Open-Source, Durcissement Vitrine & Découplage Académique (Validée)
+- [x] **Découplage Académique** : Suppression des artefacts universitaires (dossier `tpsql_l3/` et dossier `rapport/`).
+- [x] **Relocalisation des Schémas d'Architecture** : Extraction et conservation des schémas vectoriels dans `docs/architecture/` (`architecture_globale.svg`, `langgraph_decision_flow.svg`, `pivots_architecturaux.svg`, `erd_bd_ouvrages.svg`).
+- [x] **Standardisation Open-Source** : Création du fichier officiel `LICENSE` (Licence MIT, 2026 Metzo-GH).
+- [x] **Durcissement Technique Ollama** : Ajout du paramètre `OLLAMA_TIMEOUT` (90.0s par défaut) dans `config.py` et `llm_provider.py` (`client_kwargs`), avec capture gracieuse des erreurs de timeout et de connexion dans `nodes.py` (`_stream_llm_response`).
+- [x] **Documentation & Vitrine** : Maintien du README original rédigé manuellement et conservation des schémas d'architecture dans `docs/architecture/`.
+- [x] **Agnosticisme LLM & Configuration `.env.example`** : Neutralisation de `OLLAMA_MODEL=your_local_model_here` avec documentation explicite du rôle de fallback CLI/scripts (sélection 100% dynamique dans l'UI Web).
+- [x] **Validation Globale** : Compilation TypeScript strict (`tsc -b`), build Vite de production réussi (0 erreur) et compilation Python sans faute.
+
 ## 6. Règles d'Or du Projet (Rappels)
 - **Zéro Legacy** : Utiliser les syntaxes modernes.
 - **Partial Diffs** : Les modifications de fichiers existants se feront de manière chirurgicale.
